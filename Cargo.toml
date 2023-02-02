@@ -1,0 +1,16 @@
+[package]
+name = "discord-bot"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.68"
+dotenv = "0.15.0"
+env_logger = "0.10.0"
+log = "0.4.17"
+serenity = "0.11.5"
+sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "sqlite"] }
+tokio = { version = "1.24.2", features = ["macros", "rt-multi-thread"] }
+tracing-subscriber = "0.3.16"
