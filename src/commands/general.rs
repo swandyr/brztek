@@ -1,4 +1,4 @@
-use log::{debug, error, info};
+use log::{error, info};
 use serenity::{
     framework::standard::{macros::command, CommandResult},
     model::{
@@ -11,14 +11,8 @@ use serenity::{
 #[command]
 pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
     msg.channel_id
-        .send_message(ctx, |m| m.content("Pong!"))
+        .send_message(&ctx.http, |m| m.content("Pong!"))
         .await?;
-    Ok(())
-}
-
-#[command]
-pub async fn about(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.reply(ctx, "A simple bot").await?;
     Ok(())
 }
 
@@ -42,12 +36,20 @@ pub async fn hello(ctx: &Context, msg: &Message) -> CommandResult {
 
     if let Some(user) = _user {
         msg.channel_id
-            .send_message(&ctx, |m| {
+            .send_message(&ctx.http, |m| {
                 let mention = Mention::from(user.id);
                 let message = format!("Hey, {mention}!");
                 m.content(&message)
             })
             .await?;
     }
+
+    Ok(())
+}
+
+#[command]
+pub async fn say(ctx: &Context, msg: &Message) -> CommandResult {
+    let content = &msg.content.replace("!say ", "");
+    msg.reply(ctx, content).await?;
     Ok(())
 }

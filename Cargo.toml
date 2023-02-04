@@ -1,5 +1,5 @@
 [package]
-name = "discord-bot"
+name    = "discord-bot"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,10 +7,19 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.68"
+chrono = "0.4.23"
 dotenv = "0.15.0"
-env_logger = "0.10.0"
+font-kit = "0.11.0"
+image = "0.24.5"
 log = "0.4.17"
+rand = "0.8.5"
+raqote = "0.8.2"
+reqwest = { version = "0.11.14", features = ["blocking"] }
 serenity = "0.11.5"
-sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "sqlite"] }
+sqlx = { version = "0.6.2", features = [
+    "runtime-tokio-native-tls",
+    "sqlite",
+    "chrono",
+] }
 tokio = { version = "1.24.2", features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = "0.3.16"

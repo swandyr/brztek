@@ -3,7 +3,11 @@ use log::{debug, error, info};
 use serenity::{
     async_trait,
     framework::standard::{macros::group, StandardFramework},
-    model::{channel::Message, gateway::Ready},
+    model::{
+        channel::Message,
+        gateway::Ready,
+        prelude::{Member, Mention},
+    },
     prelude::*,
 };
 use std::{env, sync::Arc};
@@ -13,15 +17,18 @@ use utils::db::Db;
 
 mod commands;
 use commands::{
-    general::{ABOUT_COMMAND, HELLO_COMMAND, PING_COMMAND},
+    general::{HELLO_COMMAND, PING_COMMAND, SAY_COMMAND},
+    help::HELP,
     ranking::{DELETE_RANKS_COMMAND, RANK_COMMAND, TOP_COMMAND},
 };
 
 #[group]
-#[commands(ping, about, hello)]
+#[commands(ping, hello, say)]
 pub struct General;
 
 #[group]
+#[description = "Command relatable to xp and levels"]
+#[summary = "Leveling stuff"]
 #[commands(rank, top, delete_ranks)]
 pub struct Ranking;
 
@@ -49,20 +56,37 @@ impl EventHandler for Handler {
 
         // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
         let db = ctx.data.read().await.get::<Db>().unwrap().clone();
-        let _ = db.add_user_xp(user_id).await;
+        if let Ok(level_up) = db.add_user_xp(user_id).await {
+            if level_up {
+                if let Err(why) = msg
+                    .channel_id
+                    .send_message(&ctx.http, |m| {
+                        let mention = Mention::from(msg.author.id);
+                        let message = format!("Level Up, {mention}!");
+                        m.content(&message)
+                    })
+                    .await
+                {
+                    error!("Error on send message: {why}");
+                }
+            }
+        }
     }
+
+    #[allow(dead_code, unused_variables)]
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {}
 }
 
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Failed to load .env file");
-    // env_logger::init();
     tracing_subscriber::fmt::init();
 
     let framework = StandardFramework::new()
         .configure(|c| c.prefix("!"))
         .group(&GENERAL_GROUP)
-        .group(&RANKING_GROUP);
+        .group(&RANKING_GROUP)
+        .help(&HELP);
 
     let token = env::var("DISCORD_TOKEN").expect("token needed");
     let intents = GatewayIntents::non_privileged()
