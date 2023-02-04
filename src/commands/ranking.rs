@@ -1,4 +1,4 @@
-use log::{debug, error, info};
+use log::{debug, info};
 use serenity::{
     framework::standard::{macros::command, CommandResult},
     model::{
@@ -21,39 +21,34 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
 
     let db = ctx.data.read().await.get::<Db>().unwrap().clone();
 
-    let user = db.get_user(user_id).await.unwrap();
-    if let Some(user) = user {
-        msg.channel_id
-            .send_message(&ctx.http, |m| {
-                m.embed(|e| {
-                    let name = msg.author.name.clone();
-                    let thumbnail = msg.author.avatar_url().unwrap_or_default();
-                    let value = format!(
-                        "Xp: {}\nLevel:{}\nMessages:{}",
-                        user.xp, user.level, user.messages
-                    );
+    let user = db.get_user(user_id).await?;
+    msg.channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| {
+                let name = msg.author.name.clone();
+                let thumbnail = msg.author.avatar_url().unwrap_or_default();
+                let value = format!(
+                    "Xp: {}\nLevel:{}\nMessages:{}",
+                    user.xp, user.level, user.messages
+                );
 
-                    e.title("Rank")
-                        .field(name, value, false)
-                        .thumbnail(thumbnail)
-                })
+                e.title("Rank")
+                    .field(name, value, false)
+                    .thumbnail(thumbnail)
             })
-            .await?;
+        })
+        .await?;
 
-        let username = format!("{}#{}", msg.author.name, msg.author.discriminator);
-        let avatar_url = msg.author.avatar_url().unwrap_or_default();
-        let xp_next_level = xp_for_level(user.level);
-        gen_card(&username, &avatar_url, user.level, user.xp, xp_next_level).await?;
-        msg.channel_id
-            .send_message(&ctx.http, |m| {
-                let file = AttachmentType::from("card.png");
-                m.add_file(file)
-            })
-            .await?;
-    } else {
-        error!("unfound user in database: {:?}", msg.author);
-        msg.channel_id.say(&ctx.http, "No record found").await?;
-    }
+    let username = format!("{}#{}", msg.author.name, msg.author.discriminator);
+    let avatar_url = msg.author.avatar_url().unwrap_or_default();
+    let xp_next_level = xp_for_level(user.level);
+    gen_card(&username, &avatar_url, user.level, user.xp, xp_next_level).await?;
+    msg.channel_id
+        .send_message(&ctx.http, |m| {
+            let file = AttachmentType::from("card.png");
+            m.add_file(file)
+        })
+        .await?;
 
     Ok(())
 }

@@ -1,8 +1,26 @@
 use font_kit::font::Font;
-use raqote::{DrawOptions, DrawTarget, Image, Point, SolidSource, Source};
+use raqote::{DrawOptions, DrawTarget, Image, Point, SolidSource, Source, Color};
 
 const CARD_WIDTH: i32 = 440;
 const CARD_HEIGHT: i32 = 160;
+
+const FONT_DEJAVU_BLACK: &str = "assets/fonts/DejaVu Sans Mono Nerd Font Complete.ttf";
+
+//const WHITE: Color = Color::new(255, 220, 220, 220);
+
+struct Colors {
+    white: Color,
+    dark_gray: Color,
+}
+
+impl Default for Colors {
+    fn default() -> Self {
+        Self {
+            white: Color::new(255, 220, 220, 220),
+            dark_gray: Color::new(250, 35, 35, 35),
+        }
+    }
+}
 
 pub async fn gen_card(
     username: &str,
@@ -14,9 +32,12 @@ pub async fn gen_card(
     let url = clean_url(avatar_url);
     let img_bytes = reqwest::get(url).await?.bytes().await?;
 
+    // Set some colors
+    let colors = Colors::default();
+
     // Create the target and fill with white
     let mut dt = DrawTarget::new(CARD_WIDTH, CARD_HEIGHT);
-    dt.clear(SolidSource::from_unpremultiplied_argb(240, 220, 220, 220));
+    dt.clear(SolidSource::from(colors.white));
 
     // Draw a black rectangle inside
     dt.fill_rect(
@@ -24,7 +45,7 @@ pub async fn gen_card(
         5.,
         (CARD_WIDTH - 10) as f32,
         (CARD_HEIGHT - 10) as f32,
-        &Source::Solid(SolidSource::from_unpremultiplied_argb(250, 35, 35, 35)),
+        &Source::Solid(SolidSource::from(colors.dark_gray)),
         &DrawOptions::new(),
     );
 
@@ -48,10 +69,10 @@ pub async fn gen_card(
 
     // Load font
     let font: Font = font_kit::loader::Loader::from_file(
-        &mut std::fs::File::open("assets/fonts/DejaVu Sans Mono Nerd Font Complete.ttf")?,
+        &mut std::fs::File::open(FONT_DEJAVU_BLACK)?,
         0,
     )?;
-    let solid_source = Source::Solid(SolidSource::from_unpremultiplied_argb(255, 220, 220, 220));
+    let solid_source = Source::Solid(SolidSource::from(colors.white));
     dt.draw_text(
         &font,
         30.,
@@ -60,7 +81,6 @@ pub async fn gen_card(
         &solid_source,
         &DrawOptions::new(),
     );
-
     dt.draw_text(
         &font,
         20.,
@@ -69,7 +89,6 @@ pub async fn gen_card(
         &solid_source,
         &DrawOptions::new(),
     );
-
     dt.draw_text(
         &font,
         18.,

@@ -1,3 +1,6 @@
+use super::levels::{rand_xp, xp_for_level, ANTI_SPAM_DELAY};
+use chrono::Utc;
+
 #[derive(Debug)]
 pub struct UserLevel {
     pub user_id: i64, // Discord user id, stored as i64 because SQLite does not support 128 bits interger
@@ -15,6 +18,28 @@ impl UserLevel {
             level: 0,
             messages: 0,
             last_message: 0,
+        }
+    }
+
+    pub fn gain_xp(&mut self) {
+        // Check the time between last and new message.
+        // If time is below anti spam constant, return early
+        // without adding xp.
+        let now: i64 = Utc::now().timestamp();
+        if now - self.last_message > ANTI_SPAM_DELAY {
+            self.messages += 1;
+            self.last_message = now;
+            self.xp += rand_xp();
+        }
+    }
+
+    pub fn level_up(&mut self) -> bool {
+        let xp_to_next_level = xp_for_level(self.level + 1);
+        if self.xp >= xp_to_next_level {
+            self.level += 1;
+            true
+        } else {
+            false
         }
     }
 }

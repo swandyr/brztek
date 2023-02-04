@@ -56,19 +56,22 @@ impl EventHandler for Handler {
 
         // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
         let db = ctx.data.read().await.get::<Db>().unwrap().clone();
-        if let Ok(level_up) = db.add_user_xp(user_id).await {
-            if level_up {
-                if let Err(why) = msg
-                    .channel_id
-                    .send_message(&ctx.http, |m| {
-                        let mention = Mention::from(msg.author.id);
-                        let message = format!("Level Up, {mention}!");
-                        m.content(&message)
-                    })
-                    .await
-                {
-                    error!("Error on send message: {why}");
-                }
+        let mut user = db.get_user(user_id).await.unwrap();
+        println!("FOUND: {user:?}");
+
+        user.gain_xp();
+        db.update_user(&user).await.unwrap();
+        if user.level_up() {
+            if let Err(why) = msg
+                .channel_id
+                .send_message(&ctx.http, |m| {
+                    let mention = Mention::from(msg.author.id);
+                    let message = format!("Level Up, {mention}!");
+                    m.content(&message)
+                })
+                .await
+            {
+                error!("Error on send message: {why}");
             }
         }
     }

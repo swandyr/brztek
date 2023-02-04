@@ -1,12 +1,8 @@
-use chrono::Utc;
 use serenity::prelude::TypeMapKey;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::sync::Arc;
 
-use crate::utils::{
-    levels::{self, ANTI_SPAM_DELAY},
-    user_level::UserLevel,
-};
+use crate::utils::user_level::UserLevel;
 
 pub struct Db {
     pool: SqlitePool,
@@ -36,82 +32,9 @@ impl Db {
         Ok(())
     }
 
-    /// Get an Option<UserLevel> by calling get_user.
-    /// If None is returned, create a new UserLevel with the user_id and the
-    /// corresponding entry in the database.
-    /// Call levels::gain_xp to update xp, messages and level of the user, then
-    /// update the entry in the database.
-    pub async fn add_user_xp(&self, user_id: u64) -> anyhow::Result<bool> {
-        // Retrieve the user's data from database
-        let queried_user = self.get_user(user_id).await?;
-
-        // If no user is found, insert a new entry with user_id and default values.
-        let mut user = match queried_user {
-            Some(u) => u,
-            None => {
-                let user_id = to_i64(user_id);
-                sqlx::query!(
-                    "INSERT INTO edn_ranks (user_id, xp) VALUES (?, ?)",
-                    user_id,
-                    0,
-                )
-                .execute(&self.pool)
-                .await?;
-                UserLevel::new(user_id)
-            }
-        };
-
-        // Check the time between last and new message.
-        // If time is below anti spam constant, return early
-        // without adding xp.
-        let now: i64 = Utc::now().timestamp();
-        if now - user.last_message < ANTI_SPAM_DELAY {
-            return Ok(false);
-        }
-
-        // levels::gain_xp(&mut user) adds xp, increments messages count
-        // and level (if xp requirements is met).
-        // level_up is a bool returned if user.level has been incremented.
-        let level_up = levels::gain_xp(&mut user);
-
-        // Update user's entry in the database with new values.
-        sqlx::query!(
-            "UPDATE edn_ranks
-                SET xp = ?,
-                    level = ?,
-                    messages = ?,
-                    last_message = ?
-                WHERE user_id = ?",
-            user.xp,
-            user.level,
-            user.messages,
-            now,
-            user.user_id,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        Ok(level_up)
-    }
-
-    // #[allow(dead_code)]
-    // pub async fn get_user_as(&self, user_id: u64) -> anyhow::Result<Option<UserLevel>> {
-    //     let user_id = to_i64(user_id);
-
-    //     let user = sqlx::query_as!(
-    //         UserLevel,
-    //         "SELECT * FROM (select (1) as user_id, (2) as xp, (3) as level) edn_ranks WHERE user_id = ?",
-    //         user_id,
-    //     )
-    //     .fetch_optional(&self.pool)
-    //     .await?;
-
-    //     Ok(user)
-    // }
-
     /// Return Option<UserLevel> corresponding to user_id in the database.
     /// Return None if no entry with that user_id is found.
-    pub async fn get_user(&self, user_id: u64) -> anyhow::Result<Option<UserLevel>> {
+    pub async fn get_user(&self, user_id: u64) -> anyhow::Result<UserLevel> {
         // Bit-cast user_id from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user_id);
 
@@ -130,18 +53,47 @@ impl Db {
                 record.messages.unwrap(),
                 record.last_message.unwrap(),
             ];
-            Ok(Some(UserLevel::from(record)))
+            Ok(UserLevel::from(record))
         } else {
-            Ok(None)
+            // If no user is found, insert a new entry with user_id and default values.
+            sqlx::query!("INSERT INTO edn_ranks (user_id) VALUES (?)", user_id,)
+                .execute(&self.pool)
+                .await?;
+            Ok(UserLevel::new(user_id))
         }
+    }
+
+    /// Get an Option<UserLevel> by calling get_user.
+    /// If None is returned, create a new UserLevel with the user_id and the
+    /// corresponding entry in the database.
+    /// Call levels::gain_xp to update xp, messages and level of the user, then
+    /// update the entry in the database.
+    pub async fn update_user(&self, user: &UserLevel) -> anyhow::Result<()> {
+        // Update user's entry in the database with new values.
+        sqlx::query!(
+            "UPDATE edn_ranks
+                SET xp = ?,
+                    level = ?,
+                    messages = ?,
+                    last_message = ?
+                WHERE user_id = ?",
+            user.xp,
+            user.level,
+            user.messages,
+            user.last_message,
+            user.user_id,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
     }
 
     pub async fn get_all_users(&self) -> anyhow::Result<Vec<UserLevel>> {
         let all_users_queried =
             sqlx::query!("SELECT user_id, xp, level, messages, last_message FROM edn_ranks")
                 .fetch_all(&self.pool)
-                .await
-                .unwrap();
+                .await?;
 
         let all_users = all_users_queried
             .iter()
@@ -169,6 +121,21 @@ impl Db {
 
         Ok(())
     }
+
+    // #[allow(dead_code)]
+    // pub async fn get_user_as(&self, user_id: u64) -> anyhow::Result<Option<UserLevel>> {
+    //     let user_id = to_i64(user_id);
+
+    //     let user = sqlx::query_as!(
+    //         UserLevel,
+    //         "SELECT * FROM (select (1) as user_id, (2) as xp, (3) as level) edn_ranks WHERE user_id = ?",
+    //         user_id,
+    //     )
+    //     .fetch_optional(&self.pool)
+    //     .await?;
+
+    //     Ok(user)
+    // }
 }
 
 /// Bit-cast u64 (user.id in Discord API) to i64 (stored in the SQLite database).
