@@ -55,23 +55,31 @@ impl EventHandler for Handler {
         // let channel_id = msg.channel_id.0;
 
         // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
-        let db = ctx.data.read().await.get::<Db>().unwrap().clone();
-        let mut user = db.get_user(user_id).await.unwrap();
-        println!("FOUND: {user:?}");
-
-        user.gain_xp();
-        db.update_user(&user).await.unwrap();
-        if user.level_up() {
-            if let Err(why) = msg
-                .channel_id
-                .send_message(&ctx.http, |m| {
-                    let mention = Mention::from(msg.author.id);
-                    let message = format!("Level Up, {mention}!");
-                    m.content(&message)
-                })
-                .await
-            {
-                error!("Error on send message: {why}");
+        if let Some(db) = ctx.data.read().await.get::<Db>() {
+            let get_user = db.get_user(user_id).await;
+            match get_user {
+                Ok(mut user) => {
+                    user.gain_xp();
+                    if user.level_up() {
+                        if let Err(why) = msg
+                            .channel_id
+                            .send_message(&ctx.http, |m| {
+                                let mention = Mention::from(msg.author.id);
+                                let message = format!("Level Up, {mention}!");
+                                m.content(&message)
+                            })
+                            .await
+                        {
+                            error!("Error on send message: {why}");
+                        }
+                    }
+                    if let Err(why) = db.update_user(&user).await {
+                        error!("Cannot update user {user_id}:{why}");
+                    }
+                }
+                Err(why) => {
+                    error!("Cannot get user {user_id} from database: {why}");
+                }
             }
         }
     }
@@ -115,6 +123,6 @@ async fn main() {
     }
 
     if let Err(why) = client.start().await {
-        println!("An error occured while running the client: {why}");
+        error!("An error occured while running the client: {why}");
     }
 }

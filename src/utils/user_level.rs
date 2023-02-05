@@ -11,7 +11,7 @@ pub struct UserLevel {
 }
 
 impl UserLevel {
-    pub fn new(user_id: i64) -> Self {
+    pub const fn new(user_id: i64) -> Self {
         Self {
             user_id,
             xp: 0,

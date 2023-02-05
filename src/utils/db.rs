@@ -9,7 +9,7 @@ pub struct Db {
 }
 
 impl TypeMapKey for Db {
-    type Value = Arc<Db>;
+    type Value = Arc<Self>;
 }
 
 impl Db {
@@ -24,7 +24,7 @@ impl Db {
             // )
             .await
             .expect("Cannot connect to database: {path}");
-        Db { pool }
+        Self { pool }
     }
 
     pub async fn run_migrations(&self) -> anyhow::Result<()> {
@@ -32,8 +32,8 @@ impl Db {
         Ok(())
     }
 
-    /// Return Option<UserLevel> corresponding to user_id in the database.
-    /// Return None if no entry with that user_id is found.
+    /// Return Option<UserLevel> corresponding to `user_id` in the database.
+    /// Return None if no entry with that user id is found.
     pub async fn get_user(&self, user_id: u64) -> anyhow::Result<UserLevel> {
         // Bit-cast user_id from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user_id);
@@ -48,10 +48,10 @@ impl Db {
         if let Some(record) = user_queried {
             let record = [
                 record.user_id,
-                record.xp.unwrap(),
-                record.level.unwrap(),
-                record.messages.unwrap(),
-                record.last_message.unwrap(),
+                record.xp.unwrap_or_default(),
+                record.level.unwrap_or_default(),
+                record.messages.unwrap_or_default(),
+                record.last_message.unwrap_or_default(),
             ];
             Ok(UserLevel::from(record))
         } else {
@@ -63,10 +63,10 @@ impl Db {
         }
     }
 
-    /// Get an Option<UserLevel> by calling get_user.
-    /// If None is returned, create a new UserLevel with the user_id and the
+    /// Get an Option<UserLevel> by calling `get_user`.
+    /// If None is returned, create a new `UserLevel` with the user id and the
     /// corresponding entry in the database.
-    /// Call levels::gain_xp to update xp, messages and level of the user, then
+    /// Call `levels::gain_xp` to update xp, messages and level of the user, then
     /// update the entry in the database.
     pub async fn update_user(&self, user: &UserLevel) -> anyhow::Result<()> {
         // Update user's entry in the database with new values.
@@ -100,10 +100,10 @@ impl Db {
             .map(|record| {
                 let params = [
                     record.user_id,
-                    record.xp.unwrap_or(0),
-                    record.level.unwrap_or(0),
-                    record.messages.unwrap_or(0),
-                    record.last_message.unwrap_or(0),
+                    record.xp.unwrap_or_default(),
+                    record.level.unwrap_or_default(),
+                    record.messages.unwrap_or_default(),
+                    record.last_message.unwrap_or_default(),
                 ];
 
                 UserLevel::from(params)
@@ -138,14 +138,14 @@ impl Db {
     // }
 }
 
-/// Bit-cast u64 (user.id in Discord API) to i64 (stored in the SQLite database).
-fn to_i64(unsigned: u64) -> i64 {
+/// Bit-cast u64 (user.id in Discord API) to i64 (stored in the `SQLite` database).
+const fn to_i64(unsigned: u64) -> i64 {
     let bit_cast = unsigned.to_be_bytes();
     i64::from_be_bytes(bit_cast)
 }
 
-/// Bit-cast i64 (stored in SQLite database) to u64 (user.id in Discord API).
-pub fn from_i64(signed: i64) -> u64 {
+/// Bit-cast i64 (stored in `SQLite` database) to u64 (user.id in Discord API).
+pub const fn from_i64(signed: i64) -> u64 {
     let bit_cast = signed.to_be_bytes();
     u64::from_be_bytes(bit_cast)
 }

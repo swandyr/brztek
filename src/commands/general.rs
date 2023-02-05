@@ -19,30 +19,24 @@ pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 pub async fn hello(ctx: &Context, msg: &Message) -> CommandResult {
     let user_id = msg.author.id.0;
-    let _channel_id = msg.channel_id.0;
+    // let channel_id = msg.channel_id.0;
 
     info!("user_id = {user_id}");
-    let user = UserId::from(user_id).to_user(&ctx).await;
-    let _user = match user {
+    let get_user = UserId::from(user_id).to_user(&ctx).await;
+    match get_user {
         Ok(user) => {
-            info!("Found user: {}", user.name);
-            Some(user)
+            msg.channel_id
+                .send_message(&ctx.http, |m| {
+                    let mention = Mention::from(user.id);
+                    let message = format!("Hey, {mention}!");
+                    m.content(&message)
+                })
+                .await?;
         }
         Err(why) => {
             error!("Error: {why}");
-            None
         }
     };
-
-    if let Some(user) = _user {
-        msg.channel_id
-            .send_message(&ctx.http, |m| {
-                let mention = Mention::from(user.id);
-                let message = format!("Hey, {mention}!");
-                m.content(&message)
-            })
-            .await?;
-    }
 
     Ok(())
 }

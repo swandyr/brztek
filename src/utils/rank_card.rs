@@ -1,23 +1,25 @@
 use font_kit::font::Font;
-use raqote::{DrawOptions, DrawTarget, Image, Point, SolidSource, Source, Color};
+use raqote::{DrawOptions, DrawTarget, Image, Point, SolidSource, Source, Color, PathBuilder, StrokeStyle};
 
 const CARD_WIDTH: i32 = 440;
 const CARD_HEIGHT: i32 = 160;
 
 const FONT_DEJAVU_BLACK: &str = "assets/fonts/DejaVu Sans Mono Nerd Font Complete.ttf";
 
-//const WHITE: Color = Color::new(255, 220, 220, 220);
-
 struct Colors {
     white: Color,
     dark_gray: Color,
+    light_grey: Color,
+    yellow: Color,
 }
 
 impl Default for Colors {
     fn default() -> Self {
         Self {
-            white: Color::new(255, 220, 220, 220),
-            dark_gray: Color::new(250, 35, 35, 35),
+            white: Color::new(0xff, 0xdc, 0xdc, 0xdc),
+            dark_gray: Color::new(0xfa, 0x23, 0x23, 0x23),
+            light_grey: Color::new(0xff, 0x57, 0x57, 0x57),
+            yellow: Color::new(0xff, 0xff, 0xcc, 0x00),
         }
     }
 }
@@ -41,8 +43,8 @@ pub async fn gen_card(
 
     // Draw a black rectangle inside
     dt.fill_rect(
-        5.,
-        5.,
+        5.0,
+        5.0,
         (CARD_WIDTH - 10) as f32,
         (CARD_HEIGHT - 10) as f32,
         &Source::Solid(SolidSource::from(colors.dark_gray)),
@@ -56,15 +58,17 @@ pub async fn gen_card(
     // Transform [u8] to [u32]
     let mut buffer: Vec<u32> = vec![];
     for i in file.as_bytes().chunks(4) {
-        buffer.push((i[3] as u32) << 24 | (i[0] as u32) << 16 | (i[1] as u32) << 8 | i[2] as u32)
+        buffer.push((i[3] as u32) << 24 | (i[0] as u32) << 16 | (i[1] as u32) << 8 | i[2] as u32);
     }
+    let avatar_width = file.width() as f32;
+    let avatar_height = file.height() as f32;
     // Create an image that will be drawn on the target
     let image = Image {
-        width: file.width() as i32,
-        height: file.height() as i32,
+        width: file.width().try_into()?,
+        height: file.height().try_into()?,
         data: &buffer,
     };
-    let margin = ((CARD_HEIGHT / 2) - (file.height() as i32 / 2)) as f32;
+    let margin: f32 = (CARD_HEIGHT as f32 / 2.0) - (avatar_height / 2.0);
     dt.draw_image_at(margin, margin, &image, &DrawOptions::new());
 
     // Load font
@@ -75,17 +79,17 @@ pub async fn gen_card(
     let solid_source = Source::Solid(SolidSource::from(colors.white));
     dt.draw_text(
         &font,
-        30.,
+        30.0,
         username,
-        Point::new(180., 55.),
+        Point::new(180.0, 55.0),
         &solid_source,
         &DrawOptions::new(),
     );
     dt.draw_text(
         &font,
         20.,
-        &format!("Rank: #{level}"),
-        Point::new(185., 90.),
+        &format!("Level: #{level}"),
+        Point::new(185.0, 90.0),
         &solid_source,
         &DrawOptions::new(),
     );
@@ -93,12 +97,51 @@ pub async fn gen_card(
         &font,
         18.,
         &format!("{user_xp}/{xp_next_level}"),
-        Point::new(240., 130.),
+        Point::new(240.0, 130.0),
         &solid_source,
         &DrawOptions::new(),
     );
 
     // Write target to file
+    dt.write_png("card.png")?;
+
+    // Draw xp gauge
+    // let start = margin * 2.0 + file.width() as f32;
+    let start = margin.mul_add(2.0, avatar_width);
+    let end = CARD_WIDTH as f32 - margin;
+    let length = end - start;
+
+    let style = StrokeStyle {
+        cap: raqote::LineCap::Round,
+        width: 4.0,
+        ..Default::default()
+    };
+
+    let mut pb = PathBuilder::new();
+    pb.move_to(start, 140.);
+    pb.line_to(end, 140.);
+    let path = pb.finish();
+
+    dt.stroke(
+        &path, 
+        &Source::Solid(SolidSource::from(colors.light_grey)), 
+        &style, 
+        &DrawOptions::new());
+
+    // let end = (137.0 / 255.0) * length + start;
+    let end = (137.0_f32 / 255.0).mul_add(length, start); 
+    let mut pb = PathBuilder::new();
+    pb.move_to(start, 140.0);
+    pb.line_to(end, 140.0);
+    let path = pb.finish();
+
+    dt.stroke(
+        &path,
+        &Source::Solid(SolidSource::from(colors.yellow)),
+        &style,
+        &DrawOptions::new(),
+    );
+
     dt.write_png("card.png")?;
 
     Ok(())
