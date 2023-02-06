@@ -1,29 +1,30 @@
-#[allow(unused_imports)]
-use log::{debug, error, info};
+use rand::Rng;
 use serenity::{
     async_trait,
     framework::standard::{macros::group, StandardFramework},
     model::{
         channel::Message,
         gateway::Ready,
-        prelude::{Member, Mention},
+        prelude::{GuildId, Member, Mention, User},
     },
     prelude::*,
 };
 use std::{env, sync::Arc};
+#[allow(unused_imports)]
+use tracing::{debug, error, info};
 
 mod utils;
 use utils::db::Db;
 
 mod commands;
 use commands::{
-    general::{HELLO_COMMAND, PING_COMMAND, SAY_COMMAND},
+    general::{HELLO_COMMAND, PING_COMMAND, WELCOME_COMMAND},
     help::HELP,
     ranking::{DELETE_RANKS_COMMAND, RANK_COMMAND, TOP_COMMAND},
 };
 
 #[group]
-#[commands(ping, hello, say)]
+#[commands(ping, hello, welcome)]
 pub struct General;
 
 #[group]
@@ -59,7 +60,7 @@ impl EventHandler for Handler {
             let get_user = db.get_user(user_id).await;
             match get_user {
                 Ok(mut user) => {
-                    user.gain_xp();
+                    let has_gained_xp = user.gain_xp();
                     if user.level_up() {
                         if let Err(why) = msg
                             .channel_id
@@ -73,8 +74,10 @@ impl EventHandler for Handler {
                             error!("Error on send message: {why}");
                         }
                     }
-                    if let Err(why) = db.update_user(&user).await {
-                        error!("Cannot update user {user_id}:{why}");
+                    if has_gained_xp {
+                        if let Err(why) = db.update_user(&user).await {
+                            error!("Cannot update user {user_id}:{why}");
+                        }
                     }
                 }
                 Err(why) => {
@@ -84,8 +87,57 @@ impl EventHandler for Handler {
         }
     }
 
-    #[allow(dead_code, unused_variables)]
-    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {}
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
+        use rand::prelude::thread_rng;
+        use serenity::constants::JOIN_MESSAGES;
+
+        let index = thread_rng().gen_range(0..JOIN_MESSAGES.len());
+        let mention = new_member.mention();
+        let content = JOIN_MESSAGES
+            .get(index)
+            .unwrap()
+            .replace("$user", &format!("{mention}"));
+
+        if let Ok(chan) = env::var("GENERAL_CHANNEL_ID") {
+            if let Ok(id) = chan.parse::<u64>() {
+                ctx.cache
+                    .guild_channel(id)
+                    .unwrap()
+                    .send_message(&ctx, |m| m.content(content))
+                    .await
+                    .unwrap();
+            } else {
+                error!("Unable to parse GENERAL_CHANNEL_ID; check var in .env file.");
+            }
+        } else {
+            error!("Unable to find GENERAL_CHANNEL_ID; check var in .env file.");
+        };
+    }
+
+    async fn guild_member_removal(
+        &self,
+        ctx: Context,
+        _guild_id: GuildId,
+        user: User,
+        _member_data_if_available: Option<Member>,
+    ) {
+        let username = format!("{}{}", user.name, user.discriminator);
+        let content = format!("RIP **{username}**, you'll be missed.");
+        if let Ok(chan) = env::var("GENERAL_CHANNEL_ID") {
+            if let Ok(id) = chan.parse::<u64>() {
+                ctx.cache
+                    .guild_channel(id)
+                    .unwrap()
+                    .send_message(&ctx.http, |m| m.content(content))
+                    .await
+                    .unwrap();
+            } else {
+                error!("Unable to parse GENERAL_CHANNEL_ID; check var in .env file.");
+            }
+        } else {
+            error!("Unable to find GENERAL_CHANNEL_ID; check var in .env file.");
+        }
+    }
 }
 
 #[tokio::main]

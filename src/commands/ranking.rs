@@ -1,4 +1,3 @@
-use log::{debug, info};
 use serenity::{
     framework::standard::{macros::command, CommandResult},
     model::{
@@ -6,7 +5,9 @@ use serenity::{
         prelude::{AttachmentType, UserId},
     },
     prelude::*,
+    utils::Colour,
 };
+use tracing::{debug, info};
 
 use crate::utils::{
     db::{from_i64, Db},
@@ -20,7 +21,9 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
     // let channel_id = msg.channel_id.0;
 
     if let Some(db) = ctx.data.read().await.get::<Db>() {
-        let user = db.get_user(user_id).await?;
+        let user_level = db.get_user(user_id).await?;
+
+        // Send an embedded message
         msg.channel_id
             .send_message(&ctx.http, |m| {
                 m.embed(|e| {
@@ -28,7 +31,7 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
                     let thumbnail = msg.author.avatar_url().unwrap_or_default();
                     let value = format!(
                         "Xp: {}\nLevel:{}\nMessages:{}",
-                        user.xp, user.level, user.messages
+                        user_level.xp, user_level.level, user_level.messages
                     );
 
                     e.title("Rank")
@@ -38,13 +41,29 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
             })
             .await?;
 
+        // Generate a rank card and attach it to a message
         let username = format!("{}#{}", msg.author.name, msg.author.discriminator);
-        let avatar_url = msg.author.avatar_url().unwrap_or_default();
-        let xp_next_level = xp_for_level(user.level);
-        gen_card(&username, &avatar_url, user.level, user.xp, xp_next_level).await?;
+        let avatar_url = msg.author.avatar_url();
+        let xp_next_level = xp_for_level(user_level.level);
+        let user_http = ctx.http.get_user(user_id).await;
+        let banner_colour = if let Ok(user) = user_http {
+            user.accent_colour.unwrap_or(Colour::LIGHTER_GREY).tuple()
+        } else {
+            Colour::LIGHTER_GREY.tuple()
+        };
+
+        gen_card(
+            &username,
+            avatar_url,
+            banner_colour,
+            user_level.level,
+            user_level.xp,
+            xp_next_level,
+        )
+        .await?;
         msg.channel_id
             .send_message(&ctx.http, |m| {
-                let file = AttachmentType::from("card.png");
+                let file = AttachmentType::from("rank.png");
                 m.add_file(file)
             })
             .await?;

@@ -4,6 +4,7 @@ debug/
 target/
 .env
 card.png
+rank.png
 *-shm
 *-wal
 

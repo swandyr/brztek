@@ -21,7 +21,7 @@ impl UserLevel {
         }
     }
 
-    pub fn gain_xp(&mut self) {
+    pub fn gain_xp(&mut self) -> bool {
         // Check the time between last and new message.
         // If time is below anti spam constant, return early
         // without adding xp.
@@ -30,6 +30,9 @@ impl UserLevel {
             self.messages += 1;
             self.last_message = now;
             self.xp += rand_xp();
+            true
+        } else {
+            false
         }
     }
 

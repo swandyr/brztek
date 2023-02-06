@@ -1,4 +1,4 @@
-use log::{error, info};
+use tracing::{error, info};
 use serenity::{
     framework::standard::{macros::command, CommandResult},
     model::{
@@ -7,6 +7,7 @@ use serenity::{
     },
     prelude::*,
 };
+use std::env;
 
 #[command]
 pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
@@ -42,8 +43,30 @@ pub async fn hello(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-pub async fn say(ctx: &Context, msg: &Message) -> CommandResult {
-    let content = &msg.content.replace("!say ", "");
-    msg.reply(ctx, content).await?;
+pub async fn welcome(ctx: &Context, msg: &Message) -> CommandResult {
+    use rand::prelude::*;
+    use serenity::constants::JOIN_MESSAGES;
+
+    let len = JOIN_MESSAGES.len();
+    let index = thread_rng().gen_range(0..len);
+    let message = JOIN_MESSAGES.get(index).unwrap();
+    let mention = Mention::User(msg.author.id);
+    let message = message.replace("$user", &format!("{mention}"));
+
+    if let Ok(chan) = env::var("GENERAL_CHANNEL_ID") {
+        if let Ok(id) = chan.parse::<u64>() {
+            ctx.cache
+                .guild_channel(id)
+                .unwrap()
+                .send_message(&ctx, |m| m.content(message))
+                .await
+                .unwrap();
+        } else {
+            error!("Unable to parse GENERAL_CHANNEL_ID; check var in .env file.");
+        }
+    } else {
+        error!("Unable to find GENERAL_CHANNEL_ID; check var in .env file.");
+    };
+
     Ok(())
 }
