@@ -3,10 +3,10 @@ use chrono::Utc;
 
 #[derive(Debug)]
 pub struct UserLevel {
-    pub user_id: u64, // Discord user id, stored as i64 because SQLite does not support 128 bits interger
-    pub xp: i64,      // User's xp
-    pub level: i64,   // User's level
-    pub messages: i64, // User's messages count
+    pub user_id: u64,      // Discord user id
+    pub xp: i64,           // User's xp
+    pub level: i64,        // User's level
+    pub messages: i64,     // User's messages count
     pub last_message: i64, // Timestamp of the last message posted
 }
 
@@ -21,10 +21,10 @@ impl UserLevel {
         }
     }
 
-    pub fn gain_xp(&mut self) -> bool {
+    pub fn gain_xp_if_not_spam(&mut self) -> bool {
         // Check the time between last and new message.
-        // If time is below anti spam constant, return early
-        // without adding xp.
+        // Return true if below ANTI_SPAM constant,
+        // else false without adding xp
         let now: i64 = Utc::now().timestamp();
         if now - self.last_message > ANTI_SPAM_DELAY {
             self.messages += 1;
@@ -36,7 +36,7 @@ impl UserLevel {
         }
     }
 
-    pub fn level_up(&mut self) -> bool {
+    pub fn has_level_up(&mut self) -> bool {
         let xp_to_next_level = xp_for_level(self.level + 1);
         if self.xp >= xp_to_next_level {
             self.level += 1;

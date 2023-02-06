@@ -60,8 +60,8 @@ impl EventHandler for Handler {
             let get_user = db.get_user(user_id).await;
             match get_user {
                 Ok(mut user) => {
-                    let has_gained_xp = user.gain_xp();
-                    if user.level_up() {
+                    let has_gained_xp = user.gain_xp_if_not_spam();
+                    if user.has_level_up() {
                         if let Err(why) = msg
                             .channel_id
                             .send_message(&ctx.http, |m| {

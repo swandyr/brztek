@@ -1,5 +1,5 @@
 use font_kit::font::Font;
-use raqote::{DrawOptions, DrawTarget, Image, Point, SolidSource, Source, Color, PathBuilder, StrokeStyle, GradientStop, Gradient};
+use raqote::{DrawOptions, DrawTarget, Spread, Image, Point, SolidSource, Source, Color, PathBuilder, StrokeStyle, GradientStop, Gradient};
 
 const CARD_WIDTH: i32 = 440;
 const CARD_HEIGHT: i32 = 160;
@@ -36,7 +36,7 @@ pub async fn gen_card(
     user_xp: i64,
     xp_next_level: i64,
 ) -> anyhow::Result<()> {
-    // Request profile picture via HTTP if `avatar_url` is Some().
+    // Request profile picture through HTTP if `avatar_url` is Some().
     // Fallback to a default picture if None.
     let file = if let Some(url) = avatar_url {
         let url = clean_url(url);
@@ -57,8 +57,8 @@ pub async fn gen_card(
     let mut dt = DrawTarget::new(CARD_WIDTH, CARD_HEIGHT);
     dt.clear(SolidSource::from(colors.white));
 
-    let (r, g, b) = banner_colour;
     // Play with some gradients
+    let (r, g, b) = banner_colour;
     let gradient = Source::new_linear_gradient(
         Gradient {
             stops: vec![
@@ -78,7 +78,7 @@ pub async fn gen_card(
         },
         Point::new(40.0, 0.0),
         Point::new(190.0, 90.0),
-        raqote::Spread::Pad,
+        Spread::Pad,
     );
     let mut pb = PathBuilder::new();
     // pb.rect(5.0, 5.0, (CARD_WIDTH - 10) as f32, (CARD_HEIGHT - 10) as f32);
@@ -101,8 +101,10 @@ pub async fn gen_card(
     for i in file.as_bytes().chunks(4) {
         buffer.push((i[3] as u32) << 24 | (i[0] as u32) << 16 | (i[1] as u32) << 8 | i[2] as u32);
     }
+
     let avatar_width = file.width() as f32;
     let _avatar_height = file.height() as f32;
+
     // Create an image that will be drawn on the target
     let image = Image {
         width: file.width().try_into()?,
@@ -145,7 +147,7 @@ pub async fn gen_card(
     );
 
     // Draw xp gauge
-    let start = margin.mul_add(2.0, avatar_width); // let start = margin * 2.0 + file.width() as f32;
+    let start = margin.mul_add(2.0, avatar_width); // let start = margin * 2.0 + avatar_width as f32;
     let end = CARD_WIDTH as f32 - margin;
     let length = end - start;
 
@@ -185,6 +187,7 @@ pub async fn gen_card(
     Ok(())
 }
 
+// Change .webp extension to .png and remove parameters from URL
 fn clean_url(mut url: String) -> String {
     if let Some(index) = url.find("webp") {
         let _  = url.split_off(index);

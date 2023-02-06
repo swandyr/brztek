@@ -19,6 +19,7 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
     // let channel_id = msg.channel_id.0;
 
     if let Some(db) = ctx.data.read().await.get::<Db>() {
+        // Get user from database
         let user_level = db.get_user(user_id).await?;
 
         // Generate a rank card and attach it to a message
@@ -32,9 +33,8 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
             Colour::LIGHTER_GREY.tuple()
         };
 
-        // Generate a rank card that is saved with name "rank.png"
-        // Send an embed message if the function returns an error
-        if gen_card(
+        // Generate an image that is saved with name "rank.png"
+        gen_card(
             &username,
             avatar_url,
             banner_colour,
@@ -42,33 +42,32 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
             user_level.xp,
             xp_next_level,
         )
-        .await
-        .is_err()
-        {
-            msg.channel_id
-                .send_message(&ctx.http, |m| {
-                    m.embed(|e| {
-                        let name = msg.author.name.clone();
-                        let thumbnail = msg.author.avatar_url().unwrap_or_default();
-                        let value = format!(
-                            "Xp: {}\nLevel:{}\nMessages:{}",
-                            user_level.xp, user_level.level, user_level.messages
-                        );
+        .await?;
 
-                        e.title("Rank")
-                            .field(name, value, false)
-                            .thumbnail(thumbnail)
-                    })
-                })
-                .await?;
-        }
-
+        // Send generated "rank.png" file
         msg.channel_id
             .send_message(&ctx.http, |m| {
                 let file = AttachmentType::from("rank.png");
                 m.add_file(file)
             })
             .await?;
+
+        // msg.channel_id
+        //         .send_message(&ctx.http, |m| {
+        //             m.embed(|e| {
+        //                 let name = msg.author.name.clone();
+        //                 let thumbnail = msg.author.avatar_url().unwrap_or_default();
+        //                 let value = format!(
+        //                     "Xp: {}\nLevel:{}\nMessages:{}",
+        //                     user_level.xp, user_level.level, user_level.messages
+        //                 );
+
+        //                 e.title("Rank")
+        //                     .field(name, value, false)
+        //                     .thumbnail(thumbnail)
+        //             })
+        //         })
+        //         .await?;
     }
 
     Ok(())
@@ -77,12 +76,18 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 pub async fn top(ctx: &Context, msg: &Message) -> CommandResult {
     if let Some(db) = ctx.data.read().await.get::<Db>() {
+        // Get a vec of all users in database
         let mut all_users_id = db.get_all_users().await?;
+
+        // Sort users by descendant xp
         all_users_id.sort_by(|a, b| b.xp.cmp(&a.xp));
+
+        // Number of users to keep
         let top_x = 10;
 
         let mut top_users = vec![];
         for (i, user) in all_users_id.iter().enumerate() {
+            // Break when enough users are collected
             if i == top_x {
                 break;
             }
@@ -94,8 +99,10 @@ pub async fn top(ctx: &Context, msg: &Message) -> CommandResult {
             top_users.push(user_tup);
         }
 
+        // Generate an image that is saved with name "top_ten.png"
         gen_top_ten_card(&top_users).await?;
 
+        // Send generated "top_ten.png" file
         msg.channel_id
             .send_message(&ctx.http, |m| {
                 let file = AttachmentType::from("top_ten.png");

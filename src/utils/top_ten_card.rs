@@ -93,10 +93,17 @@ pub async fn gen_top_ten_card(
         &DrawOptions::new(),
     );
 
+    // Draw elements for each users
+    //
+    // y_offset set where vertically the darget is drawn,
+    // it is incremented with the USER_HEIGHT constant when all elements
+    // of a user are drawn
     let mut y_offset = TITLE_HEIGHT as f32;
     for user in users {
         let (name, rank, level, current_xp, next_xp) = user;
 
+        // x_pos tracks the horizontal position to draw elements
+        // relatively to the others, by incrementing or decrementing
         let mut x_pos = 10.0;
         dt.draw_text(
             &font,

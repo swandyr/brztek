@@ -32,10 +32,12 @@ impl Db {
         Ok(())
     }
 
-    /// Return Option<UserLevel> corresponding to `user_id` in the database.
-    /// Return None if no entry with that user id is found.
+    /// Return `UserLevel` corresponding to `user_id` in the database.
+    ///
+    /// If no user is found, create a new entry with `user_id` and returns
+    /// new `UserLevel`.
     pub async fn get_user(&self, user_id: u64) -> anyhow::Result<UserLevel> {
-        // Bit-cast user_id from u64 to i64, as SQLite does not support u64 integer
+        // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user_id);
 
         let user_queried = sqlx::query!(
@@ -46,16 +48,15 @@ impl Db {
         .await?;
 
         if let Some(record) = user_queried {
-            let record = (
+            let user = (
                 from_i64(record.user_id),
                 record.xp.unwrap_or_default(),
                 record.level.unwrap_or_default(),
                 record.messages.unwrap_or_default(),
                 record.last_message.unwrap_or_default(),
             );
-            Ok(UserLevel::from(record))
+            Ok(UserLevel::from(user))
         } else {
-            // If no user is found, insert a new entry with user_id and default values.
             sqlx::query!("INSERT INTO edn_ranks (user_id) VALUES (?)", user_id,)
                 .execute(&self.pool)
                 .await?;
@@ -63,14 +64,11 @@ impl Db {
         }
     }
 
-    /// Get an Option<UserLevel> by calling `get_user`.
-    /// If None is returned, create a new `UserLevel` with the user id and the
-    /// corresponding entry in the database.
-    /// Call `levels::gain_xp` to update xp, messages and level of the user, then
-    /// update the entry in the database.
+    /// Update user's entry in the database with new values.
     pub async fn update_user(&self, user: &UserLevel) -> anyhow::Result<()> {
-        // Update user's entry in the database with new values.
+        // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user.user_id);
+        
         sqlx::query!(
             "UPDATE edn_ranks
                 SET xp = ?,
@@ -90,6 +88,7 @@ impl Db {
         Ok(())
     }
 
+    /// Get all entries in the dabase and returns a `Vec<UserLevel>`
     pub async fn get_all_users(&self) -> anyhow::Result<Vec<UserLevel>> {
         let all_users_queried =
             sqlx::query!("SELECT user_id, xp, level, messages, last_message FROM edn_ranks")
