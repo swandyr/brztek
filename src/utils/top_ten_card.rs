@@ -7,11 +7,8 @@ use raqote::{
 const CARD_WIDTH: i32 = 440;
 const TITLE_HEIGHT: i32 = 60;
 const USER_HEIGHT: i32 = 40;
-const AVATAR_HEIGHT: i32 = 42;
 
 const FONT_DEJAVU_BLACK: &str = "assets/fonts/DejaVu Sans Mono Nerd Font Complete.ttf";
-
-const DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tesselation-Violet.png";
 
 struct Colors {
     white: Color,

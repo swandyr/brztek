@@ -7,7 +7,7 @@ use serenity::{
     prelude::*,
     utils::Colour,
 };
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::utils::{
     db::{from_i64, Db},
