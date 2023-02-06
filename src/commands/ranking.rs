@@ -13,6 +13,7 @@ use crate::utils::{
     db::{from_i64, Db},
     levels::xp_for_level,
     rank_card::gen_card,
+    top_ten_card::gen_top_ten_card,
 };
 
 #[command]
@@ -23,28 +24,10 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
     if let Some(db) = ctx.data.read().await.get::<Db>() {
         let user_level = db.get_user(user_id).await?;
 
-        // Send an embedded message
-        msg.channel_id
-            .send_message(&ctx.http, |m| {
-                m.embed(|e| {
-                    let name = msg.author.name.clone();
-                    let thumbnail = msg.author.avatar_url().unwrap_or_default();
-                    let value = format!(
-                        "Xp: {}\nLevel:{}\nMessages:{}",
-                        user_level.xp, user_level.level, user_level.messages
-                    );
-
-                    e.title("Rank")
-                        .field(name, value, false)
-                        .thumbnail(thumbnail)
-                })
-            })
-            .await?;
-
         // Generate a rank card and attach it to a message
         let username = format!("{}#{}", msg.author.name, msg.author.discriminator);
         let avatar_url = msg.author.avatar_url();
-        let xp_next_level = xp_for_level(user_level.level);
+        let xp_next_level = xp_for_level(user_level.level + 1);
         let user_http = ctx.http.get_user(user_id).await;
         let banner_colour = if let Ok(user) = user_http {
             user.accent_colour.unwrap_or(Colour::LIGHTER_GREY).tuple()
@@ -52,7 +35,9 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
             Colour::LIGHTER_GREY.tuple()
         };
 
-        gen_card(
+        // Generate a rank card that is saved with name "rank.png"
+        // Send an embed message if the function returns an error
+        if gen_card(
             &username,
             avatar_url,
             banner_colour,
@@ -60,7 +45,27 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
             user_level.xp,
             xp_next_level,
         )
-        .await?;
+        .await
+        .is_err()
+        {
+            msg.channel_id
+                .send_message(&ctx.http, |m| {
+                    m.embed(|e| {
+                        let name = msg.author.name.clone();
+                        let thumbnail = msg.author.avatar_url().unwrap_or_default();
+                        let value = format!(
+                            "Xp: {}\nLevel:{}\nMessages:{}",
+                            user_level.xp, user_level.level, user_level.messages
+                        );
+
+                        e.title("Rank")
+                            .field(name, value, false)
+                            .thumbnail(thumbnail)
+                    })
+                })
+                .await?;
+        }
+
         msg.channel_id
             .send_message(&ctx.http, |m| {
                 let file = AttachmentType::from("rank.png");
@@ -77,53 +82,30 @@ pub async fn top(ctx: &Context, msg: &Message) -> CommandResult {
     if let Some(db) = ctx.data.read().await.get::<Db>() {
         let mut all_users_id = db.get_all_users().await?;
         all_users_id.sort_by(|a, b| b.xp.cmp(&a.xp));
+        let top_x = 10;
 
-        let mut field_names = String::new();
-        let mut field_xp = String::new();
-        let mut field_levels = String::new();
-        let mut field_ranks = String::new();
+        let mut top_users = vec![];
+        for (i, user) in all_users_id.iter().enumerate() {
+            if i == top_x {
+                break;
+            }
 
-        for (i, user_level) in all_users_id.iter().enumerate() {
-            let user = UserId::from(from_i64(user_level.user_id))
-                .to_user(&ctx)
-                .await
-                .unwrap_or_default();
-            field_names.push_str(&format!("{}\n", user.name));
-            field_xp.push_str(&format!("{}\n", user_level.xp));
-            field_levels.push_str(&format!("{}\n", user_level.level));
-            field_ranks.push_str(&format!("{}\n", i + 1));
+            let name = UserId::from(from_i64(user.user_id))
+                .to_user(&ctx.http)
+                .await?
+                .name;
+            let rank = i as i64 + 1;
+            let next_xp = xp_for_level(user.level + 1);
+            let user_tup = (name, rank, user.level, user.xp, next_xp);
+            top_users.push(user_tup);
         }
 
-        // let thumbnail = match msg.guild(ctx) {
-        //     Some(guild) => guild.icon,
-        //     None => {
-        //         error!("No icon found");
-        //         None
-        //     }
-        // };
-
-        let thumbnail = ctx.cache.current_user().avatar;
-
-        info!("Bot icon: {thumbnail:?}");
+        gen_top_ten_card(&top_users).await?;
 
         msg.channel_id
             .send_message(&ctx.http, |m| {
-                m.embed(|e| {
-                    if let Some(icon) = thumbnail {
-                        e.title("Top Spammers")
-                            .thumbnail(icon)
-                            .field("Rank", field_ranks, true)
-                            .field("Name", field_names, true)
-                            .field("Xp", field_xp, true)
-                            .field("Level", field_levels, true)
-                    } else {
-                        e.title("Top Spammers")
-                            .field("Rank", field_ranks, true)
-                            .field("Name", field_names, true)
-                            .field("Xp", field_xp, true)
-                            .field("Level", field_levels, true)
-                    }
-                })
+                let file = AttachmentType::from("top_ten.png");
+                m.add_file(file)
             })
             .await?;
     }

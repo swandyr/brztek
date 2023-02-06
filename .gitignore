@@ -5,6 +5,7 @@ target/
 .env
 card.png
 rank.png
+top_ten.png
 *-shm
 *-wal
 

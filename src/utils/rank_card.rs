@@ -166,7 +166,7 @@ pub async fn gen_card(
         &style, 
         &DrawOptions::new());
 
-    let end = (137.0_f32 / 255.0).mul_add(length, start); // let end = (137.0 / 255.0) * length + start;
+    let end = (user_xp as f32 / xp_next_level as f32).mul_add(length, start); // let end = (137.0 / 255.0) * length + start;
     let mut pb = PathBuilder::new();
     pb.move_to(start, 140.0);
     pb.line_to(end, 140.0);
