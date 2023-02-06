@@ -42,18 +42,12 @@ impl EventHandler for Handler {
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
-        // Prevent the bot to reply to itself
-        // if msg.is_own(&ctx.cache) {
-        //     return;
-        // }
-
         // Prevent handling bot's message
         // if msg.author.bot {
         //     return;
         // }
 
         let user_id = msg.author.id.0;
-        // let channel_id = msg.channel_id.0;
 
         // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
         if let Some(db) = ctx.data.read().await.get::<Db>() {

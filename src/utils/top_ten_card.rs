@@ -31,11 +31,10 @@ impl Default for Colors {
 pub async fn gen_top_ten_card(
     users: &[(
         String, //username
-        // Option<&str>, // avatar url
-        i64, // rank
-        i64, // level
-        i64, // current xp
-        i64, // xp for next level
+        i64,    // rank
+        i64,    // level
+        i64,    // current xp
+        i64,    // xp for next level
     )],
 ) -> anyhow::Result<()> {
     // Some colors
@@ -90,6 +89,7 @@ pub async fn gen_top_ten_card(
         &DrawOptions::new(),
     );
 
+    // Draw on target for each user
     let mut y_offset = TITLE_HEIGHT as f32;
     for user in users {
         let (name, rank, level, current_xp, next_xp) = user;

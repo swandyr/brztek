@@ -86,16 +86,6 @@ pub async fn gen_card(
     let path = pb.finish();
     dt.fill(&path, &gradient, &DrawOptions::new());
 
-    // Draw a black rectangle inside
-    // dt.fill_rect(
-    //     5.0,
-    //     5.0,
-    //     (CARD_WIDTH - 10) as f32,
-    //     (CARD_HEIGHT - 10) as f32,
-    //     &Source::Solid(SolidSource::from(colors.dark_gray)),
-    //     &DrawOptions::new(),
-    // );
-
     // Transform [u8] to [u32]
     let mut buffer: Vec<u32> = vec![];
     for i in file.as_bytes().chunks(4) {
@@ -109,8 +99,6 @@ pub async fn gen_card(
         height: file.height().try_into()?,
         data: &buffer,
     };
-    
-    // dt.draw_image_at(margin, margin, &image, &DrawOptions::new());
     dt.draw_image_with_size_at(AVATAR_WIDTH, AVATAR_HEIGHT, margin, margin, &image, &DrawOptions::new());
 
     // Load font
@@ -145,7 +133,7 @@ pub async fn gen_card(
     );
 
     // Draw xp gauge
-    let start = margin.mul_add(2.0, avatar_width); // let start = margin * 2.0 + file.width() as f32;
+    let start = margin.mul_add(2.0, avatar_width);
     let end = CARD_WIDTH as f32 - margin;
     let length = end - start;
 
@@ -166,7 +154,7 @@ pub async fn gen_card(
         &style, 
         &DrawOptions::new());
 
-    let end = (user_xp as f32 / xp_next_level as f32).mul_add(length, start); // let end = (137.0 / 255.0) * length + start;
+    let end = (user_xp as f32 / xp_next_level as f32).mul_add(length, start);
     let mut pb = PathBuilder::new();
     pb.move_to(start, 140.0);
     pb.line_to(end, 140.0);
@@ -180,7 +168,6 @@ pub async fn gen_card(
     );
 
     dt.write_png("rank.png")?;
-    // ? See for later use `write_png_to_vec: https://github.com/jrmuizel/raqote/pull/180
     
     Ok(())
 }

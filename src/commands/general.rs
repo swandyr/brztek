@@ -20,7 +20,6 @@ pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 pub async fn hello(ctx: &Context, msg: &Message) -> CommandResult {
     let user_id = msg.author.id.0;
-    // let channel_id = msg.channel_id.0;
 
     info!("user_id = {user_id}");
     let get_user = UserId::from(user_id).to_user(&ctx).await;

@@ -17,11 +17,6 @@ impl Db {
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
             .connect(db_path)
-            // .connect_with(
-            //     sqlx::sqlite::SqliteConnectOptions::new()
-            //         .filename("database.sqlite")
-            //         .create_if_missing(true),
-            // )
             .await
             .expect("Cannot connect to database: {path}");
         Self { pool }
@@ -121,21 +116,6 @@ impl Db {
 
         Ok(())
     }
-
-    // #[allow(dead_code)]
-    // pub async fn get_user_as(&self, user_id: u64) -> anyhow::Result<Option<UserLevel>> {
-    //     let user_id = to_i64(user_id);
-
-    //     let user = sqlx::query_as!(
-    //         UserLevel,
-    //         "SELECT * FROM (select (1) as user_id, (2) as xp, (3) as level) edn_ranks WHERE user_id = ?",
-    //         user_id,
-    //     )
-    //     .fetch_optional(&self.pool)
-    //     .await?;
-
-    //     Ok(user)
-    // }
 }
 
 /// Bit-cast u64 (user.id in Discord API) to i64 (stored in the `SQLite` database).

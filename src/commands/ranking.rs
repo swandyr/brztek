@@ -19,7 +19,6 @@ use crate::utils::{
 #[command]
 pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
     let user_id = msg.author.id.0;
-    // let channel_id = msg.channel_id.0;
 
     if let Some(db) = ctx.data.read().await.get::<Db>() {
         let user_level = db.get_user(user_id).await?;
