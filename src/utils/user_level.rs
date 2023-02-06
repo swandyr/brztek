@@ -3,7 +3,7 @@ use chrono::Utc;
 
 #[derive(Debug)]
 pub struct UserLevel {
-    pub user_id: i64, // Discord user id, stored as i64 because SQLite does not support 128 bits interger
+    pub user_id: u64, // Discord user id, stored as i64 because SQLite does not support 128 bits interger
     pub xp: i64,      // User's xp
     pub level: i64,   // User's level
     pub messages: i64, // User's messages count
@@ -11,7 +11,7 @@ pub struct UserLevel {
 }
 
 impl UserLevel {
-    pub const fn new(user_id: i64) -> Self {
+    pub const fn new(user_id: u64) -> Self {
         Self {
             user_id,
             xp: 0,
@@ -47,14 +47,15 @@ impl UserLevel {
     }
 }
 
-impl From<[i64; 5]> for UserLevel {
-    fn from(item: [i64; 5]) -> Self {
+impl From<(u64, i64, i64, i64, i64)> for UserLevel {
+    fn from(item: (u64, i64, i64, i64, i64)) -> Self {
+        let (user_id, xp, level, messages, last_message) = item;
         Self {
-            user_id: item[0],
-            xp: item[1],
-            level: item[2],
-            messages: item[3],
-            last_message: item[4],
+            user_id,
+            xp,
+            level,
+            messages,
+            last_message,
         }
     }
 }

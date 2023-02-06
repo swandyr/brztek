@@ -10,10 +10,7 @@ use serenity::{
 use tracing::{debug, info};
 
 use crate::utils::{
-    db::{from_i64, Db},
-    levels::xp_for_level,
-    rank_card::gen_card,
-    top_ten_card::gen_top_ten_card,
+    db::Db, levels::xp_for_level, rank_card::gen_card, top_ten_card::gen_top_ten_card,
 };
 
 #[command]
@@ -90,10 +87,7 @@ pub async fn top(ctx: &Context, msg: &Message) -> CommandResult {
                 break;
             }
 
-            let name = UserId::from(from_i64(user.user_id))
-                .to_user(&ctx.http)
-                .await?
-                .name;
+            let name = UserId::from(user.user_id).to_user(&ctx.http).await?.name;
             let rank = i as i64 + 1;
             let next_xp = xp_for_level(user.level + 1);
             let user_tup = (name, rank, user.level, user.xp, next_xp);

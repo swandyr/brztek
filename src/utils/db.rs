@@ -46,20 +46,20 @@ impl Db {
         .await?;
 
         if let Some(record) = user_queried {
-            let record = [
-                record.user_id,
+            let record = (
+                from_i64(record.user_id),
                 record.xp.unwrap_or_default(),
                 record.level.unwrap_or_default(),
                 record.messages.unwrap_or_default(),
                 record.last_message.unwrap_or_default(),
-            ];
+            );
             Ok(UserLevel::from(record))
         } else {
             // If no user is found, insert a new entry with user_id and default values.
             sqlx::query!("INSERT INTO edn_ranks (user_id) VALUES (?)", user_id,)
                 .execute(&self.pool)
                 .await?;
-            Ok(UserLevel::new(user_id))
+            Ok(UserLevel::new(from_i64(user_id)))
         }
     }
 
@@ -70,6 +70,7 @@ impl Db {
     /// update the entry in the database.
     pub async fn update_user(&self, user: &UserLevel) -> anyhow::Result<()> {
         // Update user's entry in the database with new values.
+        let user_id = to_i64(user.user_id);
         sqlx::query!(
             "UPDATE edn_ranks
                 SET xp = ?,
@@ -81,7 +82,7 @@ impl Db {
             user.level,
             user.messages,
             user.last_message,
-            user.user_id,
+            user_id,
         )
         .execute(&self.pool)
         .await?;
@@ -98,13 +99,13 @@ impl Db {
         let all_users = all_users_queried
             .iter()
             .map(|record| {
-                let params = [
-                    record.user_id,
+                let params = (
+                    from_i64(record.user_id),
                     record.xp.unwrap_or_default(),
                     record.level.unwrap_or_default(),
                     record.messages.unwrap_or_default(),
                     record.last_message.unwrap_or_default(),
-                ];
+                );
 
                 UserLevel::from(params)
             })
@@ -145,7 +146,7 @@ const fn to_i64(unsigned: u64) -> i64 {
 }
 
 /// Bit-cast i64 (stored in `SQLite` database) to u64 (user.id in Discord API).
-pub const fn from_i64(signed: i64) -> u64 {
+const fn from_i64(signed: i64) -> u64 {
     let bit_cast = signed.to_be_bytes();
     u64::from_be_bytes(bit_cast)
 }
