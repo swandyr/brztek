@@ -2,9 +2,9 @@ use font_kit::font::Font;
 use raqote::{DrawOptions, DrawTarget, Spread, Image, Point, SolidSource, Source, Color, PathBuilder, StrokeStyle, GradientStop, Gradient};
 
 const CARD_WIDTH: i32 = 440;
-const CARD_HEIGHT: i32 = 160;
-const AVATAR_WIDTH: f32 = 128.0;
-const AVATAR_HEIGHT: f32 = 128.0;
+const CARD_HEIGHT: i32 = 150;
+const AVATAR_WIDTH: f32 = 96.0;
+const AVATAR_HEIGHT: f32 = 96.0;
 
 const FONT_DEJAVU_BLACK: &str = "assets/fonts/DejaVu Sans Mono Nerd Font Complete.ttf";
 
@@ -51,7 +51,8 @@ pub async fn gen_card(
     // Set some colors
     let colors = Colors::default();
 
-    let margin: f32 = (CARD_HEIGHT as f32 / 2.0) - (AVATAR_HEIGHT / 2.0);
+    // let margin: f32 = (CARD_HEIGHT as f32 / 2.0) - (AVATAR_HEIGHT / 2.0);
+    let margin = 16.0_f32;
 
     // Create the target and fill with white
     let mut dt = DrawTarget::new(CARD_WIDTH, CARD_HEIGHT);
@@ -76,8 +77,8 @@ pub async fn gen_card(
                 },
             ],
         },
-        Point::new(40.0, 0.0),
-        Point::new(190.0, 90.0),
+        Point::new(16.0, 0.0),
+        Point::new(140.0, 90.0),
         Spread::Pad,
     );
     let mut pb = PathBuilder::new();
@@ -125,7 +126,7 @@ pub async fn gen_card(
         &font,
         22.0,
         username,
-        Point::new(180.0, 35.0),
+        Point::new(140.0, 35.0),
         &solid_source,
         &DrawOptions::new(),
     );
@@ -133,7 +134,7 @@ pub async fn gen_card(
         &font,
         17.,
         &format!("Level: #{level}"),
-        Point::new(180.0, 60.0),
+        Point::new(140.0, 60.0),
         &solid_source,
         &DrawOptions::new(),
     );
@@ -141,14 +142,15 @@ pub async fn gen_card(
         &font,
         15.,
         &format!("{user_xp}/{xp_next_level}"),
-        Point::new(260.0, 130.0),
+        Point::new(190.0, 120.0),
         &solid_source,
         &DrawOptions::new(),
     );
 
     // Draw xp gauge
-    let start = margin.mul_add(2.0, avatar_width); // let start = margin * 2.0 + avatar_width as f32;
-    let end = CARD_WIDTH as f32 - margin;
+    // let start = margin.mul_add(2.0, avatar_width); // let start = margin * 2.0 + avatar_width as f32;
+    let start = margin * 4.0;
+    let end = CARD_WIDTH as f32 - start;
     let length = end - start;
 
     let style = StrokeStyle {
@@ -158,8 +160,8 @@ pub async fn gen_card(
     };
 
     let mut pb = PathBuilder::new();
-    pb.move_to(start, 140.);
-    pb.line_to(end, 140.);
+    pb.move_to(start, 130.);
+    pb.line_to(end, 130.);
     let path = pb.finish();
 
     dt.stroke(
@@ -170,8 +172,8 @@ pub async fn gen_card(
 
     let end = (user_xp as f32 / xp_next_level as f32).mul_add(length, start); // let end = (137.0 / 255.0) * length + start;
     let mut pb = PathBuilder::new();
-    pb.move_to(start, 140.0);
-    pb.line_to(end, 140.0);
+    pb.move_to(start, 130.0);
+    pb.line_to(end, 130.0);
     let path = pb.finish();
 
     dt.stroke(

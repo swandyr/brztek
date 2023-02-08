@@ -10,7 +10,8 @@ use serenity::{
 use tracing::{debug, info};
 
 use crate::utils::{
-    db::Db, levels::xp_for_level, rank_card::gen_card, top_ten_card::gen_top_ten_card,
+    db::Db,
+    levels::{rank_card::gen_card, top_ten_card::gen_top_ten_card, xp::xp_for_level},
 };
 
 #[command]

@@ -1,4 +1,3 @@
-use tracing::{error, info};
 use serenity::{
     framework::standard::{macros::command, CommandResult},
     model::{
@@ -8,6 +7,9 @@ use serenity::{
     prelude::*,
 };
 use std::env;
+use tracing::{error, info};
+
+use crate::utils::config::Config;
 
 #[command]
 pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {

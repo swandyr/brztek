@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::{prelude::thread_rng, Rng};
 use serenity::{
     async_trait,
     framework::standard::{macros::group, StandardFramework},
@@ -10,11 +10,10 @@ use serenity::{
     prelude::*,
 };
 use std::{env, sync::Arc};
-#[allow(unused_imports)]
 use tracing::{debug, error, info};
 
 mod utils;
-use utils::db::Db;
+use utils::{config::Config, db::Db};
 
 mod commands;
 use commands::{
@@ -55,12 +54,17 @@ impl EventHandler for Handler {
         let user_id = msg.author.id.0;
         // let channel_id = msg.channel_id.0;
 
+        let data = ctx.data.read().await;
+
         // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
-        if let Some(db) = ctx.data.read().await.get::<Db>() {
+        if let Some(db) = data.get::<Db>() {
             let get_user = db.get_user(user_id).await;
             match get_user {
                 Ok(mut user) => {
-                    let has_gained_xp = user.gain_xp_if_not_spam();
+                    let xp_settings = data.get::<Config>().unwrap().xp_settings;
+
+                    let has_gained_xp = user.gain_xp_if_not_spam(xp_settings);
+
                     if user.has_level_up() {
                         if let Err(why) = msg
                             .channel_id
@@ -88,7 +92,6 @@ impl EventHandler for Handler {
     }
 
     async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
-        use rand::prelude::thread_rng;
         use serenity::constants::JOIN_MESSAGES;
 
         let index = thread_rng().gen_range(0..JOIN_MESSAGES.len());
@@ -161,6 +164,11 @@ async fn main() {
     let db = Db::new(&db_url).await;
     db.run_migrations().await.expect("Unable to run migrations");
 
+    let mut config = Config::load().unwrap_or_else(|err| {
+        error!("Can't read config file: {err}");
+        Config::default()
+    });
+
     let handler = Handler;
 
     let mut client = Client::builder(token, intents)
@@ -172,6 +180,7 @@ async fn main() {
     {
         let mut data = client.data.write().await;
         data.insert::<Db>(Arc::new(db));
+        data.insert::<Config>(Arc::new(config));
     }
 
     if let Err(why) = client.start().await {

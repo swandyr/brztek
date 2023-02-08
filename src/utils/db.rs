@@ -2,7 +2,7 @@ use serenity::prelude::TypeMapKey;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::sync::Arc;
 
-use crate::utils::user_level::UserLevel;
+use crate::utils::levels::user_level::UserLevel;
 
 pub struct Db {
     pool: SqlitePool,
@@ -68,7 +68,7 @@ impl Db {
     pub async fn update_user(&self, user: &UserLevel) -> anyhow::Result<()> {
         // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user.user_id);
-        
+
         sqlx::query!(
             "UPDATE edn_ranks
                 SET xp = ?,

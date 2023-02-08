@@ -10,9 +10,9 @@ const fn xp_formula(lvl: i64) -> i64 {
     5 * (lvl.pow(2)) + (50 * lvl) + 100
 }
 
-pub fn rand_xp() -> i64 {
+pub fn rand_xp(min_gain: i64, max_gain: i64) -> i64 {
     let mut rng = rand::thread_rng();
-    rng.gen_range(MIN_XP_GAIN..=MAX_XP_GAIN)
+    rng.gen_range(min_gain..=max_gain)
 }
 
 #[allow(dead_code)]
