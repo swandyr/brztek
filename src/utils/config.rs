@@ -1,16 +1,18 @@
 use std::{io::Write, path::Path, sync::Arc};
 
 use serde::{Deserialize, Serialize};
-use serenity::prelude::TypeMapKey;
+use serenity::prelude::{RwLock, TypeMapKey};
 use tracing::info;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
     pub xp_settings: XpSettings,
+    pub test_string: String,
 }
 
 impl TypeMapKey for Config {
-    type Value = Arc<Self>;
+    // Wrapped in a RwLock to allow mutability
+    type Value = Arc<RwLock<Self>>;
 }
 
 impl Config {

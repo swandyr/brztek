@@ -40,7 +40,7 @@ pub async fn gen_card(
     // Fallback to a default picture if None.
     let file = if let Some(url) = avatar_url {
         let url = clean_url(url);
-        let buffer =reqwest::get(url).await?.bytes().await?;
+        let buffer = reqwest::get(url).await?.bytes().await?;
         image::load_from_memory(&buffer)?
     } else {
         let default_file = DEFAULT_PP_TESSELATION_VIOLET;
@@ -102,9 +102,6 @@ pub async fn gen_card(
     for i in file.as_bytes().chunks(4) {
         buffer.push((i[3] as u32) << 24 | (i[0] as u32) << 16 | (i[1] as u32) << 8 | i[2] as u32);
     }
-
-    let avatar_width = file.width() as f32;
-    let _avatar_height = file.height() as f32;
 
     // Create an image that will be drawn on the target
     let image = Image {
@@ -184,7 +181,7 @@ pub async fn gen_card(
     );
 
     dt.write_png("rank.png")?;
-    // ? See for later use `write_png_to_vec: https://github.com/jrmuizel/raqote/pull/180
+    // ? See for later use `write_png_to_vec`: https://github.com/jrmuizel/raqote/pull/180
     
     Ok(())
 }
