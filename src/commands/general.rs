@@ -9,8 +9,6 @@ use serenity::{
 use std::env;
 use tracing::{error, info};
 
-use crate::utils::config::Config;
-
 #[command]
 pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
     msg.channel_id
