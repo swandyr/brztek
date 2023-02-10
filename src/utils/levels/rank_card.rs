@@ -1,6 +1,8 @@
 use font_kit::font::Font;
 use raqote::{DrawOptions, DrawTarget, Spread, Image, Point, SolidSource, Source, Color, PathBuilder, StrokeStyle, GradientStop, Gradient};
 
+use super::xp::{xp_needed_to_level_up, total_xp_required_for_level};
+
 const CARD_WIDTH: i32 = 440;
 const CARD_HEIGHT: i32 = 150;
 const AVATAR_WIDTH: f32 = 96.0;
@@ -34,8 +36,16 @@ pub async fn gen_card(
     banner_colour: (u8, u8, u8),
     level: i64,
     user_xp: i64,
-    xp_next_level: i64,
 ) -> anyhow::Result<()> {
+    // Xp values
+    let xp_for_actual_level = total_xp_required_for_level(level);
+    let xp_needed_to_level_up = xp_needed_to_level_up(level);
+    let user_xp_in_level = user_xp - xp_for_actual_level;
+    println!("total xp for level {}: {}", level, xp_for_actual_level);
+    println!("user xp: {}", user_xp);
+    println!("xp in his level: {}", user_xp_in_level);
+
+
     // Request profile picture through HTTP if `avatar_url` is Some().
     // Fallback to a default picture if None.
     let file = if let Some(url) = avatar_url {
@@ -113,7 +123,6 @@ pub async fn gen_card(
     // dt.draw_image_at(margin, margin, &image, &DrawOptions::new());
     dt.draw_image_with_size_at(AVATAR_WIDTH, AVATAR_HEIGHT, margin, margin, &image, &DrawOptions::new());
 
-    // Load font
     let font: Font = font_kit::loader::Loader::from_file(
         &mut std::fs::File::open(FONT_DEJAVU_BLACK)?,
         0,
@@ -135,10 +144,11 @@ pub async fn gen_card(
         &solid_source,
         &DrawOptions::new(),
     );
+    let total_xp_required_for_next_level = xp_for_actual_level + xp_needed_to_level_up;
     dt.draw_text(
         &font,
         15.,
-        &format!("{user_xp}/{xp_next_level}"),
+        &format!("{}/{}", user_xp, total_xp_required_for_next_level),
         Point::new(190.0, 120.0),
         &solid_source,
         &DrawOptions::new(),
@@ -167,7 +177,8 @@ pub async fn gen_card(
         &style, 
         &DrawOptions::new());
 
-    let end = (user_xp as f32 / xp_next_level as f32).mul_add(length, start); // let end = (137.0 / 255.0) * length + start;
+
+    let end = (user_xp_in_level as f32 / xp_needed_to_level_up as f32).mul_add(length, start); // let end = (user_xp_in_level / xp_to_next_level) * length + start;
     let mut pb = PathBuilder::new();
     pb.move_to(start, 130.0);
     pb.line_to(end, 130.0);
@@ -202,14 +213,14 @@ async fn test_gen_card_with_url() {
         "https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.webp?size=1024",
     );
     let colour = (255, 255, 0);
-    assert!(gen_card(&username, Some(avatar_url), colour, 2, 137, 255).await.is_ok());
+    assert!(gen_card(&username, Some(avatar_url), colour, 2, 455).await.is_ok());
 }
 
 #[tokio::test]
 async fn test_gen_card_with_default_pp() {
     let username = String::from("Username#64523");
     let colour = (255, 255, 0);
-    assert!(gen_card(&username, None, colour, 2, 137, 255).await.is_ok());
+    assert!(gen_card(&username, None, colour, 2, 275).await.is_ok());
 }
 
 #[test]

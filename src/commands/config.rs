@@ -66,7 +66,7 @@ async fn handle_command(
         let content = format!(
             "Changing {} to {}",
             parameter,
-            &get_parameter(ctx, parameter).await?
+            get_parameter(ctx, parameter).await?
         );
         msg.channel_id
             .send_message(&ctx.http, |m| m.content(content))
@@ -76,7 +76,7 @@ async fn handle_command(
             let content = format!(
                 "{} is set to {}.",
                 parameter,
-                &get_parameter(ctx, parameter).await?
+                get_parameter(ctx, parameter).await?
             );
             msg.channel_id
                 .send_message(&ctx.http, |m| m.content(content))
@@ -89,13 +89,11 @@ async fn handle_command(
 
 async fn set_parameter(ctx: &Context, parameter: Parameters, value: &str) -> anyhow::Result<()> {
     // Acquire a write lock on the data
-    let mut data = ctx.data.write().await;
+    let data = ctx.data.write().await;
     debug!("Data lock acquired.");
 
     // Get mut ref of the config
-    let config = data
-        .get_mut::<Config>()
-        .expect("Expected Config in TypeMap.");
+    let config = data.get::<Config>().expect("Expected Config in TypeMap.");
     debug!("Get mut Config.");
 
     // Acquire a write lock on the config

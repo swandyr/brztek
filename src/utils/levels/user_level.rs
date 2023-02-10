@@ -1,9 +1,9 @@
-use super::xp::{rand_xp, xp_for_level, ANTI_SPAM_DELAY};
+use super::xp::{rand_xp, total_xp_required_for_level};
 use chrono::Utc;
 
 use crate::utils::config::XpSettings;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct UserLevel {
     pub user_id: u64,      // Discord user id
     pub xp: i64,           // User's xp
@@ -39,7 +39,7 @@ impl UserLevel {
     }
 
     pub fn has_level_up(&mut self) -> bool {
-        let xp_to_next_level = xp_for_level(self.level + 1);
+        let xp_to_next_level = total_xp_required_for_level(self.level + 1);
         if self.xp >= xp_to_next_level {
             self.level += 1;
             true
