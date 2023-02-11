@@ -7,7 +7,8 @@ use serenity::{
     prelude::*,
     utils::Colour,
 };
-use tracing::{debug, info};
+use std::time::Instant;
+use tracing::info;
 
 use crate::utils::{
     db::Db,
@@ -17,6 +18,8 @@ use crate::utils::{
 #[command]
 #[description = "Print your level stats"]
 pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
+    let t_0 = Instant::now();
+
     let user_id = msg.author.id.0;
     // let channel_id = msg.channel_id.0;
 
@@ -46,15 +49,19 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
         .tuple();
 
     // Generate an image that is saved with name "rank.png"
+    let t_1 = Instant::now();
     gen_card(
         &username,
         avatar_url,
         banner_colour,
         user_level.level,
+        user_level.rank,
         user_level.xp,
     )
     .await?;
+    info!("Rank_card generated in : {} µs", t_1.elapsed().as_micros());
 
+    let t_1 = Instant::now();
     // Send generated "rank.png" file
     msg.channel_id
         .send_message(&ctx.http, |m| {
@@ -62,6 +69,7 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
             m.add_file(file)
         })
         .await?;
+    info!("rank_card sent in : {} µs", t_1.elapsed().as_micros());
 
     // msg.channel_id
     //         .send_message(&ctx.http, |m| {
@@ -79,6 +87,11 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
     //             })
     //         })
     //         .await?;
+
+    info!(
+        "Command !rank processed in : {} µs",
+        t_0.elapsed().as_micros()
+    );
 
     Ok(())
 }
@@ -103,21 +116,15 @@ pub async fn top(ctx: &Context, msg: &Message) -> CommandResult {
     let mut all_users_id = db.get_all_users(guild_id).await?;
 
     // Sort users by descendant xp
-    all_users_id.sort_by(|a, b| b.xp.cmp(&a.xp));
+    all_users_id.sort_by(|a, b| a.rank.cmp(&b.rank));
 
     // Number of users to keep
     let top_x = 10;
 
     let mut top_users = vec![];
-    for (i, user) in all_users_id.iter().enumerate() {
-        // Break when enough users are collected
-        if i == top_x {
-            break;
-        }
-
+    for user in all_users_id.iter().take(top_x) {
         let name = UserId::from(user.user_id).to_user(&ctx.http).await?.name;
-        let rank = i as i64 + 1;
-        let user_tup = (name, rank, user.level, user.xp);
+        let user_tup = (name, user.rank, user.level, user.xp);
         top_users.push(user_tup);
     }
 

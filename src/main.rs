@@ -10,8 +10,8 @@ use serenity::{
     },
     prelude::*,
 };
-use std::{collections::HashSet, env, sync::Arc};
-use tracing::{error, info};
+use std::{collections::HashSet, env, sync::Arc, time::Instant};
+use tracing::{debug, error, info};
 
 mod utils;
 use utils::{config::Config, db::Db};
@@ -52,6 +52,8 @@ impl EventHandler for Handler {
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
+        let t_0 = Instant::now();
+
         // Prevent the bot to reply to itself
         // if msg.is_own(&ctx.cache) {
         //     return;
@@ -62,20 +64,19 @@ impl EventHandler for Handler {
         //     return;
         // }
 
-        let user_id = msg.author.id.0;
-        // let channel_id = msg.channel_id.0;
-
-        let data = ctx.data.read().await;
-
-        // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
-        let db = data.get::<Db>().expect("Expected Db in TypeMap");
-
         // Ensure the command was sent from a guild channel
         let guild_id = if let Some(id) = msg.guild_id {
             id.0
         } else {
             return;
         };
+
+        let user_id = msg.author.id.0;
+        // let channel_id = msg.channel_id.0;
+
+        let data = ctx.data.read().await;
+        // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
+        let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
         match db.get_user(user_id, guild_id).await {
             Ok(mut user) => {
@@ -102,11 +103,19 @@ impl EventHandler for Handler {
                         error!("Cannot update user {user_id}:{why}");
                     }
                 }
+
+                debug!("User : {user:#?}");
             }
             Err(why) => {
                 error!("Cannot get user {user_id} from database: {why}");
             }
         }
+
+        if let Err(e) = update_users_ranks(&ctx, guild_id).await {
+            error!("Error in update_all_users_levels: {e}");
+        }
+
+        info!("Message processed in : {} µs", t_0.elapsed().as_micros());
     }
 
     async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
@@ -160,6 +169,37 @@ impl EventHandler for Handler {
         }
     }
 }
+
+async fn update_users_ranks(ctx: &Context, guild_id: u64) -> anyhow::Result<()> {
+    let t_0 = Instant::now();
+
+    let data = ctx.data.read().await;
+    let db = data.get::<Db>().expect("Expected Db in TypeMap");
+
+    // Get a Vec of all users in database
+    let mut all_users = db.get_all_users(guild_id).await?;
+
+    // Sort user by descendant xp
+    all_users.sort_by(|a, b| b.xp.cmp(&a.xp));
+
+    let mut rank_has_changed = vec![];
+    for (i, user) in &mut all_users.iter_mut().enumerate() {
+        if user.rank != i as i64 + 1 {
+            user.rank = i as i64 + 1;
+            rank_has_changed.push(*user)
+        }
+    }
+
+    if !rank_has_changed.is_empty() {
+        db.update_ranks(&rank_has_changed, guild_id).await?;
+    }
+
+    info!("Updated all ranks in : {} µs", t_0.elapsed().as_micros());
+
+    Ok(())
+}
+
+// ----------------------------------------- Main -----------------------------------------
 
 #[tokio::main]
 async fn main() {

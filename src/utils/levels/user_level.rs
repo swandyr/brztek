@@ -3,7 +3,7 @@ use chrono::Utc;
 
 use crate::utils::config::XpSettings;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct UserLevel {
     pub user_id: u64,      // Discord user id
     pub xp: i64,           // User's xp

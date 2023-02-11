@@ -81,14 +81,12 @@ impl Db {
             "UPDATE levels
                 SET xp = ?,
                     level = ?,
-                    rank = ?,
                     messages = ?,
                     last_message = ?
                 WHERE user_id = ?
                 AND guild_id = ?",
             user.xp,
             user.level,
-            user.rank,
             user.messages,
             user.last_message,
             user_id,
@@ -96,6 +94,29 @@ impl Db {
         )
         .execute(&self.pool)
         .await?;
+
+        Ok(())
+    }
+
+    // Update user rank in the database
+    pub async fn update_ranks(&self, users: &Vec<UserLevel>, guild_id: u64) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+
+        for user in users {
+            let user_id = to_i64(user.user_id);
+
+            sqlx::query!(
+                "UPDATE levels
+            SET rank = ?
+            WHERE user_id = ?
+            AND guild_id = ?",
+                user.rank,
+                user_id,
+                guild_id
+            )
+            .execute(&self.pool)
+            .await?;
+        }
 
         Ok(())
     }

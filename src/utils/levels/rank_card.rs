@@ -35,6 +35,7 @@ pub async fn gen_card(
     avatar_url: Option<String>,
     banner_colour: (u8, u8, u8),
     level: i64,
+    rank: i64,
     user_xp: i64,
 ) -> anyhow::Result<()> {
     // Xp values
@@ -137,10 +138,18 @@ pub async fn gen_card(
         &DrawOptions::new(),
     );
     dt.draw_text(
+        &font, 
+        17., 
+        &format!("Rank: #{rank}"),
+        Point::new(140.0, 60.0),
+        &solid_source,
+        &DrawOptions::new(),
+    );
+    dt.draw_text(
         &font,
         17.,
-        &format!("Level: #{level}"),
-        Point::new(140.0, 60.0),
+        &format!("Level: {level}"),
+        Point::new(140.0, 85.0),
         &solid_source,
         &DrawOptions::new(),
     );
@@ -213,14 +222,14 @@ async fn test_gen_card_with_url() {
         "https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.webp?size=1024",
     );
     let colour = (255, 255, 0);
-    assert!(gen_card(&username, Some(avatar_url), colour, 2, 455).await.is_ok());
+    assert!(gen_card(&username, Some(avatar_url), colour, 2, 1, 455).await.is_ok());
 }
 
 #[tokio::test]
 async fn test_gen_card_with_default_pp() {
     let username = String::from("Username#64523");
     let colour = (255, 255, 0);
-    assert!(gen_card(&username, None, colour, 2, 275).await.is_ok());
+    assert!(gen_card(&username, None, colour, 2, 1, 275).await.is_ok());
 }
 
 #[test]

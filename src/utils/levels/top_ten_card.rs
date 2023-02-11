@@ -8,11 +8,11 @@ use raqote::{
 const CARD_WIDTH: i32 = 440;
 const TITLE_HEIGHT: i32 = 60;
 const USER_HEIGHT: i32 = 40;
-const AVATAR_HEIGHT: i32 = 42;
+const _AVATAR_HEIGHT: i32 = 42;
 
-const FONT_DEJAVU_BLACK: &str = "assets/fonts/DejaVu Sans Mono Nerd Font Complete.ttf";
+const FONT: &str = "assets/fonts/eurostile font/EurostileBold.ttf";
 
-const DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tesselation-Violet.png";
+const _DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tesselation-Violet.png";
 
 struct Colors {
     white: Color,
@@ -78,8 +78,7 @@ pub async fn gen_top_ten_card(
     let path = pb.finish();
     dt.fill(&path, &gradient, &DrawOptions::new());
 
-    let font: Font =
-        font_kit::loader::Loader::from_file(&mut std::fs::File::open(FONT_DEJAVU_BLACK)?, 0)?;
+    let font: Font = font_kit::loader::Loader::from_file(&mut std::fs::File::open(FONT)?, 0)?;
 
     // Create header
     let solid_source = Source::Solid(SolidSource::from(colors.white));
