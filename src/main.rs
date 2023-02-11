@@ -18,6 +18,7 @@ use utils::{config::Config, db::Db};
 
 mod commands;
 use commands::{
+<<<<<<< HEAD
     admin::{AM_I_ADMIN_COMMAND, CONFIG_COMMAND, DELETE_RANKS_COMMAND},
     general::PING_COMMAND,
     help::HELP,
@@ -42,6 +43,28 @@ struct Levels;
 #[summary = "Admin commands"]
 #[commands(config, am_i_admin, delete_ranks)]
 struct Administrators;
+=======
+    config::CONFIG_COMMAND,
+    general::{HELLO_COMMAND, PING_COMMAND, WELCOME_COMMAND},
+    help::HELP,
+    hooks::{after, unknown_command},
+    ranking::{DELETE_RANKS_COMMAND, RANK_COMMAND, TOP_COMMAND},
+};
+
+#[group]
+#[commands(ping, hello, welcome)]
+struct General;
+
+#[group]
+#[description = "Command relatable to xp and levels"]
+#[summary = "Leveling stuff"]
+#[commands(rank, top, delete_ranks)]
+struct Ranking;
+
+#[group]
+#[commands(config)]
+struct ConfigCommands;
+>>>>>>> refs/remotes/origin/development
 
 struct Handler;
 
@@ -194,11 +217,19 @@ async fn main() {
     let framework = StandardFramework::new()
         .configure(|c| c.prefix("!").on_mention(Some(bot_id)).owners(owners))
         .group(&GENERAL_GROUP)
+<<<<<<< HEAD
         .group(&LEVELS_GROUP)
         .group(&ADMINISTRATORS_GROUP)
         .help(&HELP)
         .after(after)
         .unrecognised_command(unknown_command);
+=======
+        .group(&RANKING_GROUP)
+        .group(&CONFIGCOMMANDS_GROUP)
+        .help(&HELP)
+        .after(after)
+        .unrecognised_command(unknown_command); //FIXME: unknown_command don't seem to work
+>>>>>>> refs/remotes/origin/development
 
     let db_url = env::var("DATABASE_URL").expect("database path not found");
     let db = Db::new(&db_url).await;

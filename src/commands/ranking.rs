@@ -29,11 +29,21 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
     // Generate a rank card and attach it to a message
     let username = format!("{}#{}", msg.author.name, msg.author.discriminator);
     let avatar_url = msg.author.avatar_url();
+<<<<<<< HEAD
     let user_http = ctx.http.get_user(user_id).await?;
     let banner_colour = user_http
         .accent_colour
         .unwrap_or(Colour::LIGHTER_GREY)
         .tuple();
+=======
+    let xp_next_level = xp_for_level(user_level.level + 1);
+    let user_http = ctx.http.get_user(user_id).await;
+    let banner_colour = if let Ok(user) = user_http {
+        user.accent_colour.unwrap_or(Colour::LIGHTER_GREY).tuple()
+    } else {
+        Colour::LIGHTER_GREY.tuple()
+    };
+>>>>>>> refs/remotes/origin/development
 
     // Generate an image that is saved with name "rank.png"
     gen_card(
@@ -42,6 +52,10 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
         banner_colour,
         user_level.level,
         user_level.xp,
+<<<<<<< HEAD
+=======
+        xp_next_level,
+>>>>>>> refs/remotes/origin/development
     )
     .await?;
 
@@ -97,9 +111,41 @@ pub async fn top(ctx: &Context, msg: &Message) -> CommandResult {
 
         let name = UserId::from(user.user_id).to_user(&ctx.http).await?.name;
         let rank = i as i64 + 1;
+<<<<<<< HEAD
         let user_tup = (name, rank, user.level, user.xp);
         top_users.push(user_tup);
     }
+=======
+        let next_xp = xp_for_level(user.level + 1);
+        let user_tup = (name, rank, user.level, user.xp, next_xp);
+        top_users.push(user_tup);
+    }
+
+    // Generate an image that is saved with name "top_ten.png"
+    gen_top_ten_card(&top_users).await?;
+
+    // Send generated "top_ten.png" file
+    msg.channel_id
+        .send_message(&ctx.http, |m| {
+            let file = AttachmentType::from("top_ten.png");
+            m.add_file(file)
+        })
+        .await?;
+
+    Ok(())
+}
+
+#[command]
+#[description = "Clear database"]
+pub async fn delete_ranks(ctx: &Context, msg: &Message) -> CommandResult {
+    let data = ctx.data.read().await;
+    let db = data.get::<Db>().expect("Expected Db in TypeMap.");
+
+    info!("Delete rows in table 'edn_ranks'");
+    db.delete_table().await?;
+
+    msg.channel_id.say(&ctx.http, "All xp dropped to 0").await?;
+>>>>>>> refs/remotes/origin/development
 
     // Generate an image that is saved with name "top_ten.png"
     gen_top_ten_card(&top_users).await?;

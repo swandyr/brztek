@@ -18,9 +18,14 @@ pub async fn after(
 }
 
 #[hook]
+<<<<<<< HEAD
 pub async fn unknown_command(ctx: &Context, msg: &Message, unknown_command_name: &str) {
     let content = format!("Could not find command named '{unknown_command_name}'");
     msg.reply(&ctx.http, content)
         .await
         .expect("Error with hook 'unknown command");
+=======
+pub async fn unknown_command(_ctx: &Context, _msg: &Message, unknown_command_name: &str) {
+    println!("Could not find command named '{unknown_command_name}'");
+>>>>>>> refs/remotes/origin/development
 }

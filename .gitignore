@@ -3,8 +3,12 @@
 debug/
 target/
 .env
+<<<<<<< HEAD
 database*
 
+=======
+database.sqlite
+>>>>>>> refs/remotes/origin/development
 card.png
 rank.png
 top_ten.png
