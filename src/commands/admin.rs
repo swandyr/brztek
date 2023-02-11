@@ -3,7 +3,7 @@ use serenity::{
     model::{channel::Message, prelude::PartialMember, user::User, Permissions},
     prelude::*,
 };
-use tracing::info;
+use tracing::{error, info};
 
 use crate::utils::db::Db;
 
@@ -66,10 +66,14 @@ pub async fn delete_ranks(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
     let db = data.get::<Db>().expect("Expected Db in TypeMap.");
 
-    info!("Delete rows in table 'edn_ranks'");
-    db.delete_table().await?;
+    if let Some(guild_id) = msg.guild_id {
+        info!("Delete rows in table 'edn_ranks'");
+        db.delete_table(guild_id.0).await?;
 
-    msg.channel_id.say(&ctx.http, "All xp dropped to 0").await?;
+        msg.channel_id.say(&ctx.http, "All xp dropped to 0").await?;
+    } else {
+        error!("No guild_id found");
+    }
 
     Ok(())
 }

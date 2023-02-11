@@ -23,8 +23,18 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
     let db = data.get::<Db>().expect("Expected Db in TypeMap.");
 
+    // Ensure the command was sent from a guild channel
+    let guild_id = if let Some(id) = msg.guild_id {
+        id.0
+    } else {
+        msg.channel_id
+            .send_message(&ctx.http, |m| m.content("No guild id found"))
+            .await?;
+        return Ok(());
+    };
+
     // Get user from database
-    let user_level = db.get_user(user_id).await?;
+    let user_level = db.get_user(user_id, guild_id).await?;
 
     // Generate a rank card and attach it to a message
     let username = format!("{}#{}", msg.author.name, msg.author.discriminator);
@@ -79,8 +89,18 @@ pub async fn top(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
     let db = data.get::<Db>().expect("Expected Db in TypeMap.");
 
+    // Ensure the command was sent from a guild channel
+    let guild_id = if let Some(id) = msg.guild_id {
+        id.0
+    } else {
+        msg.channel_id
+            .send_message(&ctx.http, |m| m.content("No guild id found"))
+            .await?;
+        return Ok(());
+    };
+
     // Get a vec of all users in database
-    let mut all_users_id = db.get_all_users().await?;
+    let mut all_users_id = db.get_all_users(guild_id).await?;
 
     // Sort users by descendant xp
     all_users_id.sort_by(|a, b| b.xp.cmp(&a.xp));

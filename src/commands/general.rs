@@ -6,7 +6,6 @@ use serenity::{
     },
     prelude::*,
 };
-use std::env;
 use tracing::{error, info};
 
 #[command]

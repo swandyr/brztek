@@ -36,13 +36,15 @@ impl Db {
     ///
     /// If no user is found, create a new entry with `user_id` and returns
     /// new `UserLevel`.
-    pub async fn get_user(&self, user_id: u64) -> anyhow::Result<UserLevel> {
+    pub async fn get_user(&self, user_id: u64, guild_id: u64) -> anyhow::Result<UserLevel> {
         // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user_id);
+        let guild_id = to_i64(guild_id);
 
         let user_queried = sqlx::query!(
-            "SELECT user_id, xp, level, messages, last_message FROM edn_ranks WHERE user_id = ?",
+            "SELECT user_id, xp, level, rank, messages, last_message FROM levels WHERE user_id = ? AND guild_id = ?",
             user_id,
+            guild_id,
         )
         .fetch_optional(&self.pool)
         .await?;
@@ -52,35 +54,45 @@ impl Db {
                 from_i64(record.user_id),
                 record.xp.unwrap_or_default(),
                 record.level.unwrap_or_default(),
+                record.rank.unwrap_or_default(),
                 record.messages.unwrap_or_default(),
                 record.last_message.unwrap_or_default(),
             );
             Ok(UserLevel::from(user))
         } else {
-            sqlx::query!("INSERT INTO edn_ranks (user_id) VALUES (?)", user_id,)
-                .execute(&self.pool)
-                .await?;
+            sqlx::query!(
+                "INSERT INTO levels (user_id, guild_id) VALUES (?, ?)",
+                user_id,
+                guild_id
+            )
+            .execute(&self.pool)
+            .await?;
             Ok(UserLevel::new(from_i64(user_id)))
         }
     }
 
     /// Update user's entry in the database with new values.
-    pub async fn update_user(&self, user: &UserLevel) -> anyhow::Result<()> {
+    pub async fn update_user(&self, user: &UserLevel, guild_id: u64) -> anyhow::Result<()> {
         // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user.user_id);
+        let guild_id = to_i64(guild_id);
 
         sqlx::query!(
-            "UPDATE edn_ranks
+            "UPDATE levels
                 SET xp = ?,
                     level = ?,
+                    rank = ?,
                     messages = ?,
                     last_message = ?
-                WHERE user_id = ?",
+                WHERE user_id = ?
+                AND guild_id = ?",
             user.xp,
             user.level,
+            user.rank,
             user.messages,
             user.last_message,
             user_id,
+            guild_id
         )
         .execute(&self.pool)
         .await?;
@@ -89,11 +101,15 @@ impl Db {
     }
 
     /// Get all entries in the dabase and returns a `Vec<UserLevel>`
-    pub async fn get_all_users(&self) -> anyhow::Result<Vec<UserLevel>> {
-        let all_users_queried =
-            sqlx::query!("SELECT user_id, xp, level, messages, last_message FROM edn_ranks")
-                .fetch_all(&self.pool)
-                .await?;
+    pub async fn get_all_users(&self, guild_id: u64) -> anyhow::Result<Vec<UserLevel>> {
+        let guild_id = to_i64(guild_id);
+
+        let all_users_queried = sqlx::query!(
+            "SELECT user_id, xp, level, rank, messages, last_message FROM levels WHERE guild_id = ?",
+            guild_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
 
         let all_users = all_users_queried
             .iter()
@@ -102,6 +118,7 @@ impl Db {
                     from_i64(record.user_id),
                     record.xp.unwrap_or_default(),
                     record.level.unwrap_or_default(),
+                    record.rank.unwrap_or_default(),
                     record.messages.unwrap_or_default(),
                     record.last_message.unwrap_or_default(),
                 );
@@ -114,8 +131,10 @@ impl Db {
     }
 
     /// Delete all rows in the table.
-    pub async fn delete_table(&self) -> anyhow::Result<()> {
-        sqlx::query!("DELETE FROM edn_ranks")
+    pub async fn delete_table(&self, guild_id: u64) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+
+        sqlx::query!("DELETE FROM levels WHERE guild_id = ?", guild_id)
             .execute(&self.pool)
             .await?;
 

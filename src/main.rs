@@ -70,7 +70,14 @@ impl EventHandler for Handler {
         // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
         let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
-        match db.get_user(user_id).await {
+        // Ensure the command was sent from a guild channel
+        let guild_id = if let Some(id) = msg.guild_id {
+            id.0
+        } else {
+            return;
+        };
+
+        match db.get_user(user_id, guild_id).await {
             Ok(mut user) => {
                 let config = data.get::<Config>().unwrap();
                 let xp_settings = config.read().await.xp_settings;
@@ -91,7 +98,7 @@ impl EventHandler for Handler {
                     }
                 }
                 if has_gained_xp {
-                    if let Err(why) = db.update_user(&user).await {
+                    if let Err(why) = db.update_user(&user, guild_id).await {
                         error!("Cannot update user {user_id}:{why}");
                     }
                 }
