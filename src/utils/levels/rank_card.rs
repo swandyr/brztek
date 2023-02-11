@@ -1,12 +1,14 @@
 use font_kit::font::Font;
-use raqote::{DrawOptions, DrawTarget, Image, Point, SolidSource, Source, Color, PathBuilder, StrokeStyle, GradientStop, Gradient};
+use raqote::{DrawOptions, DrawTarget, Spread, Image, Point, SolidSource, Source, Color, PathBuilder, StrokeStyle, GradientStop, Gradient};
+
+use super::xp::{xp_needed_to_level_up, total_xp_required_for_level};
 
 const CARD_WIDTH: i32 = 440;
-const CARD_HEIGHT: i32 = 160;
-const AVATAR_WIDTH: f32 = 128.0;
-const AVATAR_HEIGHT: f32 = 128.0;
+const CARD_HEIGHT: i32 = 150;
+const AVATAR_WIDTH: f32 = 96.0;
+const AVATAR_HEIGHT: f32 = 96.0;
 
-const FONT_DEJAVU_BLACK: &str = "assets/fonts/DejaVu Sans Mono Nerd Font Complete.ttf";
+const FONT: &str = "assets/fonts/eurostile font/EurostileBold.ttf";
 
 const DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tessellation-Violet.png";
 
@@ -34,13 +36,21 @@ pub async fn gen_card(
     banner_colour: (u8, u8, u8),
     level: i64,
     user_xp: i64,
-    xp_next_level: i64,
 ) -> anyhow::Result<()> {
-    // Request profile picture via HTTP if `avatar_url` is Some().
+    // Xp values
+    let xp_for_actual_level = total_xp_required_for_level(level);
+    let xp_needed_to_level_up = xp_needed_to_level_up(level);
+    let user_xp_in_level = user_xp - xp_for_actual_level;
+    println!("total xp for level {}: {}", level, xp_for_actual_level);
+    println!("user xp: {}", user_xp);
+    println!("xp in his level: {}", user_xp_in_level);
+
+
+    // Request profile picture through HTTP if `avatar_url` is Some().
     // Fallback to a default picture if None.
     let file = if let Some(url) = avatar_url {
         let url = clean_url(url);
-        let buffer =reqwest::get(url).await?.bytes().await?;
+        let buffer = reqwest::get(url).await?.bytes().await?;
         image::load_from_memory(&buffer)?
     } else {
         let default_file = DEFAULT_PP_TESSELATION_VIOLET;
@@ -51,14 +61,15 @@ pub async fn gen_card(
     // Set some colors
     let colors = Colors::default();
 
-    let margin: f32 = (CARD_HEIGHT as f32 / 2.0) - (AVATAR_HEIGHT / 2.0);
+    // let margin: f32 = (CARD_HEIGHT as f32 / 2.0) - (AVATAR_HEIGHT / 2.0);
+    let margin = 16.0_f32;
 
     // Create the target and fill with white
     let mut dt = DrawTarget::new(CARD_WIDTH, CARD_HEIGHT);
     dt.clear(SolidSource::from(colors.white));
 
-    let (r, g, b) = banner_colour;
     // Play with some gradients
+    let (r, g, b) = banner_colour;
     let gradient = Source::new_linear_gradient(
         Gradient {
             stops: vec![
@@ -76,9 +87,9 @@ pub async fn gen_card(
                 },
             ],
         },
-        Point::new(40.0, 0.0),
-        Point::new(190.0, 90.0),
-        raqote::Spread::Pad,
+        Point::new(16.0, 0.0),
+        Point::new(140.0, 90.0),
+        Spread::Pad,
     );
     let mut pb = PathBuilder::new();
     // pb.rect(5.0, 5.0, (CARD_WIDTH - 10) as f32, (CARD_HEIGHT - 10) as f32);
@@ -91,8 +102,7 @@ pub async fn gen_card(
     for i in file.as_bytes().chunks(4) {
         buffer.push((i[3] as u32) << 24 | (i[0] as u32) << 16 | (i[1] as u32) << 8 | i[2] as u32);
     }
-    let avatar_width = file.width() as f32;
-    let _avatar_height = file.height() as f32;
+
     // Create an image that will be drawn on the target
     let image = Image {
         width: file.width().try_into()?,
@@ -101,9 +111,8 @@ pub async fn gen_card(
     };
     dt.draw_image_with_size_at(AVATAR_WIDTH, AVATAR_HEIGHT, margin, margin, &image, &DrawOptions::new());
 
-    // Load font
     let font: Font = font_kit::loader::Loader::from_file(
-        &mut std::fs::File::open(FONT_DEJAVU_BLACK)?,
+        &mut std::fs::File::open(FONT)?,
         0,
     )?;
     let solid_source = Source::Solid(SolidSource::from(colors.white));
@@ -111,7 +120,7 @@ pub async fn gen_card(
         &font,
         22.0,
         username,
-        Point::new(180.0, 35.0),
+        Point::new(140.0, 35.0),
         &solid_source,
         &DrawOptions::new(),
     );
@@ -119,22 +128,24 @@ pub async fn gen_card(
         &font,
         17.,
         &format!("Level: #{level}"),
-        Point::new(180.0, 60.0),
+        Point::new(140.0, 60.0),
         &solid_source,
         &DrawOptions::new(),
     );
+    let total_xp_required_for_next_level = xp_for_actual_level + xp_needed_to_level_up;
     dt.draw_text(
         &font,
         15.,
-        &format!("{user_xp}/{xp_next_level}"),
-        Point::new(260.0, 130.0),
+        &format!("{}/{}", user_xp, total_xp_required_for_next_level),
+        Point::new(190.0, 120.0),
         &solid_source,
         &DrawOptions::new(),
     );
 
     // Draw xp gauge
-    let start = margin.mul_add(2.0, avatar_width);
-    let end = CARD_WIDTH as f32 - margin;
+    // let start = margin.mul_add(2.0, avatar_width); // let start = margin * 2.0 + avatar_width as f32;
+    let start = margin * 4.0;
+    let end = CARD_WIDTH as f32 - start;
     let length = end - start;
 
     let style = StrokeStyle {
@@ -144,8 +155,8 @@ pub async fn gen_card(
     };
 
     let mut pb = PathBuilder::new();
-    pb.move_to(start, 140.);
-    pb.line_to(end, 140.);
+    pb.move_to(start, 130.);
+    pb.line_to(end, 130.);
     let path = pb.finish();
 
     dt.stroke(
@@ -154,10 +165,11 @@ pub async fn gen_card(
         &style, 
         &DrawOptions::new());
 
-    let end = (user_xp as f32 / xp_next_level as f32).mul_add(length, start);
+
+    let end = (user_xp_in_level as f32 / xp_needed_to_level_up as f32).mul_add(length, start); // let end = (user_xp_in_level / xp_to_next_level) * length + start;
     let mut pb = PathBuilder::new();
-    pb.move_to(start, 140.0);
-    pb.line_to(end, 140.0);
+    pb.move_to(start, 130.0);
+    pb.line_to(end, 130.0);
     let path = pb.finish();
 
     dt.stroke(
@@ -168,10 +180,12 @@ pub async fn gen_card(
     );
 
     dt.write_png("rank.png")?;
+    // ? See for later use `write_png_to_vec`: https://github.com/jrmuizel/raqote/pull/180
     
     Ok(())
 }
 
+// Change .webp extension to .png and remove parameters from URL
 fn clean_url(mut url: String) -> String {
     if let Some(index) = url.find("webp") {
         let _  = url.split_off(index);
@@ -187,14 +201,14 @@ async fn test_gen_card_with_url() {
         "https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.webp?size=1024",
     );
     let colour = (255, 255, 0);
-    assert!(gen_card(&username, Some(avatar_url), colour, 2, 137, 255).await.is_ok());
+    assert!(gen_card(&username, Some(avatar_url), colour, 2, 455).await.is_ok());
 }
 
 #[tokio::test]
 async fn test_gen_card_with_default_pp() {
     let username = String::from("Username#64523");
     let colour = (255, 255, 0);
-    assert!(gen_card(&username, None, colour, 2, 137, 255).await.is_ok());
+    assert!(gen_card(&username, None, colour, 2, 275).await.is_ok());
 }
 
 #[test]

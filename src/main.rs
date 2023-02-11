@@ -1,7 +1,8 @@
-use rand::Rng;
+use rand::{prelude::thread_rng, Rng};
 use serenity::{
     async_trait,
     framework::standard::{macros::group, StandardFramework},
+    http::Http,
     model::{
         channel::Message,
         gateway::Ready,
@@ -9,29 +10,38 @@ use serenity::{
     },
     prelude::*,
 };
-use std::{env, sync::Arc};
-#[allow(unused_imports)]
-use tracing::{debug, error, info};
+use std::{collections::HashSet, env, sync::Arc};
+use tracing::{error, info};
 
 mod utils;
-use utils::db::Db;
+use utils::{config::Config, db::Db};
 
 mod commands;
 use commands::{
-    general::{HELLO_COMMAND, PING_COMMAND, WELCOME_COMMAND},
+    admin::{AM_I_ADMIN_COMMAND, CONFIG_COMMAND, DELETE_RANKS_COMMAND},
+    general::PING_COMMAND,
     help::HELP,
-    ranking::{DELETE_RANKS_COMMAND, RANK_COMMAND, TOP_COMMAND},
+    hooks::{after, unknown_command},
+    ranking::{RANK_COMMAND, TOP_COMMAND},
 };
 
 #[group]
-#[commands(ping, hello, welcome)]
-pub struct General;
+#[summary = "General commands"]
+#[commands(ping)]
+struct General;
 
 #[group]
-#[description = "Command relatable to xp and levels"]
-#[summary = "Leveling stuff"]
-#[commands(rank, top, delete_ranks)]
-pub struct Ranking;
+#[only_in(guilds)]
+#[summary = "Levels & rank commands"]
+#[description = "Show your personal rank or the top 10 most active users in the server"]
+#[commands(rank, top)]
+struct Levels;
+
+#[group]
+#[only_in(guilds)]
+#[summary = "Admin commands"]
+#[commands(config, am_i_admin, delete_ranks)]
+struct Administrators;
 
 struct Handler;
 
@@ -49,40 +59,44 @@ impl EventHandler for Handler {
 
         let user_id = msg.author.id.0;
 
+        let data = ctx.data.read().await;
+
         // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
-        if let Some(db) = ctx.data.read().await.get::<Db>() {
-            let get_user = db.get_user(user_id).await;
-            match get_user {
-                Ok(mut user) => {
-                    let has_gained_xp = user.gain_xp();
-                    if user.level_up() {
-                        if let Err(why) = msg
-                            .channel_id
-                            .send_message(&ctx.http, |m| {
-                                let mention = Mention::from(msg.author.id);
-                                let message = format!("Level Up, {mention}!");
-                                m.content(&message)
-                            })
-                            .await
-                        {
-                            error!("Error on send message: {why}");
-                        }
-                    }
-                    if has_gained_xp {
-                        if let Err(why) = db.update_user(&user).await {
-                            error!("Cannot update user {user_id}:{why}");
-                        }
+        let db = data.get::<Db>().expect("Expected Db in TypeMap");
+
+        match db.get_user(user_id).await {
+            Ok(mut user) => {
+                let config = data.get::<Config>().unwrap();
+                let xp_settings = config.read().await.xp_settings;
+
+                let has_gained_xp = user.gain_xp_if_not_spam(xp_settings);
+
+                if user.has_level_up() {
+                    if let Err(why) = msg
+                        .channel_id
+                        .send_message(&ctx.http, |m| {
+                            let mention = Mention::from(msg.author.id);
+                            let message = format!("Level Up, {mention}!");
+                            m.content(&message)
+                        })
+                        .await
+                    {
+                        error!("Error on send message: {why}");
                     }
                 }
-                Err(why) => {
-                    error!("Cannot get user {user_id} from database: {why}");
+                if has_gained_xp {
+                    if let Err(why) = db.update_user(&user).await {
+                        error!("Cannot update user {user_id}:{why}");
+                    }
                 }
+            }
+            Err(why) => {
+                error!("Cannot get user {user_id} from database: {why}");
             }
         }
     }
 
     async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
-        use rand::prelude::thread_rng;
         use serenity::constants::JOIN_MESSAGES;
 
         let index = thread_rng().gen_range(0..JOIN_MESSAGES.len());
@@ -137,13 +151,10 @@ impl EventHandler for Handler {
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Failed to load .env file");
-    tracing_subscriber::fmt::init();
-
-    let framework = StandardFramework::new()
-        .configure(|c| c.prefix("!"))
-        .group(&GENERAL_GROUP)
-        .group(&RANKING_GROUP)
-        .help(&HELP);
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_target(false)
+        .init();
 
     let token = env::var("DISCORD_TOKEN").expect("token needed");
     let intents = GatewayIntents::non_privileged()
@@ -151,9 +162,47 @@ async fn main() {
         | GatewayIntents::GUILDS
         | GatewayIntents::GUILD_MEMBERS;
 
+    let http = Http::new(&token);
+    let (owners, bot_id) = match http.get_current_application_info().await {
+        Ok(info) => {
+            let mut owners = HashSet::new();
+            if let Some(team) = info.team {
+                owners.insert(team.owner_user_id);
+            } else {
+                owners.insert(info.owner.id);
+            }
+            match http.get_current_user().await {
+                Ok(bot_id) => (owners, bot_id.id),
+                Err(why) => {
+                    error!("Could not access the bot id: {why}");
+                    panic!()
+                }
+            }
+        }
+        Err(why) => {
+            error!("Could not access application info: {why}");
+            panic!()
+        }
+    };
+
+    let framework = StandardFramework::new()
+        .configure(|c| c.prefix("!").on_mention(Some(bot_id)).owners(owners))
+        .group(&GENERAL_GROUP)
+        .group(&LEVELS_GROUP)
+        .group(&ADMINISTRATORS_GROUP)
+        .help(&HELP)
+        .after(after)
+        .unrecognised_command(unknown_command);
+
     let db_url = env::var("DATABASE_URL").expect("database path not found");
     let db = Db::new(&db_url).await;
     db.run_migrations().await.expect("Unable to run migrations");
+
+    let mut config = Config::load().unwrap_or_else(|err| {
+        error!("Can't read config file: {err}");
+        Config::default()
+    });
+    config.test_string = String::from("namého"); //? Testing string parameter
 
     let handler = Handler;
 
@@ -166,6 +215,7 @@ async fn main() {
     {
         let mut data = client.data.write().await;
         data.insert::<Db>(Arc::new(db));
+        data.insert::<Config>(Arc::new(RwLock::new(config)));
     }
 
     if let Err(why) = client.start().await {

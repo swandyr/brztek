@@ -1,3 +1,4 @@
+use super::xp::{total_xp_required_for_level, xp_needed_to_level_up};
 use font_kit::font::Font;
 use raqote::{
     Color, DrawOptions, DrawTarget, Gradient, GradientStop, PathBuilder, Point, SolidSource,
@@ -31,10 +32,10 @@ impl Default for Colors {
 pub async fn gen_top_ten_card(
     users: &[(
         String, //username
-        i64,    // rank
-        i64,    // level
-        i64,    // current xp
-        i64,    // xp for next level
+        // Option<&str>, // avatar url
+        i64, // rank
+        i64, // level
+        i64, // current xp
     )],
 ) -> anyhow::Result<()> {
     // Some colors
@@ -74,7 +75,6 @@ pub async fn gen_top_ten_card(
     let path = pb.finish();
     dt.fill(&path, &gradient, &DrawOptions::new());
 
-    // Load font
     let font: Font =
         font_kit::loader::Loader::from_file(&mut std::fs::File::open(FONT_DEJAVU_BLACK)?, 0)?;
 
@@ -89,11 +89,24 @@ pub async fn gen_top_ten_card(
         &DrawOptions::new(),
     );
 
-    // Draw on target for each user
+    // Draw elements for each users
+    //
+    // y_offset set where vertically the darget is drawn,
+    // it is incremented with the USER_HEIGHT constant when all elements
+    // of a user are drawn
     let mut y_offset = TITLE_HEIGHT as f32;
     for user in users {
-        let (name, rank, level, current_xp, next_xp) = user;
+        let (name, rank, level, current_xp) = user;
+        // Xp values
+        let xp_for_actual_level = total_xp_required_for_level(*level);
+        let xp_needed_to_level_up = xp_needed_to_level_up(*level);
+        let user_xp_in_level = current_xp - xp_for_actual_level;
+        println!("total xp for level {}: {}", level, xp_for_actual_level);
+        println!("user xp: {}", current_xp);
+        println!("xp in his level: {}", user_xp_in_level);
 
+        // x_pos tracks the horizontal position to draw elements
+        // relatively to the others, by incrementing or decrementing
         let mut x_pos = 10.0;
         dt.draw_text(
             &font,
@@ -115,10 +128,11 @@ pub async fn gen_top_ten_card(
         );
 
         x_pos += 165.0;
+        let total_xp_required_for_next_level = xp_for_actual_level + xp_needed_to_level_up;
         dt.draw_text(
             &font,
             14.0,
-            &format!("{current_xp}/{next_xp}"),
+            &format!("{current_xp}/{total_xp_required_for_next_level}"),
             Point::new(x_pos, 24.0 + y_offset),
             &solid_source,
             &DrawOptions::new(),
@@ -156,7 +170,7 @@ pub async fn gen_top_ten_card(
             &DrawOptions::new(),
         );
 
-        let end = (*current_xp as f32 / *next_xp as f32).mul_add(length, start);
+        let end = (user_xp_in_level as f32 / xp_needed_to_level_up as f32).mul_add(length, start);
         let mut pb = PathBuilder::new();
         pb.move_to(start, 30.0 + y_offset);
         pb.line_to(end, 30.0 + y_offset);
@@ -179,8 +193,8 @@ pub async fn gen_top_ten_card(
 #[tokio::test]
 async fn test_gen_top() {
     let users = vec![
-        ("user1".to_string(), 1, 4, 475, 770),
-        ("user2".to_string(), 2, 3, 320, 435),
+        ("user1".to_string(), 1, 4, 950),
+        ("user2".to_string(), 2, 3, 490),
     ];
     assert!(gen_top_ten_card(&users).await.is_ok());
 }

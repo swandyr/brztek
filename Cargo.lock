@@ -465,6 +465,8 @@ dependencies = [
  "rand",
  "raqote",
  "reqwest",
+ "serde",
+ "serde_json",
  "serenity",
  "sqlx",
  "tokio",
