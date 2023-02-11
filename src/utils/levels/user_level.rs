@@ -25,7 +25,7 @@ impl UserLevel {
 
     pub fn gain_xp_if_not_spam(&mut self, xp_settings: XpSettings) -> bool {
         // Check the time between last and new message.
-        // Return true if below ANTI_SPAM constant,
+        // Return true if below anti_spam setting,
         // else false without adding xp
         let now: i64 = Utc::now().timestamp();
         if now - self.last_message > xp_settings.delay_anti_spam {

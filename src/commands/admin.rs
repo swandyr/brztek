@@ -1,8 +1,80 @@
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
-    model::channel::Message,
+    model::{channel::Message, prelude::PartialMember, user::User, Permissions},
     prelude::*,
 };
+use tracing::info;
+
+use crate::utils::db::Db;
+
+// Check if the author of the message has admin permissions
+async fn is_admin(ctx: &Context, member: &PartialMember) -> bool {
+    member.roles.iter().any(|r| {
+        r.to_role_cached(&ctx.cache)
+            .map_or(false, |r| r.has_permission(Permissions::ADMINISTRATOR))
+    })
+}
+
+#[command]
+#[description = "Check if you have administrator permissions"]
+pub async fn am_i_admin(ctx: &Context, msg: &Message) -> CommandResult {
+    let is_admin = if let Some(member) = &msg.member {
+        is_admin(ctx, member).await
+    } else {
+        false
+    };
+
+    let content = if is_admin {
+        String::from("Yes, you are!")
+    } else {
+        String::from("No, you're not.")
+    };
+
+    msg.reply(&ctx.http, content).await?;
+
+    Ok(())
+}
+
+// -------------- Admin Xp Commands -------------------
+// Retrieve a user from username in the guild
+// Possibility to set level and/or xp
+
+#[command]
+#[description = "Set a user's Xp"]
+pub async fn setxp(ctx: &Context, msg: &Message, arg: Args) -> CommandResult {
+    todo!()
+}
+
+async fn get_user(ctx: &Context) -> Option<User> {
+    todo!()
+}
+
+#[command]
+#[description = "Clear database"]
+pub async fn delete_ranks(ctx: &Context, msg: &Message) -> CommandResult {
+    if let Some(member) = &msg.member {
+        if !is_admin(ctx, member).await {
+            msg.channel_id
+                .send_message(&ctx.http, |m| {
+                    m.content("You don't have the permission to do that")
+                })
+                .await?;
+            return Ok(());
+        }
+    }
+
+    let data = ctx.data.read().await;
+    let db = data.get::<Db>().expect("Expected Db in TypeMap.");
+
+    info!("Delete rows in table 'edn_ranks'");
+    db.delete_table().await?;
+
+    msg.channel_id.say(&ctx.http, "All xp dropped to 0").await?;
+
+    Ok(())
+}
+
+// ------------ Configuration Parameters --------------
 use tracing::debug;
 
 use crate::utils::config::Config;
@@ -42,6 +114,7 @@ impl std::fmt::Display for Parameters {
 }
 
 #[command]
+#[description = "Get or set configuration parameters"]
 pub async fn config(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let parameter = Parameters::try_from(args.single::<String>()?.as_str())?;
     let value = args.current();

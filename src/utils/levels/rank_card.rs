@@ -8,7 +8,7 @@ const CARD_HEIGHT: i32 = 150;
 const AVATAR_WIDTH: f32 = 96.0;
 const AVATAR_HEIGHT: f32 = 96.0;
 
-const FONT_DEJAVU_BLACK: &str = "assets/fonts/DejaVu Sans Mono Nerd Font Complete.ttf";
+const FONT: &str = "assets/fonts/eurostile font/EurostileBold.ttf";
 
 const DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tessellation-Violet.png";
 
@@ -124,7 +124,7 @@ pub async fn gen_card(
     dt.draw_image_with_size_at(AVATAR_WIDTH, AVATAR_HEIGHT, margin, margin, &image, &DrawOptions::new());
 
     let font: Font = font_kit::loader::Loader::from_file(
-        &mut std::fs::File::open(FONT_DEJAVU_BLACK)?,
+        &mut std::fs::File::open(FONT)?,
         0,
     )?;
     let solid_source = Source::Solid(SolidSource::from(colors.white));

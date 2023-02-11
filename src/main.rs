@@ -18,26 +18,30 @@ use utils::{config::Config, db::Db};
 
 mod commands;
 use commands::{
-    config::CONFIG_COMMAND,
-    general::{HELLO_COMMAND, PING_COMMAND, WELCOME_COMMAND},
+    admin::{AM_I_ADMIN_COMMAND, CONFIG_COMMAND, DELETE_RANKS_COMMAND},
+    general::PING_COMMAND,
     help::HELP,
     hooks::{after, unknown_command},
-    ranking::{DELETE_RANKS_COMMAND, RANK_COMMAND, TOP_COMMAND},
+    ranking::{RANK_COMMAND, TOP_COMMAND},
 };
 
 #[group]
-#[commands(ping, hello, welcome)]
+#[summary = "General commands"]
+#[commands(ping)]
 struct General;
 
 #[group]
-#[description = "Command relatable to xp and levels"]
-#[summary = "Leveling stuff"]
-#[commands(rank, top, delete_ranks)]
-struct Ranking;
+#[only_in(guilds)]
+#[summary = "Levels & rank commands"]
+#[description = "Show your personal rank or the top 10 most active users in the server"]
+#[commands(rank, top)]
+struct Levels;
 
 #[group]
-#[commands(config)]
-struct ConfigCommands;
+#[only_in(guilds)]
+#[summary = "Admin commands"]
+#[commands(config, am_i_admin, delete_ranks)]
+struct Administrators;
 
 struct Handler;
 
@@ -190,11 +194,11 @@ async fn main() {
     let framework = StandardFramework::new()
         .configure(|c| c.prefix("!").on_mention(Some(bot_id)).owners(owners))
         .group(&GENERAL_GROUP)
-        .group(&RANKING_GROUP)
-        .group(&CONFIGCOMMANDS_GROUP)
+        .group(&LEVELS_GROUP)
+        .group(&ADMINISTRATORS_GROUP)
         .help(&HELP)
         .after(after)
-        .unrecognised_command(unknown_command); //FIXME: unknown_command don't seem to work
+        .unrecognised_command(unknown_command);
 
     let db_url = env::var("DATABASE_URL").expect("database path not found");
     let db = Db::new(&db_url).await;

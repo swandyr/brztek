@@ -11,9 +11,7 @@ use tracing::{debug, info};
 
 use crate::utils::{
     db::Db,
-    levels::{
-        rank_card::gen_card, top_ten_card::gen_top_ten_card, xp::total_xp_required_for_level,
-    },
+    levels::{rank_card::gen_card, top_ten_card::gen_top_ten_card},
 };
 
 #[command]
@@ -31,12 +29,11 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
     // Generate a rank card and attach it to a message
     let username = format!("{}#{}", msg.author.name, msg.author.discriminator);
     let avatar_url = msg.author.avatar_url();
-    let user_http = ctx.http.get_user(user_id).await;
-    let banner_colour = if let Ok(user) = user_http {
-        user.accent_colour.unwrap_or(Colour::LIGHTER_GREY).tuple()
-    } else {
-        Colour::LIGHTER_GREY.tuple()
-    };
+    let user_http = ctx.http.get_user(user_id).await?;
+    let banner_colour = user_http
+        .accent_colour
+        .unwrap_or(Colour::LIGHTER_GREY)
+        .tuple();
 
     // Generate an image that is saved with name "rank.png"
     gen_card(
@@ -114,20 +111,6 @@ pub async fn top(ctx: &Context, msg: &Message) -> CommandResult {
             m.add_file(file)
         })
         .await?;
-
-    Ok(())
-}
-
-#[command]
-#[description = "Clear database"]
-pub async fn delete_ranks(ctx: &Context, msg: &Message) -> CommandResult {
-    let data = ctx.data.read().await;
-    let db = data.get::<Db>().expect("Expected Db in TypeMap.");
-
-    info!("Delete rows in table 'edn_ranks'");
-    db.delete_table().await?;
-
-    msg.channel_id.say(&ctx.http, "All xp dropped to 0").await?;
 
     Ok(())
 }
