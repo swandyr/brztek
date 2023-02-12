@@ -4,6 +4,10 @@ use serenity::{
     framework::standard::{macros::group, StandardFramework},
     http::Http,
     model::{
+        application::{
+            command::Command,
+            interaction::{Interaction, InteractionResponseType},
+        },
         channel::Message,
         gateway::Ready,
         prelude::{GuildId, Member, Mention, User},
@@ -17,6 +21,7 @@ mod utils;
 use utils::{config::Config, db::Db};
 
 mod commands;
+mod slash_commands;
 use commands::{
     admin::{AM_I_ADMIN_COMMAND, CONFIG_COMMAND, DELETE_RANKS_COMMAND},
     general::{LEARN_COMMAND, PING_COMMAND},
@@ -47,8 +52,40 @@ struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
         info!("{} is connected.", ready.user.name);
+
+        let guild_id_int = 1068933063935004722;
+        let guild_id = GuildId(guild_id_int);
+
+        let _commands = GuildId::set_application_commands(&guild_id, &ctx.http, |commands| {
+            commands.create_application_command(|command| {
+                slash_commands::general::learn::register(command)
+            })
+        })
+        .await;
+    }
+
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Interaction::ApplicationCommand(command) = interaction {
+            debug!("Received command interaction: {:#?}", command);
+
+            let content = match command.data.name.as_str() {
+                "learn" => slash_commands::general::learn::run(&ctx, &command.data.options).await,
+                _ => "Not implemented :(".to_string(),
+            };
+
+            if let Err(why) = command
+                .create_interaction_response(&ctx.http, |response| {
+                    response
+                        .kind(InteractionResponseType::ChannelMessageWithSource)
+                        .interaction_response_data(|message| message.content(content))
+                })
+                .await
+            {
+                error!("Cannot responde to slash command: {why}");
+            }
+        }
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
