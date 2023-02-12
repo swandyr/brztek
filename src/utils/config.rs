@@ -1,4 +1,4 @@
-use std::{io::Write, path::Path, sync::Arc};
+use std::{fmt::Display, io::Write, path::Path, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use serenity::prelude::{RwLock, TypeMapKey};
@@ -58,6 +58,28 @@ impl Default for XpSettings {
             min_xp_gain: 15,
             max_xp_gain: 25,
             delay_anti_spam: 30,
+        }
+    }
+}
+
+////////////////////////////////////////////////////
+
+#[derive(Debug)]
+pub enum GuildCfgParam {
+    SpamDelay(i32),
+    MinXpGain(i32),
+    MaxXpGain(i32),
+}
+
+impl TryFrom<String> for GuildCfgParam {
+    type Error = &'static str;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "spam_delay" => Ok(Self::SpamDelay(0)),
+            "min_xp_gain" => Ok(Self::MinXpGain(0)),
+            "max_xp_gain" => Ok(Self::MaxXpGain(0)),
+            _ => Err("Invalid conversion to GuidCfgParam"),
         }
     }
 }

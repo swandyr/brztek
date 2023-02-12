@@ -3,7 +3,7 @@ use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::sync::Arc;
 use tracing::debug;
 
-use crate::utils::levels::user_level::UserLevel;
+use super::{config::GuildCfgParam, levels::user_level::UserLevel};
 
 pub struct Db {
     pool: SqlitePool,
@@ -165,6 +165,118 @@ impl Db {
 
         Ok(())
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////:
+
+    pub async fn get_config(&self, guild_id: u64) -> anyhow::Result<(i64, i64, i64)> {
+        let guild_id = to_i64(guild_id);
+
+        let record = sqlx::query!(
+            "SELECT spam_delay, min_xp_gain, max_xp_gain 
+            FROM config
+            WHERE guild_id = ?",
+            guild_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok((record.spam_delay, record.min_xp_gain, record.max_xp_gain))
+    }
+
+    pub async fn get_spam_delay(&self, guild_id: u64) -> anyhow::Result<i64> {
+        let guild_id = to_i64(guild_id);
+
+        let record = sqlx::query!(
+            "SELECT spam_delay 
+            FROM config 
+            WHERE guild_id = ?",
+            guild_id,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(record.spam_delay)
+    }
+
+    pub async fn set_spam_delay(&self, guild_id: u64, value: i64) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+
+        sqlx::query!(
+            "UPDATE config
+            SET spam_delay = ?
+            WHERE guild_id = ?",
+            value,
+            guild_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_min_xp_gain(&self, guild_id: u64) -> anyhow::Result<i64> {
+        let guild_id = to_i64(guild_id);
+
+        let record = sqlx::query!(
+            "SELECT min_xp_gain
+            FROM config
+            WHERE guild_id = ?",
+            guild_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(record.min_xp_gain)
+    }
+
+    pub async fn set_min_xp_gain(&self, guild_id: u64, value: i64) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+
+        sqlx::query!(
+            "UPDATE config
+            SET min_xp_gain = ?
+            WHERE guild_id = ?",
+            value,
+            guild_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_max_xp_gain(&self, guild_id: u64) -> anyhow::Result<i64> {
+        let guild_id = to_i64(guild_id);
+
+        let record = sqlx::query!(
+            "SELECT max_xp_gain
+            FROM config
+            WHERE guild_id = ?",
+            guild_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(record.max_xp_gain)
+    }
+
+    pub async fn set_max_xp_gain(&self, guild_id: u64, value: i64) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+
+        sqlx::query!(
+            "UPDATE config
+            SET max_xp_gain = ?
+            WHERE guild_id = ?",
+            value,
+            guild_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
 
     pub async fn get_command(&self, command_name: &str) -> anyhow::Result<Option<String>> {
         let content = sqlx::query!(

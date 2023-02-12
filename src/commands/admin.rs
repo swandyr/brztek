@@ -87,7 +87,7 @@ pub async fn delete_ranks(ctx: &Context, msg: &Message) -> CommandResult {
 // ------------ Configuration Parameters --------------
 use tracing::debug;
 
-use crate::utils::config::Config;
+//use crate::utils::config::Config;
 
 #[derive(Debug, Clone, Copy)]
 enum Parameters {
@@ -123,14 +123,34 @@ impl std::fmt::Display for Parameters {
 #[command]
 #[description = "Get or set configuration parameters"]
 pub async fn config(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let parameter = Parameters::try_from(args.single::<String>()?.as_str())?;
-    let value = args.current();
+    if let Some(arg) = args.current() {
+        let parameter = Parameters::try_from(arg)?;
+        args.advance();
+        let value = args.current();
 
-    if handle_command(ctx, msg, parameter, value).await.is_err() {
+        if handle_command(ctx, msg, parameter, value).await.is_err() {
+            msg.channel_id
+                .send_message(&ctx.http, |m| m.content("Argument is invalid."))
+                .await?;
+        }
+    } else {
+        let data = ctx.data.read().await;
+        let db = data.get::<Db>().expect("Expected Db in TypeMap");
+        let guild_id = msg.guild_id.unwrap().0;
+
+        let (spam_delay, min_xp_gain, max_xp_gain) = db.get_config(guild_id).await?;
+        let content = format!(
+            r#"> **Server config:**
+        > spam_delay: {spam_delay}
+        > min_xp_gain {min_xp_gain}
+        > max_xp_gain {max_xp_gain}"#
+        );
+
         msg.channel_id
-            .send_message(&ctx.http, |m| m.content("Argument is invalid."))
+            .send_message(&ctx.http, |m| m.content(&content))
             .await?;
     }
+
     Ok(())
 }
 
@@ -140,13 +160,15 @@ async fn handle_command(
     parameter: Parameters,
     value: Option<&str>,
 ) -> CommandResult {
+    let guild_id = msg.guild_id.unwrap().0;
+
     if let Some(val) = value {
-        set_parameter(ctx, parameter, val).await?;
+        set_parameter(ctx, parameter, val, guild_id).await?;
 
         let content = format!(
             "Changing {} to {}",
             parameter,
-            get_parameter(ctx, parameter).await?
+            get_parameter(ctx, parameter, guild_id).await?
         );
         msg.channel_id
             .send_message(&ctx.http, |m| m.content(content))
@@ -156,7 +178,7 @@ async fn handle_command(
             let content = format!(
                 "{} is set to {}.",
                 parameter,
-                get_parameter(ctx, parameter).await?
+                get_parameter(ctx, parameter, guild_id).await?
             );
             msg.channel_id
                 .send_message(&ctx.http, |m| m.content(content))
@@ -167,34 +189,46 @@ async fn handle_command(
     Ok(())
 }
 
-async fn set_parameter(ctx: &Context, parameter: Parameters, value: &str) -> anyhow::Result<()> {
+async fn set_parameter(
+    ctx: &Context,
+    parameter: Parameters,
+    value: &str,
+    guild_id: u64,
+) -> anyhow::Result<()> {
     // Acquire a write lock on the data
     let data = ctx.data.write().await;
     debug!("Data lock acquired.");
+    let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
-    // Get mut ref of the config
-    let config = data.get::<Config>().expect("Expected Config in TypeMap.");
-    debug!("Get mut Config.");
-
-    // Acquire a write lock on the config
-    let mut lock = config.write().await;
-    debug!("Config lock acquired.");
-
-    // Internal of Config are mutable
     match parameter {
-        SpamDelay => {
-            lock.xp_settings.delay_anti_spam = value.parse::<i64>()?;
-            debug!("delay set to {value}.");
-        }
-        MinXpGain => {
-            lock.xp_settings.min_xp_gain = value.parse::<i64>()?;
-            debug!("min xp gain set to {value}.");
-        }
-        MaxXpGain => {
-            lock.xp_settings.max_xp_gain = value.parse::<i64>()?;
-            debug!("max xp gain set to {value}.");
-        }
-    }
+        SpamDelay => db.set_spam_delay(guild_id, value.parse()?).await?,
+        MinXpGain => db.set_min_xp_gain(guild_id, value.parse()?).await?,
+        MaxXpGain => db.set_max_xp_gain(guild_id, value.parse()?).await?,
+    };
+
+    // // Get mut ref of the config
+    // let config = data.get::<Config>().expect("Expected Config in TypeMap.");
+    // debug!("Get mut Config.");
+
+    // // Acquire a write lock on the config
+    // let mut lock = config.write().await;
+    // debug!("Config lock acquired.");
+
+    // // Internal of Config are mutable
+    // match parameter {
+    //     SpamDelay => {
+    //         lock.xp_settings.delay_anti_spam = value.parse::<i64>()?;
+    //         debug!("delay set to {value}.");
+    //     }
+    //     MinXpGain => {
+    //         lock.xp_settings.min_xp_gain = value.parse::<i64>()?;
+    //         debug!("min xp gain set to {value}.");
+    //     }
+    //     MaxXpGain => {
+    //         lock.xp_settings.max_xp_gain = value.parse::<i64>()?;
+    //         debug!("max xp gain set to {value}.");
+    //     }
+    // }
 
     // Drop acquired locks
     // drop(lock);
@@ -205,16 +239,28 @@ async fn set_parameter(ctx: &Context, parameter: Parameters, value: &str) -> any
     Ok(())
 }
 
-async fn get_parameter(ctx: &Context, parameter: Parameters) -> Result<String, anyhow::Error> {
+async fn get_parameter(
+    ctx: &Context,
+    parameter: Parameters,
+    guild_id: u64,
+) -> Result<String, anyhow::Error> {
     let data = ctx.data.read().await;
-    let config = data.get::<Config>().unwrap();
-    let lock = config.read().await;
+    let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
     let value = match parameter {
-        SpamDelay => lock.xp_settings.delay_anti_spam.to_string(),
-        MinXpGain => lock.xp_settings.min_xp_gain.to_string(),
-        MaxXpGain => lock.xp_settings.max_xp_gain.to_string(),
+        SpamDelay => db.get_spam_delay(guild_id).await?,
+        MinXpGain => db.get_min_xp_gain(guild_id).await?,
+        MaxXpGain => db.get_max_xp_gain(guild_id).await?,
     };
 
-    Ok(value)
+    // let config = data.get::<Config>().unwrap();
+    // let lock = config.read().await;
+
+    // let value = match parameter {
+    //     SpamDelay => lock.xp_settings.delay_anti_spam.to_string(),
+    //     MinXpGain => lock.xp_settings.min_xp_gain.to_string(),
+    //     MaxXpGain => lock.xp_settings.max_xp_gain.to_string(),
+    // };
+
+    Ok(value.to_string())
 }

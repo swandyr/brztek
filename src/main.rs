@@ -288,10 +288,10 @@ async fn main() {
     let db = Db::new(&db_url).await;
     db.run_migrations().await.expect("Unable to run migrations");
 
-    let mut config = Config::load().unwrap_or_else(|err| {
-        error!("Can't read config file: {err}");
-        Config::default()
-    });
+    // let mut config = Config::load().unwrap_or_else(|err| {
+    //     error!("Can't read config file: {err}");
+    //     Config::default()
+    // });
 
     let handler = Handler;
 
@@ -304,7 +304,7 @@ async fn main() {
     {
         let mut data = client.data.write().await;
         data.insert::<Db>(Arc::new(db));
-        data.insert::<Config>(Arc::new(RwLock::new(config)));
+        // data.insert::<Config>(Arc::new(RwLock::new(config)));
     }
 
     if let Err(why) = client.start().await {

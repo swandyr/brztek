@@ -126,9 +126,9 @@ pub async fn gen_card(
 
     dt.fill_rect(
         0.0,            // AVATAR_WIDTH + margin,
-        margin,            // margin,
+        0.0,            // margin,
         CARD_WIDTH as f32,     // 250.0,
-        AVATAR_HEIGHT,    // AVATAR_HEIGHT,
+        CARD_HEIGHT as f32,    // AVATAR_HEIGHT,
         &Source::Solid(SolidSource::from_unpremultiplied_argb(a, r, g, b)),
         &DrawOptions {
             blend_mode: raqote::BlendMode::Darken,
