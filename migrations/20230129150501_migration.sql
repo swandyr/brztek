@@ -6,5 +6,10 @@ CREATE TABLE IF NOT EXISTS levels (
     level           INTEGER DEFAULT 0,
     rank            INTEGER DEFAULT 0,
     messages        INTEGER DEFAULT 0,
-    last_message    INTEGER DEFAULT 0
-)
+    last_message    INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, guild_id)
+);
+CREATE TABLE IF NOT EXISTS learned_cmd (
+    name            TEXT PRIMARY KEY,
+    content         TEXT
+);

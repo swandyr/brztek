@@ -5,6 +5,8 @@ use serenity::{
 };
 use tracing::error;
 
+use crate::utils::db::Db;
+
 #[hook]
 pub async fn after(
     _ctx: &Context,
@@ -19,8 +21,26 @@ pub async fn after(
 
 #[hook]
 pub async fn unknown_command(ctx: &Context, msg: &Message, unknown_command_name: &str) {
-    let content = format!("Could not find command named '{unknown_command_name}'");
-    msg.reply(&ctx.http, content)
+    let data = ctx.data.read().await;
+    let db = data.get::<Db>().expect("Expected Db in TypeMap");
+
+    let queried = db
+        .get_command(unknown_command_name)
         .await
-        .expect("Error with hook 'unknown command");
+        .expect("Query learned_command return error.");
+
+    match queried {
+        Some(link) => {
+            msg.channel_id
+                .send_message(&ctx.http, |m| m.content(link))
+                .await
+                .expect("Error with send learned command link");
+        }
+        None => {
+            let content = format!("Could not find command named '{unknown_command_name}'");
+            msg.reply(&ctx.http, content)
+                .await
+                .expect("Error with hook 'unknown command'");
+        }
+    }
 }

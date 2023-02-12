@@ -19,7 +19,7 @@ use utils::{config::Config, db::Db};
 mod commands;
 use commands::{
     admin::{AM_I_ADMIN_COMMAND, CONFIG_COMMAND, DELETE_RANKS_COMMAND},
-    general::PING_COMMAND,
+    general::{LEARN_COMMAND, PING_COMMAND},
     help::HELP,
     hooks::{after, unknown_command},
     ranking::{RANK_COMMAND, TOP_COMMAND},
@@ -27,7 +27,7 @@ use commands::{
 
 #[group]
 #[summary = "General commands"]
-#[commands(ping)]
+#[commands(ping, learn)]
 struct General;
 
 #[group]

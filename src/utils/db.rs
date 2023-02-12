@@ -1,6 +1,7 @@
 use serenity::prelude::TypeMapKey;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::sync::Arc;
+use tracing::debug;
 
 use crate::utils::levels::user_level::UserLevel;
 
@@ -42,7 +43,9 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let user_queried = sqlx::query!(
-            "SELECT user_id, xp, level, rank, messages, last_message FROM levels WHERE user_id = ? AND guild_id = ?",
+            "SELECT user_id, xp, level, rank, messages, last_message FROM levels 
+            WHERE user_id = ? 
+            AND guild_id = ?",
             user_id,
             guild_id,
         )
@@ -107,9 +110,9 @@ impl Db {
 
             sqlx::query!(
                 "UPDATE levels
-            SET rank = ?
-            WHERE user_id = ?
-            AND guild_id = ?",
+                SET rank = ?
+                WHERE user_id = ?
+                AND guild_id = ?",
                 user.rank,
                 user_id,
                 guild_id
@@ -126,7 +129,8 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let all_users_queried = sqlx::query!(
-            "SELECT user_id, xp, level, rank, messages, last_message FROM levels WHERE guild_id = ?",
+            "SELECT user_id, xp, level, rank, messages, last_message FROM levels
+            WHERE guild_id = ?",
             guild_id
         )
         .fetch_all(&self.pool)
@@ -158,6 +162,37 @@ impl Db {
         sqlx::query!("DELETE FROM levels WHERE guild_id = ?", guild_id)
             .execute(&self.pool)
             .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_command(&self, command_name: &str) -> anyhow::Result<Option<String>> {
+        let content = sqlx::query!(
+            "SELECT content FROM learned_cmd WHERE name = ?",
+            command_name
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(record) = content {
+            debug!("command name: {command_name}");
+            debug!("command content: {:?}", record.content);
+            Ok(record.content)
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn learn_command(&self, command_name: &str, content: &str) -> anyhow::Result<()> {
+        sqlx::query!(
+            "INSERT INTO learned_cmd (name, content) VALUES (?, ?) 
+            ON CONFLICT (name) DO UPDATE SET content = ?",
+            command_name,
+            content,
+            content
+        )
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }

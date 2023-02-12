@@ -42,9 +42,9 @@ pub async fn gen_card(
     let xp_for_actual_level = total_xp_required_for_level(level);
     let xp_needed_to_level_up = xp_needed_to_level_up(level);
     let user_xp_in_level = user_xp - xp_for_actual_level;
-    println!("total xp for level {}: {}", level, xp_for_actual_level);
-    println!("user xp: {}", user_xp);
-    println!("xp in his level: {}", user_xp_in_level);
+    println!("total xp for level {level}: {xp_for_actual_level}");
+    println!("user xp: {user_xp}");
+    println!("xp in his level: {user_xp_in_level}");
 
 
     // Request profile picture through HTTP if `avatar_url` is Some().
@@ -157,7 +157,7 @@ pub async fn gen_card(
     dt.draw_text(
         &font,
         15.,
-        &format!("{}/{}", user_xp, total_xp_required_for_next_level),
+        &format!("{user_xp}/{total_xp_required_for_next_level}"),
         Point::new(190.0, 120.0),
         &solid_source,
         &DrawOptions::new(),

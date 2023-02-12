@@ -45,6 +45,12 @@ pub async fn setxp(ctx: &Context, msg: &Message, arg: Args) -> CommandResult {
     todo!()
 }
 
+#[command]
+#[description = "Set a user's level"]
+pub async fn setlevel(ctx: &Context, msg: &Message, arg: Args) -> CommandResult {
+    todo!()
+}
+
 async fn get_user(ctx: &Context) -> Option<User> {
     todo!()
 }

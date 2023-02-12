@@ -103,9 +103,9 @@ pub async fn gen_top_ten_card(
         let xp_for_actual_level = total_xp_required_for_level(*level);
         let xp_needed_to_level_up = xp_needed_to_level_up(*level);
         let user_xp_in_level = current_xp - xp_for_actual_level;
-        println!("total xp for level {}: {}", level, xp_for_actual_level);
-        println!("user xp: {}", current_xp);
-        println!("xp in his level: {}", user_xp_in_level);
+        println!("total xp for level {level}: {xp_for_actual_level}");
+        println!("user xp: {current_xp}");
+        println!("xp in his level: {user_xp_in_level}");
 
         // x_pos tracks the horizontal position to draw elements
         // relatively to the others, by incrementing or decrementing
