@@ -292,7 +292,6 @@ async fn main() {
         error!("Can't read config file: {err}");
         Config::default()
     });
-    config.test_string = String::from("namého"); //? Testing string parameter
 
     let handler = Handler;
 

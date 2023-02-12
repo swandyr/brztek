@@ -94,7 +94,6 @@ enum Parameters {
     SpamDelay,
     MinXpGain,
     MaxXpGain,
-    TestString,
 }
 use Parameters::*;
 
@@ -106,7 +105,6 @@ impl TryFrom<&str> for Parameters {
             "spam_delay" => Ok(SpamDelay),
             "min_xp_gain" => Ok(MinXpGain),
             "max_xp_gain" => Ok(MaxXpGain),
-            "test_string" => Ok(TestString),
             _ => Err("Parameters::try_from() returned with error: invalid value"),
         }
     }
@@ -118,7 +116,6 @@ impl std::fmt::Display for Parameters {
             SpamDelay => write!(f, "spam delay"),
             MinXpGain => write!(f, "min xp gain"),
             MaxXpGain => write!(f, "max xp gain"),
-            TestString => write!(f, "test_string"),
         }
     }
 }
@@ -197,10 +194,6 @@ async fn set_parameter(ctx: &Context, parameter: Parameters, value: &str) -> any
             lock.xp_settings.max_xp_gain = value.parse::<i64>()?;
             debug!("max xp gain set to {value}.");
         }
-        TestString => {
-            lock.test_string = value.to_string();
-            debug!("test string set to {value}");
-        }
     }
 
     // Drop acquired locks
@@ -221,7 +214,6 @@ async fn get_parameter(ctx: &Context, parameter: Parameters) -> Result<String, a
         SpamDelay => lock.xp_settings.delay_anti_spam.to_string(),
         MinXpGain => lock.xp_settings.min_xp_gain.to_string(),
         MaxXpGain => lock.xp_settings.max_xp_gain.to_string(),
-        TestString => lock.test_string.to_string(),
     };
 
     Ok(value)

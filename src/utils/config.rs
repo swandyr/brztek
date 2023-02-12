@@ -7,7 +7,6 @@ use tracing::info;
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
     pub xp_settings: XpSettings,
-    pub test_string: String,
 }
 
 impl TypeMapKey for Config {
