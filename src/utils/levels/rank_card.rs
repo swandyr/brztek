@@ -1,5 +1,6 @@
 use font_kit::font::Font;
 use raqote::{DrawOptions, DrawTarget, Spread, Image, Point, SolidSource, Source, Color, PathBuilder, StrokeStyle, GradientStop, Gradient};
+use tracing::debug;
 
 use super::xp::{xp_needed_to_level_up, total_xp_required_for_level};
 
@@ -47,15 +48,16 @@ pub async fn gen_card(
 
     // Request profile picture through HTTP if `avatar_url` is Some().
     // Fallback to a default picture if None.
-    let file = if let Some(url) = avatar_url {
+    let profile_picture = if let Some(url) = avatar_url {
         let url = clean_url(url);
-        let buffer = reqwest::get(url).await?.bytes().await?;
-        image::load_from_memory(&buffer)?
+        let bytes = reqwest::get(url).await?.bytes().await?;
+        image::load_from_memory(&bytes)?
     } else {
         let default_file = DEFAULT_PP_TESSELATION_VIOLET;
-        assert!(std::fs::File::open(default_file).is_ok());
-        image::io::Reader::open(default_file)?.decode()?
+        let bytes = std::fs::read(default_file)?;
+        image::load_from_memory(&bytes)?
     };
+
 
     // Set some colors
     let colors = Colors::default();
@@ -110,11 +112,19 @@ pub async fn gen_card(
     let path = pb.finish();
     dt.fill(&path, &gradient, &DrawOptions::new());
 
-    // Transform [u8] to [u32]
+    // Transform rgba Vec<u8> to argb Vec<u32>
     let mut buffer: Vec<u32> = vec![];
-    for i in file.as_bytes().chunks(4) {
+    for i in profile_picture.as_bytes().chunks(4) {
         buffer.push((i[3] as u32) << 24 | (i[0] as u32) << 16 | (i[1] as u32) << 8 | i[2] as u32);
     }
+
+    // Create an image that will be drawn on the target
+    let image = Image {
+        width: profile_picture.width().try_into()?,
+        height: profile_picture.height().try_into()?,
+        data: &buffer,
+    };
+
 
     // Opacity background for readability
     let (a, r, g, b) = (
@@ -135,13 +145,6 @@ pub async fn gen_card(
             alpha: 1.0,
             antialias: raqote::AntialiasMode::None,
         });
-
-    // Create an image that will be drawn on the target
-    let image = Image {
-        width: file.width().try_into()?,
-        height: file.height().try_into()?,
-        data: &buffer,
-    };
     
     // dt.draw_image_at(margin, margin, &image, &DrawOptions::new());
     dt.draw_image_with_size_at(AVATAR_WIDTH, AVATAR_HEIGHT, margin, margin, &image, &DrawOptions::new());
@@ -232,7 +235,7 @@ pub async fn gen_card(
 fn clean_url(mut url: String) -> String {
     if let Some(index) = url.find("webp") {
         let _  = url.split_off(index);
-        url.push_str("png");
+        url.push_str("png?size=96");  // Ensure the size of the image to be 96x96 (assuming nobody use smaller image)
     }
     url
 }
@@ -259,7 +262,7 @@ fn url_cleaned() {
     let dirty = 
         String::from("https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.webp?size=1024");
     let clean = String::from(
-        "https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.png",
+        "https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.png?size=96",
     );
     assert_eq!(clean_url(dirty), clean);
 }

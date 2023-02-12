@@ -240,7 +240,7 @@ async fn update_users_ranks(ctx: &Context, guild_id: u64) -> anyhow::Result<()> 
 
 #[tokio::main]
 async fn main() {
-    dotenv::dotenv().expect("Failed to load .env file");
+    dotenvy::dotenv().expect("Failed to load .env file");
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
         .with_target(false)
