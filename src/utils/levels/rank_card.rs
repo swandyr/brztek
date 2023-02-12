@@ -4,7 +4,7 @@ use raqote::{DrawOptions, DrawTarget, Spread, Image, Point, SolidSource, Source,
 use super::xp::{xp_needed_to_level_up, total_xp_required_for_level};
 
 const CARD_WIDTH: i32 = 440;
-const CARD_HEIGHT: i32 = 150;
+const CARD_HEIGHT: i32 = 128;
 const AVATAR_WIDTH: f32 = 96.0;
 const AVATAR_HEIGHT: f32 = 96.0;
 
@@ -16,7 +16,6 @@ struct Colors {
     white: Color,
     dark_gray: Color,
     light_gray: Color,
-    yellow: Color,
 }
 
 impl Default for Colors {
@@ -25,7 +24,6 @@ impl Default for Colors {
             white: Color::new(0xff, 0xdc, 0xdc, 0xdc),
             dark_gray: Color::new(0xfa, 0x23, 0x23, 0x23),
             light_gray: Color::new(0xff, 0x57, 0x57, 0x57),
-            yellow: Color::new(0xff, 0xff, 0xcc, 0x00),
         }
     }
 }
@@ -71,15 +69,29 @@ pub async fn gen_card(
 
     // Play with some gradients
     let (r, g, b) = banner_colour;
+    let color_gradient = Color::new(0xff, r, g, b);
+
+    let end_rect = (user_xp_in_level as f32 / xp_needed_to_level_up as f32) * CARD_WIDTH as f32 - 50.0;
+    dt.fill_rect(
+        0.0, 
+        0.0, 
+        end_rect, 
+        CARD_HEIGHT as f32, 
+        &Source::Solid(SolidSource::from_unpremultiplied_argb(0xff, r, g, b)), 
+        &DrawOptions::new());
+
+    let start_gradient = Point::new(end_rect, 90.0);
+    let end_gradient = Point::new(end_rect + 100.0, 90.0);
+
     let gradient = Source::new_linear_gradient(
         Gradient {
             stops: vec![
                 GradientStop {
                     position: 0.0,
-                    color: Color::new(0xff, r, g, b),
+                    color: color_gradient,
                 },
                 GradientStop {
-                    position: 0.99,
+                    position: 0.9999,
                     color: colors.dark_gray,
                 },
                 GradientStop {
@@ -88,8 +100,8 @@ pub async fn gen_card(
                 },
             ],
         },
-        Point::new(16.0, 0.0),
-        Point::new(140.0, 90.0),
+        start_gradient,
+        end_gradient,
         Spread::Pad,
     );
     let mut pb = PathBuilder::new();
@@ -98,21 +110,31 @@ pub async fn gen_card(
     let path = pb.finish();
     dt.fill(&path, &gradient, &DrawOptions::new());
 
-    // Draw a black rectangle inside
-    // dt.fill_rect(
-    //     5.0,
-    //     5.0,
-    //     (CARD_WIDTH - 10) as f32,
-    //     (CARD_HEIGHT - 10) as f32,
-    //     &Source::Solid(SolidSource::from(colors.dark_gray)),
-    //     &DrawOptions::new(),
-    // );
-
     // Transform [u8] to [u32]
     let mut buffer: Vec<u32> = vec![];
     for i in file.as_bytes().chunks(4) {
         buffer.push((i[3] as u32) << 24 | (i[0] as u32) << 16 | (i[1] as u32) << 8 | i[2] as u32);
     }
+
+    // Opacity background for readability
+    let (a, r, g, b) = (
+        0xc0_u8,
+        colors.light_gray.r(),
+        colors.light_gray.g(),
+        colors.light_gray.b(),
+    );
+
+    dt.fill_rect(
+        0.0,            // AVATAR_WIDTH + margin,
+        margin,            // margin,
+        CARD_WIDTH as f32,     // 250.0,
+        AVATAR_HEIGHT,    // AVATAR_HEIGHT,
+        &Source::Solid(SolidSource::from_unpremultiplied_argb(a, r, g, b)),
+        &DrawOptions {
+            blend_mode: raqote::BlendMode::Darken,
+            alpha: 1.0,
+            antialias: raqote::AntialiasMode::None,
+        });
 
     // Create an image that will be drawn on the target
     let image = Image {
@@ -133,7 +155,7 @@ pub async fn gen_card(
         &font,
         22.0,
         username,
-        Point::new(140.0, 35.0),
+        Point::new(130.0, 40.0),
         &solid_source,
         &DrawOptions::new(),
     );
@@ -141,7 +163,7 @@ pub async fn gen_card(
         &font, 
         17., 
         &format!("Rank: #{rank}"),
-        Point::new(140.0, 60.0),
+        Point::new(130.0, 60.0),
         &solid_source,
         &DrawOptions::new(),
     );
@@ -149,7 +171,7 @@ pub async fn gen_card(
         &font,
         17.,
         &format!("Level: {level}"),
-        Point::new(140.0, 85.0),
+        Point::new(130.0, 80.0),
         &solid_source,
         &DrawOptions::new(),
     );
@@ -157,48 +179,48 @@ pub async fn gen_card(
     dt.draw_text(
         &font,
         15.,
-        &format!("{user_xp}/{total_xp_required_for_next_level}"),
-        Point::new(190.0, 120.0),
+        &format!("XP: {user_xp}/{total_xp_required_for_next_level}"),
+        Point::new(130.0, 100.0),
         &solid_source,
         &DrawOptions::new(),
     );
 
     // Draw xp gauge
     // let start = margin.mul_add(2.0, avatar_width); // let start = margin * 2.0 + avatar_width as f32;
-    let start = margin * 4.0;
-    let end = CARD_WIDTH as f32 - start;
-    let length = end - start;
+    // let start = margin * 4.0;
+    // let end = CARD_WIDTH as f32 - start;
+    // let length = end - start;
 
-    let style = StrokeStyle {
-        cap: raqote::LineCap::Round,
-        width: 4.0,
-        ..Default::default()
-    };
+    // let style = StrokeStyle {
+    //     cap: raqote::LineCap::Round,
+    //     width: 4.0,
+    //     ..Default::default()
+    // };
 
-    let mut pb = PathBuilder::new();
-    pb.move_to(start, 130.);
-    pb.line_to(end, 130.);
-    let path = pb.finish();
+    // let mut pb = PathBuilder::new();
+    // pb.move_to(start, 130.);
+    // pb.line_to(end, 130.);
+    // let path = pb.finish();
 
-    dt.stroke(
-        &path, 
-        &Source::Solid(SolidSource::from(colors.light_gray)), 
-        &style, 
-        &DrawOptions::new());
+    // dt.stroke(
+    //     &path, 
+    //     &Source::Solid(SolidSource::from(colors.light_gray)), 
+    //     &style, 
+    //     &DrawOptions::new());
 
 
-    let end = (user_xp_in_level as f32 / xp_needed_to_level_up as f32).mul_add(length, start); // let end = (user_xp_in_level / xp_to_next_level) * length + start;
-    let mut pb = PathBuilder::new();
-    pb.move_to(start, 130.0);
-    pb.line_to(end, 130.0);
-    let path = pb.finish();
+    // let end = (user_xp_in_level as f32 / xp_needed_to_level_up as f32).mul_add(length, start); // let end = (user_xp_in_level / xp_to_next_level) * length + start;
+    // let mut pb = PathBuilder::new();
+    // pb.move_to(start, 130.0);
+    // pb.line_to(end, 130.0);
+    // let path = pb.finish();
 
-    dt.stroke(
-        &path,
-        &Source::Solid(SolidSource::from(colors.yellow)),
-        &style,
-        &DrawOptions::new(),
-    );
+    // dt.stroke(
+    //     &path,
+    //     &Source::Solid(SolidSource::from(colors.yellow)),
+    //     &style,
+    //     &DrawOptions::new(),
+    // );
 
     dt.write_png("rank.png")?;
     // ? See for later use `write_png_to_vec`: https://github.com/jrmuizel/raqote/pull/180
@@ -222,7 +244,7 @@ async fn test_gen_card_with_url() {
         "https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.webp?size=1024",
     );
     let colour = (255, 255, 0);
-    assert!(gen_card(&username, Some(avatar_url), colour, 2, 1, 455).await.is_ok());
+    assert!(gen_card(&username, Some(avatar_url), colour, 2, 1, 354).await.is_ok());
 }
 
 #[tokio::test]
