@@ -62,17 +62,27 @@ impl Default for XpSettings {
     }
 }
 
+impl From<(i64, i64, i64)> for XpSettings {
+    fn from(value: (i64, i64, i64)) -> Self {
+        Self {
+            delay_anti_spam: value.0,
+            min_xp_gain: value.1,
+            max_xp_gain: value.2,
+        }
+    }
+}
+
 ////////////////////////////////////////////////////
 
 #[derive(Debug, Clone, Copy)]
-pub enum GuildCfgParams {
+pub enum GuildCfgParam {
     SpamDelay,
     MinXpGain,
     MaxXpGain,
 }
-use GuildCfgParams::*;
+use GuildCfgParam::*;
 
-impl TryFrom<&str> for GuildCfgParams {
+impl TryFrom<&str> for GuildCfgParam {
     type Error = &'static str;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -85,7 +95,7 @@ impl TryFrom<&str> for GuildCfgParams {
     }
 }
 
-impl std::fmt::Display for GuildCfgParams {
+impl std::fmt::Display for GuildCfgParam {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SpamDelay => write!(f, "spam delay"),

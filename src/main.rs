@@ -4,10 +4,7 @@ use serenity::{
     framework::standard::{macros::group, StandardFramework},
     http::Http,
     model::{
-        application::{
-            command::Command,
-            interaction::{Interaction, InteractionResponseType},
-        },
+        application::interaction::{Interaction, InteractionResponseType},
         channel::Message,
         gateway::Ready,
         prelude::{GuildId, Member, Mention, User},
@@ -21,12 +18,14 @@ mod utils;
 use utils::{config::Config, db::Db};
 
 mod commands;
+mod hooks;
+mod levels;
 mod slash_commands;
+
 use commands::{
     admin::{AM_I_ADMIN_COMMAND, CONFIG_COMMAND, DELETE_RANKS_COMMAND},
     general::{LEARN_COMMAND, PING_COMMAND},
     help::HELP,
-    hooks::{after, unknown_command},
     ranking::{RANK_COMMAND, TOP_COMMAND},
 };
 
@@ -67,6 +66,17 @@ impl EventHandler for Handler {
                 .create_application_command(|command| slash_commands::admin::set::register(command))
         })
         .await;
+    }
+
+    async fn cache_ready(&self, ctx: Context, guilds: Vec<GuildId>) {
+        let data = ctx.data.read().await;
+        let db = data.get::<Db>().expect("Expected Db in TypeMap");
+
+        for guild in guilds {
+            if let Err(why) = db.create_config_entry(guild.0).await {
+                error!("create_config_entry returned error for guild {guild:#?} : {why}");
+            }
+        }
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
@@ -115,53 +125,15 @@ impl EventHandler for Handler {
 
         // Ensure the command was sent from a guild channel
         let guild_id = if let Some(id) = msg.guild_id {
-            id.0
+            id
         } else {
             return;
         };
+        let user_id = msg.author.id;
+        let channel_id = msg.channel_id;
 
-        let user_id = msg.author.id.0;
-        // let channel_id = msg.channel_id.0;
-
-        let data = ctx.data.read().await;
-        // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
-        let db = data.get::<Db>().expect("Expected Db in TypeMap");
-
-        match db.get_user(user_id, guild_id).await {
-            Ok(mut user) => {
-                let config = data.get::<Config>().unwrap();
-                let xp_settings = config.read().await.xp_settings;
-
-                let has_gained_xp = user.gain_xp_if_not_spam(xp_settings);
-
-                if user.has_level_up() {
-                    if let Err(why) = msg
-                        .channel_id
-                        .send_message(&ctx.http, |m| {
-                            let mention = Mention::from(msg.author.id);
-                            let message = format!("Level Up, {mention}!");
-                            m.content(&message)
-                        })
-                        .await
-                    {
-                        error!("Error on send message: {why}");
-                    }
-                }
-                if has_gained_xp {
-                    if let Err(why) = db.update_user(&user, guild_id).await {
-                        error!("Cannot update user {user_id}:{why}");
-                    }
-                }
-
-                debug!("User : {user:#?}");
-            }
-            Err(why) => {
-                error!("Cannot get user {user_id} from database: {why}");
-            }
-        }
-
-        if let Err(e) = update_users_ranks(&ctx, guild_id).await {
-            error!("Error in update_all_users_levels: {e}");
+        if let Err(why) = levels::handle_message_xp(&ctx, &guild_id, &channel_id, &user_id).await {
+            error!("handle_message_xp returned error: {why}");
         }
 
         info!("Message processed in : {} µs", t_0.elapsed().as_micros());
@@ -177,6 +149,7 @@ impl EventHandler for Handler {
             .unwrap()
             .replace("$user", &format!("{mention}"));
 
+        // TODO: Store channel id in database
         if let Ok(chan) = env::var("GENERAL_CHANNEL_ID") {
             if let Ok(id) = chan.parse::<u64>() {
                 ctx.cache
@@ -217,35 +190,6 @@ impl EventHandler for Handler {
             error!("Unable to find GENERAL_CHANNEL_ID; check var in .env file.");
         }
     }
-}
-
-async fn update_users_ranks(ctx: &Context, guild_id: u64) -> anyhow::Result<()> {
-    let t_0 = Instant::now();
-
-    let data = ctx.data.read().await;
-    let db = data.get::<Db>().expect("Expected Db in TypeMap");
-
-    // Get a Vec of all users in database
-    let mut all_users = db.get_all_users(guild_id).await?;
-
-    // Sort user by descendant xp
-    all_users.sort_by(|a, b| b.xp.cmp(&a.xp));
-
-    let mut rank_has_changed = vec![];
-    for (i, user) in &mut all_users.iter_mut().enumerate() {
-        if user.rank != i as i64 + 1 {
-            user.rank = i as i64 + 1;
-            rank_has_changed.push(*user)
-        }
-    }
-
-    if !rank_has_changed.is_empty() {
-        db.update_ranks(&rank_has_changed, guild_id).await?;
-    }
-
-    info!("Updated all ranks in : {} µs", t_0.elapsed().as_micros());
-
-    Ok(())
 }
 
 // ----------------------------------------- Main -----------------------------------------
@@ -293,12 +237,13 @@ async fn main() {
         .group(&LEVELS_GROUP)
         .group(&ADMINISTRATORS_GROUP)
         .help(&HELP)
-        .after(after)
-        .unrecognised_command(unknown_command);
+        .after(hooks::after)
+        .unrecognised_command(hooks::unknown_command);
 
     let db_url = env::var("DATABASE_URL").expect("database path not found");
     let db = Db::new(&db_url).await;
     db.run_migrations().await.expect("Unable to run migrations");
+    // Set config entry if not exists
 
     // let mut config = Config::load().unwrap_or_else(|err| {
     //     error!("Can't read config file: {err}");

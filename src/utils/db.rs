@@ -3,7 +3,7 @@ use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::sync::Arc;
 use tracing::debug;
 
-use super::levels::user_level::UserLevel;
+use crate::levels::user_level::UserLevel;
 
 pub struct Db {
     pool: SqlitePool,
@@ -168,7 +168,20 @@ impl Db {
 
     ///////////////////////////////////////////////////////////////////////////////////////:
 
-    pub async fn get_config(&self, guild_id: u64) -> anyhow::Result<(i64, i64, i64)> {
+    pub async fn create_config_entry(&self, guild_id: u64) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+
+        sqlx::query!(
+            "INSERT OR IGNORE INTO config (guild_id) VALUES (?)",
+            guild_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_xpsettings(&self, guild_id: u64) -> anyhow::Result<(i64, i64, i64)> {
         let guild_id = to_i64(guild_id);
 
         let record = sqlx::query!(

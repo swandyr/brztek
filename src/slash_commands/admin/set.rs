@@ -1,11 +1,8 @@
-use crate::utils::{
-    db::Db,
-    levels::{user_level::UserLevel, xp::calculate_level_from_xp},
-};
+use crate::levels::xp::calculate_level_from_xp;
+use crate::utils::db::Db;
 use serenity::{
     builder::CreateApplicationCommand,
     model::{
-        guild,
         prelude::{
             command::CommandOptionType,
             interaction::application_command::{CommandDataOption, CommandDataOptionValue},

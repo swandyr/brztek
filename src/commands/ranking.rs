@@ -10,10 +10,8 @@ use serenity::{
 use std::time::Instant;
 use tracing::info;
 
-use crate::utils::{
-    db::Db,
-    levels::{rank_card::gen_card, top_ten_card::gen_top_ten_card},
-};
+use crate::levels::{rank_card::gen_card, top_ten_card::gen_top_ten_card};
+use crate::utils::db::Db;
 
 #[command]
 #[description = "Print your level stats"]

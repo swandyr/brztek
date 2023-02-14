@@ -5,15 +5,8 @@ use serenity::{
 };
 use tracing::{error, info};
 
-use crate::utils::{db::Db, levels::user_level::UserLevel};
-
-// Check if the author of the message has admin permissions
-async fn is_admin(ctx: &Context, member: &PartialMember) -> bool {
-    member.roles.iter().any(|r| {
-        r.to_role_cached(&ctx.cache)
-            .map_or(false, |r| r.has_permission(Permissions::ADMINISTRATOR))
-    })
-}
+use crate::levels::user_level::UserLevel;
+use crate::utils::db::Db;
 
 #[command]
 #[description = "Check if you have administrator permissions"]
@@ -33,6 +26,14 @@ pub async fn am_i_admin(ctx: &Context, msg: &Message) -> CommandResult {
     msg.reply(&ctx.http, content).await?;
 
     Ok(())
+}
+
+// Check if the author of the message has admin permissions
+async fn is_admin(ctx: &Context, member: &PartialMember) -> bool {
+    member.roles.iter().any(|r| {
+        r.to_role_cached(&ctx.cache)
+            .map_or(false, |r| r.has_permission(Permissions::ADMINISTRATOR))
+    })
 }
 
 // -------------- Admin Xp Commands -------------------
@@ -85,14 +86,14 @@ pub async fn delete_ranks(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 // ------------ Configuration Parameters --------------
-use crate::utils::config::GuildCfgParams;
+use crate::utils::config::GuildCfgParam;
 use tracing::debug;
 
 #[command]
 #[description = "Get or set configuration parameters"]
 pub async fn config(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if let Some(arg) = args.current() {
-        let parameter = GuildCfgParams::try_from(arg)?;
+        let parameter = GuildCfgParam::try_from(arg)?;
         args.advance();
         let value = args.current();
 
@@ -106,7 +107,7 @@ pub async fn config(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         let db = data.get::<Db>().expect("Expected Db in TypeMap");
         let guild_id = msg.guild_id.unwrap().0;
 
-        let (spam_delay, min_xp_gain, max_xp_gain) = db.get_config(guild_id).await?;
+        let (spam_delay, min_xp_gain, max_xp_gain) = db.get_xpsettings(guild_id).await?;
         let content = format!(
             r#"> **Server config:**
         > spam_delay: {spam_delay}
@@ -125,7 +126,7 @@ pub async fn config(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 async fn handle_command(
     ctx: &Context,
     msg: &Message,
-    parameter: GuildCfgParams,
+    parameter: GuildCfgParam,
     value: Option<&str>,
 ) -> CommandResult {
     let guild_id = msg.guild_id.unwrap().0;
@@ -159,7 +160,7 @@ async fn handle_command(
 
 async fn set_parameter(
     ctx: &Context,
-    parameter: GuildCfgParams,
+    parameter: GuildCfgParam,
     value: &str,
     guild_id: u64,
 ) -> anyhow::Result<()> {
@@ -169,9 +170,9 @@ async fn set_parameter(
     let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
     match parameter {
-        GuildCfgParams::SpamDelay => db.set_spam_delay(guild_id, value.parse()?).await?,
-        GuildCfgParams::MinXpGain => db.set_min_xp_gain(guild_id, value.parse()?).await?,
-        GuildCfgParams::MaxXpGain => db.set_max_xp_gain(guild_id, value.parse()?).await?,
+        GuildCfgParam::SpamDelay => db.set_spam_delay(guild_id, value.parse()?).await?,
+        GuildCfgParam::MinXpGain => db.set_min_xp_gain(guild_id, value.parse()?).await?,
+        GuildCfgParam::MaxXpGain => db.set_max_xp_gain(guild_id, value.parse()?).await?,
     };
 
     // // Get mut ref of the config
@@ -209,16 +210,16 @@ async fn set_parameter(
 
 async fn get_parameter(
     ctx: &Context,
-    parameter: GuildCfgParams,
+    parameter: GuildCfgParam,
     guild_id: u64,
 ) -> Result<String, anyhow::Error> {
     let data = ctx.data.read().await;
     let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
     let value = match parameter {
-        GuildCfgParams::SpamDelay => db.get_spam_delay(guild_id).await?,
-        GuildCfgParams::MinXpGain => db.get_min_xp_gain(guild_id).await?,
-        GuildCfgParams::MaxXpGain => db.get_max_xp_gain(guild_id).await?,
+        GuildCfgParam::SpamDelay => db.get_spam_delay(guild_id).await?,
+        GuildCfgParam::MinXpGain => db.get_min_xp_gain(guild_id).await?,
+        GuildCfgParam::MaxXpGain => db.get_max_xp_gain(guild_id).await?,
     };
 
     // let config = data.get::<Config>().unwrap();
