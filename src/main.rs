@@ -58,10 +58,13 @@ impl EventHandler for Handler {
         let guild_id_int = 1068933063935004722;
         let guild_id = GuildId(guild_id_int);
 
+        // Register slash commands
         let _commands = GuildId::set_application_commands(&guild_id, &ctx.http, |commands| {
-            commands.create_application_command(|command| {
-                slash_commands::general::learn::register(command)
-            })
+            commands
+                .create_application_command(|command| {
+                    slash_commands::general::learn::register(command)
+                })
+                .create_application_command(|command| slash_commands::admin::set::register(command))
         })
         .await;
     }
@@ -70,8 +73,17 @@ impl EventHandler for Handler {
         if let Interaction::ApplicationCommand(command) = interaction {
             debug!("Received command interaction: {:#?}", command);
 
+            // Respond to slash commands
             let content = match command.data.name.as_str() {
                 "learn" => slash_commands::general::learn::run(&ctx, &command.data.options).await,
+                "set" => {
+                    slash_commands::admin::set::run(
+                        &ctx,
+                        &command.data.options,
+                        &command.guild_id.unwrap(),
+                    )
+                    .await
+                }
                 _ => "Not implemented :(".to_string(),
             };
 

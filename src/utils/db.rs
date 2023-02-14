@@ -3,7 +3,7 @@ use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::sync::Arc;
 use tracing::debug;
 
-use super::{config::GuildCfgParam, levels::user_level::UserLevel};
+use super::levels::user_level::UserLevel;
 
 pub struct Db {
     pool: SqlitePool,

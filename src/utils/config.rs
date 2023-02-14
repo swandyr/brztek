@@ -64,22 +64,33 @@ impl Default for XpSettings {
 
 ////////////////////////////////////////////////////
 
-#[derive(Debug)]
-pub enum GuildCfgParam {
-    SpamDelay(i32),
-    MinXpGain(i32),
-    MaxXpGain(i32),
+#[derive(Debug, Clone, Copy)]
+pub enum GuildCfgParams {
+    SpamDelay,
+    MinXpGain,
+    MaxXpGain,
 }
+use GuildCfgParams::*;
 
-impl TryFrom<String> for GuildCfgParam {
+impl TryFrom<&str> for GuildCfgParams {
     type Error = &'static str;
 
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.as_str() {
-            "spam_delay" => Ok(Self::SpamDelay(0)),
-            "min_xp_gain" => Ok(Self::MinXpGain(0)),
-            "max_xp_gain" => Ok(Self::MaxXpGain(0)),
-            _ => Err("Invalid conversion to GuidCfgParam"),
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "spam_delay" => Ok(SpamDelay),
+            "min_xp_gain" => Ok(MinXpGain),
+            "max_xp_gain" => Ok(MaxXpGain),
+            _ => Err("Parameters::try_from() returned with error: invalid value"),
+        }
+    }
+}
+
+impl std::fmt::Display for GuildCfgParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SpamDelay => write!(f, "spam delay"),
+            MinXpGain => write!(f, "min xp gain"),
+            MaxXpGain => write!(f, "max xp gain"),
         }
     }
 }

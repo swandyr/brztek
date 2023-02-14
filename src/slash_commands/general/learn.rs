@@ -1,4 +1,4 @@
-pub use serenity::{
+use serenity::{
     builder::CreateApplicationCommand,
     model::prelude::{
         command::CommandOptionType,
@@ -7,12 +7,12 @@ pub use serenity::{
     prelude::Context,
 };
 
-pub use crate::utils::db::Db;
+use crate::utils::db::Db;
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
     command
         .name("learn")
-        .description("Save a link with a name")
+        .description("Save a link with a name.")
         .create_option(|option| {
             option
                 .name("name")

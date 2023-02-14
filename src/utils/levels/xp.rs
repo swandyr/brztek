@@ -19,6 +19,18 @@ pub fn total_xp_required_for_level(level: i64) -> i64 {
     (0..level).map(xp_needed_to_level_up).sum() // https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closures
 }
 
+pub fn calculate_level_from_xp(mut xp: i64) -> i64 {
+    let mut level = 0;
+    loop {
+        xp -= xp_needed_to_level_up(level);
+        if xp > 0 {
+            level += 1
+        } else {
+            return level;
+        }
+    }
+}
+
 #[test]
 fn test_xp_for_level() {
     let level = 4_i64;
@@ -33,4 +45,10 @@ fn test_total_xp_for_level() {
 
     let total_xp_required_for_level = total_xp_required_for_level(level);
     assert_eq!(total_xp_required_for_level, 770_i64);
+}
+
+#[test]
+fn test_160_000_xp_is_level_41() {
+    assert_eq!(5, calculate_level_from_xp(1280));
+    assert_eq!(41, calculate_level_from_xp(160_000));
 }

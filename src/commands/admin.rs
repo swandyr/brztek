@@ -5,7 +5,7 @@ use serenity::{
 };
 use tracing::{error, info};
 
-use crate::utils::db::Db;
+use crate::utils::{db::Db, levels::user_level::UserLevel};
 
 // Check if the author of the message has admin permissions
 async fn is_admin(ctx: &Context, member: &PartialMember) -> bool {
@@ -85,46 +85,14 @@ pub async fn delete_ranks(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 // ------------ Configuration Parameters --------------
+use crate::utils::config::GuildCfgParams;
 use tracing::debug;
-
-//use crate::utils::config::Config;
-
-#[derive(Debug, Clone, Copy)]
-enum Parameters {
-    SpamDelay,
-    MinXpGain,
-    MaxXpGain,
-}
-use Parameters::*;
-
-impl TryFrom<&str> for Parameters {
-    type Error = &'static str;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "spam_delay" => Ok(SpamDelay),
-            "min_xp_gain" => Ok(MinXpGain),
-            "max_xp_gain" => Ok(MaxXpGain),
-            _ => Err("Parameters::try_from() returned with error: invalid value"),
-        }
-    }
-}
-
-impl std::fmt::Display for Parameters {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SpamDelay => write!(f, "spam delay"),
-            MinXpGain => write!(f, "min xp gain"),
-            MaxXpGain => write!(f, "max xp gain"),
-        }
-    }
-}
 
 #[command]
 #[description = "Get or set configuration parameters"]
 pub async fn config(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if let Some(arg) = args.current() {
-        let parameter = Parameters::try_from(arg)?;
+        let parameter = GuildCfgParams::try_from(arg)?;
         args.advance();
         let value = args.current();
 
@@ -157,7 +125,7 @@ pub async fn config(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 async fn handle_command(
     ctx: &Context,
     msg: &Message,
-    parameter: Parameters,
+    parameter: GuildCfgParams,
     value: Option<&str>,
 ) -> CommandResult {
     let guild_id = msg.guild_id.unwrap().0;
@@ -191,7 +159,7 @@ async fn handle_command(
 
 async fn set_parameter(
     ctx: &Context,
-    parameter: Parameters,
+    parameter: GuildCfgParams,
     value: &str,
     guild_id: u64,
 ) -> anyhow::Result<()> {
@@ -201,9 +169,9 @@ async fn set_parameter(
     let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
     match parameter {
-        SpamDelay => db.set_spam_delay(guild_id, value.parse()?).await?,
-        MinXpGain => db.set_min_xp_gain(guild_id, value.parse()?).await?,
-        MaxXpGain => db.set_max_xp_gain(guild_id, value.parse()?).await?,
+        GuildCfgParams::SpamDelay => db.set_spam_delay(guild_id, value.parse()?).await?,
+        GuildCfgParams::MinXpGain => db.set_min_xp_gain(guild_id, value.parse()?).await?,
+        GuildCfgParams::MaxXpGain => db.set_max_xp_gain(guild_id, value.parse()?).await?,
     };
 
     // // Get mut ref of the config
@@ -241,16 +209,16 @@ async fn set_parameter(
 
 async fn get_parameter(
     ctx: &Context,
-    parameter: Parameters,
+    parameter: GuildCfgParams,
     guild_id: u64,
 ) -> Result<String, anyhow::Error> {
     let data = ctx.data.read().await;
     let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
     let value = match parameter {
-        SpamDelay => db.get_spam_delay(guild_id).await?,
-        MinXpGain => db.get_min_xp_gain(guild_id).await?,
-        MaxXpGain => db.get_max_xp_gain(guild_id).await?,
+        GuildCfgParams::SpamDelay => db.get_spam_delay(guild_id).await?,
+        GuildCfgParams::MinXpGain => db.get_min_xp_gain(guild_id).await?,
+        GuildCfgParams::MaxXpGain => db.get_max_xp_gain(guild_id).await?,
     };
 
     // let config = data.get::<Config>().unwrap();
