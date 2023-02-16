@@ -40,6 +40,7 @@ pub async fn gen_top_ten_card(
         i64, // level
         i64, // current xp
     )],
+    guild_name: &str,
 ) -> anyhow::Result<()> {
     // Some colors
     let colors = Colors::default();
@@ -84,8 +85,17 @@ pub async fn gen_top_ten_card(
     let solid_source = Source::Solid(SolidSource::from(colors.white));
     dt.draw_text(
         &font,
+        55.0,
+        guild_name,
+        Point::new(20.0, 45.0),
+        &solid_source,
+        &DrawOptions::new(),
+    );
+    let text = format!("Top {}", users.len());
+    dt.draw_text(
+        &font,
         45.0,
-        "Top 10",
+        &text,
         Point::new(260.0, 45.0),
         &solid_source,
         &DrawOptions::new(),
@@ -195,8 +205,11 @@ pub async fn gen_top_ten_card(
 #[tokio::test]
 async fn test_gen_top() {
     let users = vec![
-        ("user1".to_string(), 1, 4, 950),
-        ("user2".to_string(), 2, 3, 490),
+        ("EKXZMANE".to_string(), 1, 4, 950),
+        ("Meeeeeeelent".to_string(), 2, 3, 760),
+        ("Bobish".to_string(), 3, 2, 298),
+        ("user".to_string(), 4, 0, 2),
     ];
-    assert!(gen_top_ten_card(&users).await.is_ok());
+    let guild_name = "The Guild".to_string();
+    assert!(gen_top_ten_card(&users, &guild_name).await.is_ok());
 }

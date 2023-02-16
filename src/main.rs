@@ -26,7 +26,7 @@ use commands::{
     admin::{AM_I_ADMIN_COMMAND, CONFIG_COMMAND, DELETE_RANKS_COMMAND},
     general::{LEARN_COMMAND, PING_COMMAND},
     help::HELP,
-    ranking::{RANK_COMMAND, TOP_COMMAND},
+    levels::{RANK_COMMAND, TOP_COMMAND},
 };
 
 #[group]
