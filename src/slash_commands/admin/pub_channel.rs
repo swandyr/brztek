@@ -48,7 +48,7 @@ pub async fn run(ctx: &Context, options: &[CommandDataOption], guild_id: &GuildI
     db.set_pub_channel_id(channel_id, guild_id).await.unwrap();
 
     format!(
-        "{} is the new public channel",
+        "#{} is the new public channel",
         channel.name.as_ref().unwrap()
     )
 }
