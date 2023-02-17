@@ -24,14 +24,14 @@ mod slash_commands;
 
 use commands::{
     admin::{AM_I_ADMIN_COMMAND, CONFIG_COMMAND, DELETE_RANKS_COMMAND},
-    general::{LEARN_COMMAND, PING_COMMAND},
+    general::{LEARNED_COMMAND, LEARN_COMMAND, PING_COMMAND},
     help::HELP,
     levels::{RANK_COMMAND, TOP_COMMAND},
 };
 
 #[group]
 #[summary = "General commands"]
-#[commands(ping, learn)]
+#[commands(ping, learn, learned)]
 struct General;
 
 #[group]

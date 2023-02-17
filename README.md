@@ -19,6 +19,7 @@ Install `sqlx-cli` and use this commands to create and initialize the database
     - `max_xp_gain`
 - `$ping` : pong!
 - `$learn <name> <link>` : save a link that can be called with `$*name*`
+- `$learned` : list of all commands saved using `$learn`
 - `$rank` : show user's rank card
 - `$top <x>` : show a card of `x` most active users
 - `$help`

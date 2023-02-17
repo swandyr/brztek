@@ -32,3 +32,23 @@ pub async fn learn(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 
     Ok(())
 }
+
+#[command]
+pub async fn learned(ctx: &Context, msg: &Message) -> CommandResult {
+    let data = ctx.data.read().await;
+    let db = data.get::<Db>().unwrap();
+
+    let commands = db.get_learned_list().await?;
+
+    let mut content = String::from("> List of learned commands:\n");
+    for command in commands {
+        let line = format!("> - {command}\n");
+        content.push_str(&line);
+    }
+
+    msg.channel_id
+        .send_message(&ctx.http, |m| m.content(content))
+        .await?;
+
+    Ok(())
+}

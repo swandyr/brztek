@@ -42,7 +42,7 @@ impl Db {
         let user_id = to_i64(user_id);
         let guild_id = to_i64(guild_id);
 
-        let user_queried = sqlx::query!(
+        let response = sqlx::query!(
             "SELECT user_id, xp, level, rank, messages, last_message FROM levels 
             WHERE user_id = ? 
             AND guild_id = ?",
@@ -52,7 +52,7 @@ impl Db {
         .fetch_optional(&self.pool)
         .await?;
 
-        if let Some(record) = user_queried {
+        if let Some(record) = response {
             let user = (
                 from_i64(record.user_id),
                 record.xp.unwrap_or_default(),
@@ -128,7 +128,7 @@ impl Db {
     pub async fn get_all_users(&self, guild_id: u64) -> anyhow::Result<Vec<UserLevel>> {
         let guild_id = to_i64(guild_id);
 
-        let all_users_queried = sqlx::query!(
+        let response = sqlx::query!(
             "SELECT user_id, xp, level, rank, messages, last_message FROM levels
             WHERE guild_id = ?",
             guild_id
@@ -136,7 +136,7 @@ impl Db {
         .fetch_all(&self.pool)
         .await?;
 
-        let all_users = all_users_queried
+        let all_users = response
             .iter()
             .map(|record| {
                 let params = (
@@ -329,20 +329,33 @@ impl Db {
     ////////////////////////////////////////////////////////////////////////////////////////
 
     pub async fn get_learned(&self, command_name: &str) -> anyhow::Result<Option<String>> {
-        let content = sqlx::query!(
+        let response = sqlx::query!(
             "SELECT content FROM learned_cmd WHERE name = ?",
             command_name
         )
         .fetch_optional(&self.pool)
         .await?;
 
-        if let Some(record) = content {
+        if let Some(record) = response {
             debug!("command name: {command_name}");
             debug!("command content: {:?}", record.content);
             Ok(record.content)
         } else {
             Ok(None)
         }
+    }
+
+    pub async fn get_learned_list(&self) -> anyhow::Result<Vec<String>> {
+        let records = sqlx::query!("SELECT name FROM learned_cmd",)
+            .fetch_all(&self.pool)
+            .await?;
+
+        let commands = records
+            .iter()
+            .map(|record| record.name.clone().unwrap_or("*unknown*".to_string()))
+            .collect();
+
+        Ok(commands)
     }
 
     pub async fn set_learned(&self, command_name: &str, content: &str) -> anyhow::Result<()> {
