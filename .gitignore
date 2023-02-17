@@ -3,7 +3,7 @@
 debug/
 target/
 .env
-database.sqlite
+database.sqlite*
 card.png
 rank.png
 top_ten.png

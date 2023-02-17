@@ -3,11 +3,12 @@ use chrono::Utc;
 
 use crate::utils::config::XpSettings;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct UserLevel {
     pub user_id: u64,      // Discord user id
     pub xp: i64,           // User's xp
     pub level: i64,        // User's level
+    pub rank: i64,         // User's rank
     pub messages: i64,     // User's messages count
     pub last_message: i64, // Timestamp of the last message posted
 }
@@ -18,6 +19,7 @@ impl UserLevel {
             user_id,
             xp: 0,
             level: 0,
+            rank: 0,
             messages: 0,
             last_message: 0,
         }
@@ -49,13 +51,14 @@ impl UserLevel {
     }
 }
 
-impl From<(u64, i64, i64, i64, i64)> for UserLevel {
-    fn from(item: (u64, i64, i64, i64, i64)) -> Self {
-        let (user_id, xp, level, messages, last_message) = item;
+impl From<(u64, i64, i64, i64, i64, i64)> for UserLevel {
+    fn from(item: (u64, i64, i64, i64, i64, i64)) -> Self {
+        let (user_id, xp, level, rank, messages, last_message) = item;
         Self {
             user_id,
             xp,
             level,
+            rank,
             messages,
             last_message,
         }

@@ -8,8 +8,11 @@ use raqote::{
 const CARD_WIDTH: i32 = 440;
 const TITLE_HEIGHT: i32 = 60;
 const USER_HEIGHT: i32 = 40;
+const _AVATAR_HEIGHT: i32 = 42;
 
-const FONT_DEJAVU_BLACK: &str = "assets/fonts/DejaVu Sans Mono Nerd Font Complete.ttf";
+const FONT: &str = "assets/fonts/eurostile font/EurostileBold.ttf";
+
+const _DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tesselation-Violet.png";
 
 struct Colors {
     white: Color,
@@ -37,6 +40,7 @@ pub async fn gen_top_ten_card(
         i64, // level
         i64, // current xp
     )],
+    guild_name: &str,
 ) -> anyhow::Result<()> {
     // Some colors
     let colors = Colors::default();
@@ -75,15 +79,23 @@ pub async fn gen_top_ten_card(
     let path = pb.finish();
     dt.fill(&path, &gradient, &DrawOptions::new());
 
-    let font: Font =
-        font_kit::loader::Loader::from_file(&mut std::fs::File::open(FONT_DEJAVU_BLACK)?, 0)?;
+    let font: Font = font_kit::loader::Loader::from_file(&mut std::fs::File::open(FONT)?, 0)?;
 
     // Create header
     let solid_source = Source::Solid(SolidSource::from(colors.white));
     dt.draw_text(
         &font,
+        55.0,
+        guild_name,
+        Point::new(20.0, 45.0),
+        &solid_source,
+        &DrawOptions::new(),
+    );
+    let text = format!("Top {}", users.len());
+    dt.draw_text(
+        &font,
         45.0,
-        "Top 10",
+        &text,
         Point::new(260.0, 45.0),
         &solid_source,
         &DrawOptions::new(),
@@ -101,9 +113,9 @@ pub async fn gen_top_ten_card(
         let xp_for_actual_level = total_xp_required_for_level(*level);
         let xp_needed_to_level_up = xp_needed_to_level_up(*level);
         let user_xp_in_level = current_xp - xp_for_actual_level;
-        println!("total xp for level {}: {}", level, xp_for_actual_level);
-        println!("user xp: {}", current_xp);
-        println!("xp in his level: {}", user_xp_in_level);
+        println!("total xp for level {level}: {xp_for_actual_level}");
+        println!("user xp: {current_xp}");
+        println!("xp in his level: {user_xp_in_level}");
 
         // x_pos tracks the horizontal position to draw elements
         // relatively to the others, by incrementing or decrementing
@@ -193,8 +205,11 @@ pub async fn gen_top_ten_card(
 #[tokio::test]
 async fn test_gen_top() {
     let users = vec![
-        ("user1".to_string(), 1, 4, 950),
-        ("user2".to_string(), 2, 3, 490),
+        ("EKXZMANE".to_string(), 1, 4, 950),
+        ("Meeeeeeelent".to_string(), 2, 3, 760),
+        ("Bobish".to_string(), 3, 2, 298),
+        ("user".to_string(), 4, 0, 2),
     ];
-    assert!(gen_top_ten_card(&users).await.is_ok());
+    let guild_name = "The Guild".to_string();
+    assert!(gen_top_ten_card(&users, &guild_name).await.is_ok());
 }

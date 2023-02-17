@@ -1,22 +1,38 @@
 # discord-bot
 
-Database needs to be created before starting the bot:
+## Before start
 
-```
-$ sqlx create database
-$ sqlx migrate run
-```
+Install `sqlx-cli` and use this commands to create and initialize the database
 
-<!-- TODO: Make cards elements (like colors, pictures, fonts) configurable
-<!-- TODO: Add possibility to add fonts, profile pictures...
-<<<<<<< HEAD
-<!-- TODO: Add logging to file
-<!-- TODO: Save modified config to file
-<!-- TODO: Possibilty to set xp to users OR find a way to get meee6 leaderboard
-<!-- TODO: Learn links
-<!-- TODO: reaction roles
-<!-- TODO: Try Piet (https://github.com/linebender/piet) to replace raqote (issue with text drawing)
-<!-- TODO: Store rank in the database, need recalculate as each message
-=======
-<!-- TODO: Add logging to file
->>>>>>> refs/remotes/origin/development
+    $ sqlx create database
+    $ sqlx migrate run
+
+
+## Commands
+
+### Chat commands (prefix `$`)
+- `$am_i_admin` : check for administrator permissions
+- `$delete_ranks`  clear all entries in the config table for the guild
+- `$config <param> <value>` : get the value of a parameter, set if `value` is provided
+    - `spam_delay`
+    - `min_xp_gain`
+    - `max_xp_gain`
+- `$ping` : pong!
+- `$learn <name> <link>` : save a link that can be called with `$*name*`
+- `$learned` : list of all commands saved using `$learn`
+- `$rank` : show user's rank card
+- `$top <x>` : show a card of `x` most active users
+- `$help`
+
+
+### Slash commands
+- `/set <xp> <messages> <user>` : set the values of xp and messages counts to a user
+- `/pub <channel>` : Set the public channel where are send the welcome messages
+- `/learn <name> <link>` : as above
+
+<!-- TODO: Add possibility to add fonts, profile pictures...>
+<!-- TODO: Add logging to file>
+<!-- TODO: Possibility to set xp to users OR find a way to get meee6 leaderboard>
+<!-- TODO: reaction roles>
+<!-- TODO: Try Piet (https://github.com/linebender/piet) to replace raqote (issue with text drawing)>
+<!-- TODO: Migrate to slash commands>
