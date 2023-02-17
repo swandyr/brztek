@@ -244,7 +244,7 @@ async fn main() {
     };
 
     let framework = StandardFramework::new()
-        .configure(|c| c.prefix("!").on_mention(Some(bot_id)).owners(owners))
+        .configure(|c| c.prefix("$").on_mention(Some(bot_id)).owners(owners))
         .group(&GENERAL_GROUP)
         .group(&LEVELS_GROUP)
         .group(&ADMINISTRATORS_GROUP)
