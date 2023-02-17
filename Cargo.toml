@@ -6,22 +6,18 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.69"
-chrono = "0.4.23"
-dotenvy = "0.15.6"
-font-kit = "0.11.0"
-image = "0.24.5"
-rand = "0.8.5"
-raqote = "0.8.2"
-reqwest = { version = "0.11.14" }
-serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.92"
-serenity = "0.11.5"
-sqlx = { version = "0.6.2", features = [
-    "runtime-tokio-native-tls",
-    "sqlite",
-    "chrono",
-] }
-tokio = { version = "1.25.0", features = ["macros", "rt-multi-thread"] }
-tracing = "0.1.37"
+anyhow             = "1.0.69"
+dotenvy            = "0.15.6"
+font-kit           = "0.11.0"
+image              = "0.24.5"
+rand               = "0.8.5"
+raqote             = "0.8.2"
+reqwest            = { version = "0.11.14" }
+serde              = { version = "1.0.152", features = ["derive"] }
+serde_json         = "1.0.92"
+serenity           = "0.11.5"
+sqlx               = { version = "0.6.2", features = ["runtime-tokio-native-tls", "sqlite"] }
+time               = "0.3.19"
+tokio              = { version = "1.25.0", features = ["macros", "rt-multi-thread"] }
+tracing            = "0.1.37"
 tracing-subscriber = "0.3.16"
