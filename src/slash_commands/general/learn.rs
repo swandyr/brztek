@@ -38,7 +38,7 @@ pub async fn run(ctx: &Context, options: &[CommandDataOption]) -> String {
     if let (CommandDataOptionValue::String(name), CommandDataOptionValue::String(link)) = options {
         let data = ctx.data.read().await;
         let db = data.get::<Db>().unwrap();
-        db.learn_command(name, link).await.unwrap();
+        db.set_learned(name, link).await.unwrap();
 
         "Command learned!".to_string()
     } else {

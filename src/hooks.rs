@@ -25,7 +25,7 @@ pub async fn unknown_command(ctx: &Context, msg: &Message, unknown_command_name:
     let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
     let queried = db
-        .get_command(unknown_command_name)
+        .get_learned(unknown_command_name)
         .await
         .expect("Query learned_command return error.");
 

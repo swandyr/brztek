@@ -7,7 +7,7 @@ use serenity::{
         application::interaction::{Interaction, InteractionResponseType},
         channel::Message,
         gateway::Ready,
-        prelude::{GuildId, Member, Mention, User},
+        prelude::{GuildId, Member, User},
     },
     prelude::*,
 };
@@ -15,7 +15,7 @@ use std::{collections::HashSet, env, sync::Arc, time::Instant};
 use tracing::{debug, error, info};
 
 mod utils;
-use utils::{config::Config, db::Db};
+use utils::db::Db;
 
 mod commands;
 mod hooks;
@@ -51,21 +51,8 @@ struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, ctx: Context, ready: Ready) {
+    async fn ready(&self, _ctx: Context, ready: Ready) {
         info!("{} is connected.", ready.user.name);
-
-        let guild_id_int = 1068933063935004722;
-        let guild_id = GuildId(guild_id_int);
-
-        // Register slash commands
-        let _commands = GuildId::set_application_commands(&guild_id, &ctx.http, |commands| {
-            commands
-                .create_application_command(|command| {
-                    slash_commands::general::learn::register(command)
-                })
-                .create_application_command(|command| slash_commands::admin::set::register(command))
-        })
-        .await;
     }
 
     async fn cache_ready(&self, ctx: Context, guilds: Vec<GuildId>) {
@@ -73,9 +60,25 @@ impl EventHandler for Handler {
         let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
         for guild in guilds {
+            // Create entry in database if not exists
             if let Err(why) = db.create_config_entry(guild.0).await {
                 error!("create_config_entry returned error for guild {guild:#?} : {why}");
             }
+
+            // Register slash commands
+            let _commands = GuildId::set_application_commands(&guild, &ctx.http, |commands| {
+                commands
+                    .create_application_command(|command| {
+                        slash_commands::general::learn::register(command)
+                    })
+                    .create_application_command(|command| {
+                        slash_commands::admin::set::register(command)
+                    })
+                    .create_application_command(|command| {
+                        slash_commands::admin::pub_channel::register(command)
+                    })
+            })
+            .await;
         }
     }
 
@@ -88,6 +91,14 @@ impl EventHandler for Handler {
                 "learn" => slash_commands::general::learn::run(&ctx, &command.data.options).await,
                 "set" => {
                     slash_commands::admin::set::run(
+                        &ctx,
+                        &command.data.options,
+                        &command.guild_id.unwrap(),
+                    )
+                    .await
+                }
+                "pub" => {
+                    slash_commands::admin::pub_channel::run(
                         &ctx,
                         &command.data.options,
                         &command.guild_id.unwrap(),
@@ -118,11 +129,6 @@ impl EventHandler for Handler {
         //     return;
         // }
 
-        // Prevent handling bot's message
-        // if msg.author.bot {
-        //     return;
-        // }
-
         // Ensure the command was sent from a guild channel
         let guild_id = if let Some(id) = msg.guild_id {
             id
@@ -149,45 +155,51 @@ impl EventHandler for Handler {
             .unwrap()
             .replace("$user", &format!("{mention}"));
 
-        // TODO: Store channel id in database
-        if let Ok(chan) = env::var("GENERAL_CHANNEL_ID") {
-            if let Ok(id) = chan.parse::<u64>() {
-                ctx.cache
-                    .guild_channel(id)
-                    .unwrap()
-                    .send_message(&ctx, |m| m.content(content))
-                    .await
-                    .unwrap();
-            } else {
-                error!("Unable to parse GENERAL_CHANNEL_ID; check var in .env file.");
+        let data = ctx.data.read().await;
+        let db = data.get::<Db>().unwrap();
+        let guild_id = new_member.guild_id.0;
+
+        match db.get_pub_channel_id(guild_id).await {
+            Ok(channel_id) => {
+                if let Some(id) = channel_id {
+                    ctx.cache
+                        .guild_channel(id)
+                        .unwrap()
+                        .send_message(&ctx, |m| m.content(content))
+                        .await
+                        .unwrap();
+                }
             }
-        } else {
-            error!("Unable to find GENERAL_CHANNEL_ID; check var in .env file.");
-        };
+            Err(why) => error!("Database error: {why}"),
+        }
     }
 
     async fn guild_member_removal(
         &self,
         ctx: Context,
-        _guild_id: GuildId,
+        guild_id: GuildId,
         user: User,
         _member_data_if_available: Option<Member>,
     ) {
         let username = format!("{}{}", user.name, user.discriminator);
         let content = format!("RIP **{username}**, you'll be missed.");
-        if let Ok(chan) = env::var("GENERAL_CHANNEL_ID") {
-            if let Ok(id) = chan.parse::<u64>() {
-                ctx.cache
-                    .guild_channel(id)
-                    .unwrap()
-                    .send_message(&ctx.http, |m| m.content(content))
-                    .await
-                    .unwrap();
-            } else {
-                error!("Unable to parse GENERAL_CHANNEL_ID; check var in .env file.");
+
+        let data = ctx.data.read().await;
+        let db = data.get::<Db>().unwrap();
+        let guild_id = guild_id.0;
+
+        match db.get_pub_channel_id(guild_id).await {
+            Ok(channel_id) => {
+                if let Some(id) = channel_id {
+                    ctx.cache
+                        .guild_channel(id)
+                        .unwrap()
+                        .send_message(&ctx.http, |m| m.content(content))
+                        .await
+                        .unwrap();
+                }
             }
-        } else {
-            error!("Unable to find GENERAL_CHANNEL_ID; check var in .env file.");
+            Err(why) => error!("Database error: {why}"),
         }
     }
 }

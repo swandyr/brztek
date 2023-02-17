@@ -26,7 +26,7 @@ pub async fn learn(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
     } else {
         let data = ctx.data.read().await;
         let db = data.get::<Db>().expect("Expected Db in TypeMap.");
-        db.learn_command(&command_name.unwrap(), &command_link.unwrap())
+        db.set_learned(&command_name.unwrap(), &command_link.unwrap())
             .await?;
     }
 

@@ -1,5 +1,3 @@
-use crate::levels::xp::calculate_level_from_xp;
-use crate::utils::db::Db;
 use serenity::{
     builder::CreateApplicationCommand,
     model::{
@@ -12,6 +10,9 @@ use serenity::{
     },
     prelude::Context,
 };
+
+use crate::levels::xp::calculate_level_from_xp;
+use crate::utils::db::Db;
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
     command

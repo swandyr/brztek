@@ -15,6 +15,7 @@ impl TypeMapKey for Config {
 }
 
 impl Config {
+    #[allow(dead_code)]
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
         let path = Path::new("config.json");
 
@@ -33,6 +34,7 @@ impl Config {
         Ok(config)
     }
 
+    #[allow(dead_code)]
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
         let mut file = std::fs::File::create("config.json")?;
         let serialized = serde_json::to_string_pretty(&self)?;
@@ -95,7 +97,7 @@ impl TryFrom<&str> for GuildCfgParam {
     }
 }
 
-impl std::fmt::Display for GuildCfgParam {
+impl Display for GuildCfgParam {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SpamDelay => write!(f, "spam delay"),

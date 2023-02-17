@@ -5,13 +5,13 @@ pub mod xp;
 
 use std::time::Instant;
 
-use crate::utils::config::{Config, XpSettings};
+use crate::utils::config::XpSettings;
 use crate::utils::db::Db;
 use serenity::{
     model::prelude::{ChannelId, GuildId, Mention, UserId},
     prelude::Context,
 };
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 pub async fn handle_message_xp(
     ctx: &Context,

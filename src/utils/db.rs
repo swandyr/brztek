@@ -289,9 +289,46 @@ impl Db {
         Ok(())
     }
 
+    pub async fn set_pub_channel_id(&self, channel_id: u64, guild_id: u64) -> anyhow::Result<()> {
+        let channel_id = to_i64(channel_id);
+        let guild_id = to_i64(guild_id);
+
+        sqlx::query!(
+            "UPDATE config
+            SET pub_channel_id = ?
+            WHERE guild_id = ?",
+            channel_id,
+            guild_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_pub_channel_id(&self, guild_id: u64) -> anyhow::Result<Option<u64>> {
+        let guild_id = to_i64(guild_id);
+
+        let response = sqlx::query!(
+            "SELECT pub_channel_id FROM config
+            WHERE guild_id = ?",
+            guild_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let channel_id = if let Some(record) = response {
+            record.pub_channel_id.map(from_i64)
+        } else {
+            None
+        };
+
+        Ok(channel_id)
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    pub async fn get_command(&self, command_name: &str) -> anyhow::Result<Option<String>> {
+    pub async fn get_learned(&self, command_name: &str) -> anyhow::Result<Option<String>> {
         let content = sqlx::query!(
             "SELECT content FROM learned_cmd WHERE name = ?",
             command_name
@@ -308,7 +345,7 @@ impl Db {
         }
     }
 
-    pub async fn learn_command(&self, command_name: &str, content: &str) -> anyhow::Result<()> {
+    pub async fn set_learned(&self, command_name: &str, content: &str) -> anyhow::Result<()> {
         sqlx::query!(
             "INSERT INTO learned_cmd (name, content) VALUES (?, ?) 
             ON CONFLICT (name) DO UPDATE SET content = ?",
