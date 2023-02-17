@@ -1,11 +1,33 @@
 # discord-bot
 
-Database needs to be created before starting the bot:
+## Before start
 
-```
-$ sqlx create database
-$ sqlx migrate run
-```
+Install `sqlx-cli` and use this commands to create and initialize the database
+
+    $ sqlx create database
+    $ sqlx migrate run
+
+
+## Commands
+
+### Chat commands (prefix `$`)
+- `$am_i_admin` : check for administrator permissions
+- `$delete_ranks`  clear all entries in the config table for the guild
+- `$config <param> <value>` : get the value of a parameter, set if `value` is provided
+    - `spam_delay`
+    - `min_xp_gain`
+    - `max_xp_gain`
+- `$ping` : pong!
+- `$learn <name> <link>` : save a link that can be called with `$*name*`
+- `$rank` : show user's rank card
+- `$top <x>` : show a card of `x` most active users
+- `$help`
+
+
+### Slash commands
+- `/set <xp> <messages> <user>` : set the values of xp and messages counts to a user
+- `/pub <channel>` : Set the public channel where are send the welcome messages
+- `/learn <name> <link>` : as above
 
 <!-- TODO: Add possibility to add fonts, profile pictures...>
 <!-- TODO: Add logging to file>
