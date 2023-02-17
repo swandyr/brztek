@@ -83,6 +83,15 @@ pub async fn gen_top_ten_card(
 
     // Create header
     let solid_source = Source::Solid(SolidSource::from(colors.white));
+    // dt.draw_text(
+    //     &font,
+    //     55.0,
+    //     guild_name,
+    //     Point::new(20.0, 45.0),
+    //     &solid_source,
+    //     &DrawOptions::new(),
+    // );
+    let text = format!("Top {}", users.len());
     dt.draw_text(
         &font,
         55.0,
