@@ -1,4 +1,5 @@
 use super::xp::{rand_xp, total_xp_required_for_level};
+use chrono::Utc;
 
 use crate::utils::config::XpSettings;
 
@@ -28,7 +29,7 @@ impl UserLevel {
         // Check the time between last and new message.
         // Return true if below anti_spam setting,
         // else false without adding xp
-        let now: i64 = time::OffsetDateTime::now_utc().unix_timestamp();
+        let now: i64 = Utc::now().timestamp();
         if now - self.last_message > xp_settings.delay_anti_spam {
             self.messages += 1;
             self.last_message = now;
