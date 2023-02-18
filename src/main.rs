@@ -122,6 +122,7 @@ async fn main() -> Result<(), Error> {
             poise_commands::general::learned(),
             poise_commands::levels::rank(),
             poise_commands::levels::top(),
+            poise_commands::admin::admin(),
         ],
         event_handler: |ctx, event, framework, user_data| {
             Box::pin(event_event_handler(ctx, event, framework, user_data))
