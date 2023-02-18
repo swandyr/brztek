@@ -12,10 +12,14 @@ use utils::db::Db;
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
+const PREFIX: &str = "$";
+
 /// Store database accessor
 pub struct Data {
     pub db: std::sync::Arc<Db>,
 }
+
+// ------------------------------------- Event handler -----------------------------------------
 
 async fn event_event_handler(
     ctx: &serenity::Context,
@@ -36,6 +40,9 @@ async fn event_event_handler(
             } else {
                 return Ok(());
             };
+
+            // poise does
+
             let user_id = new_message.author.id;
             let channel_id = new_message.channel_id;
 
@@ -87,6 +94,40 @@ async fn event_event_handler(
     Ok(())
 }
 
+// -------------------------------------- Error handling ----------------------------------
+
+async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
+    match error {
+        poise::FrameworkError::UnknownCommand {
+            ctx,
+            msg,
+            msg_content,
+            framework,
+            ..
+        } => {
+            // Check in database if it's a learned command
+            let db = &framework.user_data.db;
+
+            let queried = db
+                .get_learned(msg_content)
+                .await
+                .expect("Query learned_command returned with error");
+            if let Some(link) = queried {
+                msg.channel_id
+                    .send_message(&ctx.http, |m| m.content(link))
+                    .await
+                    .expect("Error sending learned command link");
+            } else {
+                msg.channel_id
+                    .send_message(&ctx.http, |m| m.content("This is not a valid command."))
+                    .await
+                    .unwrap();
+            }
+        }
+        error => error!("Got some error: {error}"),
+    }
+}
+
 // ----------------------------------------- Main -----------------------------------------
 
 #[tokio::main]
@@ -128,9 +169,10 @@ async fn main() -> Result<(), Error> {
             Box::pin(event_event_handler(ctx, event, framework, user_data))
         },
         prefix_options: poise::PrefixFrameworkOptions {
-            prefix: Some("$".into()),
+            prefix: Some(PREFIX.into()),
             ..Default::default()
         },
+        on_error: |error| Box::pin(on_error(error)),
         ..Default::default()
     };
 
