@@ -5,7 +5,7 @@ mod utils;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use std::{env, time::Instant};
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 use utils::db::Db;
 
@@ -24,7 +24,7 @@ pub struct Data {
 async fn event_event_handler(
     ctx: &serenity::Context,
     event: &poise::Event<'_>,
-    framework: poise::FrameworkContext<'_, Data, Error>,
+    _framework: poise::FrameworkContext<'_, Data, Error>,
     user_data: &Data,
 ) -> Result<(), Error> {
     match event {
@@ -72,7 +72,7 @@ async fn event_event_handler(
         poise::Event::GuildMemberRemoval {
             guild_id,
             user,
-            member_data_if_available,
+            member_data_if_available: _,
         } => {
             let username = format!("{}{}", user.name, user.discriminator);
             let content = format!("RIP **{username}**, you'll be missed");

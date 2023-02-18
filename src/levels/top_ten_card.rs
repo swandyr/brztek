@@ -40,7 +40,7 @@ pub async fn gen_top_ten_card(
         i64, // level
         i64, // current xp
     )],
-    guild_name: &str,
+    _guild_name: &str,
 ) -> anyhow::Result<()> {
     // Some colors
     let colors = Colors::default();
@@ -95,7 +95,7 @@ pub async fn gen_top_ten_card(
     dt.draw_text(
         &font,
         55.0,
-        guild_name,
+        &text,
         Point::new(20.0, 45.0),
         &solid_source,
         &DrawOptions::new(),

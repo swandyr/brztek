@@ -1,6 +1,5 @@
 use font_kit::font::Font;
-use raqote::{DrawOptions, DrawTarget, Spread, Image, Point, SolidSource, Source, Color, PathBuilder, StrokeStyle, GradientStop, Gradient};
-use tracing::debug;
+use raqote::{DrawOptions, DrawTarget, Spread, Image, Point, SolidSource, Source, Color, PathBuilder, GradientStop, Gradient};
 
 use super::xp::{xp_needed_to_level_up, total_xp_required_for_level};
 
