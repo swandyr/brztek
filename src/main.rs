@@ -1,213 +1,96 @@
+mod levels;
+mod poise_commands;
+mod utils;
+
+use poise::serenity_prelude::{self as serenity, Mentionable};
 use rand::{prelude::thread_rng, Rng};
-use serenity::{
-    async_trait,
-    framework::standard::{macros::group, StandardFramework},
-    http::Http,
-    model::{
-        application::interaction::{Interaction, InteractionResponseType},
-        channel::Message,
-        gateway::Ready,
-        prelude::{GuildId, Member, User},
-    },
-    prelude::*,
-};
-use std::{collections::HashSet, env, sync::Arc, time::Instant};
+use std::{env, time::Instant};
 use tracing::{debug, error, info};
 
-mod utils;
 use utils::db::Db;
 
-mod commands;
-mod hooks;
-mod levels;
-mod slash_commands;
+type Error = Box<dyn std::error::Error + Send + Sync>;
+type Context<'a> = poise::Context<'a, Data, Error>;
 
-use commands::{
-    admin::{AM_I_ADMIN_COMMAND, CONFIG_COMMAND, DELETE_RANKS_COMMAND},
-    general::{LEARNED_COMMAND, LEARN_COMMAND, PING_COMMAND},
-    help::HELP,
-    levels::{RANK_COMMAND, TOP_COMMAND},
-};
+/// Store database accessor
+pub struct Data {
+    pub db: std::sync::Arc<Db>,
+}
 
-#[group]
-#[summary = "General commands"]
-#[commands(ping, learn, learned)]
-struct General;
-
-#[group]
-#[only_in(guilds)]
-#[summary = "Levels & rank commands"]
-#[description = "Show your personal rank or the top 10 most active users in the server"]
-#[commands(rank, top)]
-struct Levels;
-
-#[group]
-#[only_in(guilds)]
-#[summary = "Admin commands"]
-#[commands(config, am_i_admin, delete_ranks)]
-struct Administrators;
-
-struct Handler;
-
-#[async_trait]
-impl EventHandler for Handler {
-    async fn ready(&self, _ctx: Context, ready: Ready) {
-        info!("{} is connected.", ready.user.name);
-    }
-
-    async fn cache_ready(&self, ctx: Context, guilds: Vec<GuildId>) {
-        let data = ctx.data.read().await;
-        let db = data.get::<Db>().expect("Expected Db in TypeMap");
-
-        for guild in guilds {
-            // Create entry in database if not exists
-            if let Err(why) = db.create_config_entry(guild.0).await {
-                error!("create_config_entry returned error for guild {guild:#?} : {why}");
-            }
-
-            // Register slash commands
-            let _commands = GuildId::set_application_commands(&guild, &ctx.http, |commands| {
-                commands
-                    .create_application_command(|command| {
-                        slash_commands::general::learn::register(command)
-                    })
-                    .create_application_command(|command| {
-                        slash_commands::admin::set::register(command)
-                    })
-                    .create_application_command(|command| {
-                        slash_commands::admin::pub_channel::register(command)
-                    })
-            })
-            .await;
+async fn event_event_handler(
+    ctx: &serenity::Context,
+    event: &poise::Event<'_>,
+    framework: poise::FrameworkContext<'_, Data, Error>,
+    user_data: &Data,
+) -> Result<(), Error> {
+    match event {
+        poise::Event::Ready { data_about_bot } => {
+            info!("{} is connected.", data_about_bot.user.name);
         }
-    }
+        poise::Event::Message { new_message } => {
+            let t_0 = Instant::now();
 
-    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::ApplicationCommand(command) = interaction {
-            debug!("Received command interaction: {:#?}", command);
-
-            // Respond to slash commands
-            let content = match command.data.name.as_str() {
-                "learn" => slash_commands::general::learn::run(&ctx, &command.data.options).await,
-                "set" => {
-                    slash_commands::admin::set::run(
-                        &ctx,
-                        &command.data.options,
-                        &command.guild_id.unwrap(),
-                    )
-                    .await
-                }
-                "pub" => {
-                    slash_commands::admin::pub_channel::run(
-                        &ctx,
-                        &command.data.options,
-                        &command.guild_id.unwrap(),
-                    )
-                    .await
-                }
-                _ => "Not implemented :(".to_string(),
+            // Ensure the command was sent from a guild channel
+            let guild_id = if let Some(id) = new_message.guild_id {
+                id
+            } else {
+                return Ok(());
             };
+            let user_id = new_message.author.id;
+            let channel_id = new_message.channel_id;
 
-            if let Err(why) = command
-                .create_interaction_response(&ctx.http, |response| {
-                    response
-                        .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|message| message.content(content))
-                })
-                .await
-            {
-                error!("Cannot responde to slash command: {why}");
+            levels::handle_message_xp(ctx, user_data, &guild_id, &channel_id, &user_id).await?;
+
+            info!("Message processed in: {} µs", t_0.elapsed().as_micros());
+        }
+        poise::Event::GuildMemberAddition { new_member } => {
+            let join_messages = serenity::constants::JOIN_MESSAGES;
+            let index = thread_rng().gen_range(0..join_messages.len());
+            let mention = new_member.mention();
+            let content = join_messages
+                .get(index)
+                .unwrap_or(&"Welcome $user")
+                .replace("$user", &format!("{mention}"));
+            let guild_id = new_member.guild_id.0;
+
+            let channel_id = user_data.db.get_pub_channel_id(guild_id).await?;
+            if let Some(id) = channel_id {
+                ctx.cache
+                    .guild_channel(id)
+                    .unwrap()
+                    .send_message(&ctx.http, |m| m.content(content))
+                    .await?;
             }
         }
-    }
+        poise::Event::GuildMemberRemoval {
+            guild_id,
+            user,
+            member_data_if_available,
+        } => {
+            let username = format!("{}{}", user.name, user.discriminator);
+            let content = format!("RIP **{username}**, you'll be missed");
+            let guild_id = guild_id.0;
 
-    async fn message(&self, ctx: Context, msg: Message) {
-        let t_0 = Instant::now();
+            let channel_id = user_data.db.get_pub_channel_id(guild_id).await?;
 
-        // Prevent the bot to reply to itself
-        // if msg.is_own(&ctx.cache) {
-        //     return;
-        // }
-
-        // Ensure the command was sent from a guild channel
-        let guild_id = if let Some(id) = msg.guild_id {
-            id
-        } else {
-            return;
-        };
-        let user_id = msg.author.id;
-        let channel_id = msg.channel_id;
-
-        if let Err(why) = levels::handle_message_xp(&ctx, &guild_id, &channel_id, &user_id).await {
-            error!("handle_message_xp returned error: {why}");
-        }
-
-        info!("Message processed in : {} µs", t_0.elapsed().as_micros());
-    }
-
-    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
-        use serenity::constants::JOIN_MESSAGES;
-
-        let index = thread_rng().gen_range(0..JOIN_MESSAGES.len());
-        let mention = new_member.mention();
-        let content = JOIN_MESSAGES
-            .get(index)
-            .unwrap()
-            .replace("$user", &format!("{mention}"));
-
-        let data = ctx.data.read().await;
-        let db = data.get::<Db>().unwrap();
-        let guild_id = new_member.guild_id.0;
-
-        match db.get_pub_channel_id(guild_id).await {
-            Ok(channel_id) => {
-                if let Some(id) = channel_id {
-                    ctx.cache
-                        .guild_channel(id)
-                        .unwrap()
-                        .send_message(&ctx, |m| m.content(content))
-                        .await
-                        .unwrap();
-                }
+            if let Some(id) = channel_id {
+                ctx.cache
+                    .guild_channel(id)
+                    .unwrap()
+                    .send_message(&ctx.http, |m| m.content(content))
+                    .await?;
             }
-            Err(why) => error!("Database error: {why}"),
         }
+        _ => {}
     }
 
-    async fn guild_member_removal(
-        &self,
-        ctx: Context,
-        guild_id: GuildId,
-        user: User,
-        _member_data_if_available: Option<Member>,
-    ) {
-        let username = format!("{}{}", user.name, user.discriminator);
-        let content = format!("RIP **{username}**, you'll be missed.");
-
-        let data = ctx.data.read().await;
-        let db = data.get::<Db>().unwrap();
-        let guild_id = guild_id.0;
-
-        match db.get_pub_channel_id(guild_id).await {
-            Ok(channel_id) => {
-                if let Some(id) = channel_id {
-                    ctx.cache
-                        .guild_channel(id)
-                        .unwrap()
-                        .send_message(&ctx.http, |m| m.content(content))
-                        .await
-                        .unwrap();
-                }
-            }
-            Err(why) => error!("Database error: {why}"),
-        }
-    }
+    Ok(())
 }
 
 // ----------------------------------------- Main -----------------------------------------
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Error> {
     dotenvy::dotenv().expect("Failed to load .env file");
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
@@ -215,42 +98,10 @@ async fn main() {
         .init();
 
     let token = env::var("DISCORD_TOKEN").expect("token needed");
-    let intents = GatewayIntents::non_privileged()
-        | GatewayIntents::MESSAGE_CONTENT
-        | GatewayIntents::GUILDS
-        | GatewayIntents::GUILD_MEMBERS;
-
-    let http = Http::new(&token);
-    let (owners, bot_id) = match http.get_current_application_info().await {
-        Ok(info) => {
-            let mut owners = HashSet::new();
-            if let Some(team) = info.team {
-                owners.insert(team.owner_user_id);
-            } else {
-                owners.insert(info.owner.id);
-            }
-            match http.get_current_user().await {
-                Ok(bot_id) => (owners, bot_id.id),
-                Err(why) => {
-                    error!("Could not access the bot id: {why}");
-                    panic!()
-                }
-            }
-        }
-        Err(why) => {
-            error!("Could not access application info: {why}");
-            panic!()
-        }
-    };
-
-    let framework = StandardFramework::new()
-        .configure(|c| c.prefix("$").on_mention(Some(bot_id)).owners(owners))
-        .group(&GENERAL_GROUP)
-        .group(&LEVELS_GROUP)
-        .group(&ADMINISTRATORS_GROUP)
-        .help(&HELP)
-        .after(hooks::after)
-        .unrecognised_command(hooks::unknown_command);
+    let intents = serenity::GatewayIntents::non_privileged()
+        | serenity::GatewayIntents::MESSAGE_CONTENT
+        | serenity::GatewayIntents::GUILDS
+        | serenity::GatewayIntents::GUILD_MEMBERS;
 
     let db_url = env::var("DATABASE_URL").expect("database path not found");
     let db = Db::new(&db_url).await;
@@ -262,21 +113,44 @@ async fn main() {
     //     Config::default()
     // });
 
-    let handler = Handler;
+    let options = poise::FrameworkOptions {
+        commands: vec![
+            poise_commands::register(),
+            poise_commands::help(),
+            poise_commands::general::ping(),
+            poise_commands::general::learn(),
+            poise_commands::general::learned(),
+            poise_commands::levels::rank(),
+            poise_commands::levels::top(),
+        ],
+        event_handler: |ctx, event, framework, user_data| {
+            Box::pin(event_event_handler(ctx, event, framework, user_data))
+        },
+        prefix_options: poise::PrefixFrameworkOptions {
+            prefix: Some("$".into()),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
 
-    let mut client = Client::builder(token, intents)
-        .event_handler(handler)
-        .framework(framework)
+    // The Framework builder will automatically retrieve the bot owner and application ID via the
+    // passed token, so that information need not be passed here
+    if let Err(why) = poise::Framework::builder()
+        .token(token)
+        .intents(intents)
+        .options(options)
+        .setup(|_ctx, _data_about, _framework| {
+            Box::pin(async move {
+                Ok(Data {
+                    db: std::sync::Arc::new(db),
+                })
+            })
+        })
+        .run()
         .await
-        .expect("Error creating client");
-
     {
-        let mut data = client.data.write().await;
-        data.insert::<Db>(Arc::new(db));
-        // data.insert::<Config>(Arc::new(RwLock::new(config)));
+        error!("Client returned with error: {why}");
     }
 
-    if let Err(why) = client.start().await {
-        error!("An error occured while running the client: {why}");
-    }
+    Ok(())
 }

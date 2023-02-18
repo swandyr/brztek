@@ -7,23 +7,20 @@ use std::time::Instant;
 
 use crate::utils::config::XpSettings;
 use crate::utils::db::Db;
-use serenity::{
-    model::prelude::{ChannelId, GuildId, Mention, UserId},
-    prelude::Context,
-};
+use crate::Data;
+use poise::serenity_prelude as serenity;
 use tracing::{debug, info};
 
 pub async fn handle_message_xp(
-    ctx: &Context,
-    guild_id: &GuildId,
-    channel_id: &ChannelId,
-    user_id: &UserId,
+    ctx: &serenity::Context,
+    user_data: &Data,
+    guild_id: &serenity::GuildId,
+    channel_id: &serenity::ChannelId,
+    user_id: &serenity::UserId,
 ) -> anyhow::Result<()> {
     info!("Entered handle_message_xp");
-    let data = ctx.data.read().await;
-    // https://github.com/launchbadge/sqlx/issues/2252#issuecomment-1364244820
-    let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
+    let db = &user_data.db;
     let mut user = db.get_user(user_id.0, guild_id.0).await?;
 
     let xp_settings = XpSettings::from(db.get_xpsettings(guild_id.0).await?);
@@ -36,7 +33,7 @@ pub async fn handle_message_xp(
     if user.has_level_up() {
         channel_id
             .send_message(&ctx.http, |m| {
-                let mention = Mention::from(*user_id);
+                let mention = serenity::Mention::from(*user_id);
                 let message = format!("Level Up, {mention}!");
                 m.content(&message)
             })
@@ -50,16 +47,13 @@ pub async fn handle_message_xp(
     debug!("User : {user:#?}");
 
     // Recalculate ranking of the user in the guild
-    update_users_ranks(ctx, guild_id.0).await?;
+    update_users_ranks(db, guild_id.0).await?;
 
     Ok(())
 }
 
-async fn update_users_ranks(ctx: &Context, guild_id: u64) -> anyhow::Result<()> {
+async fn update_users_ranks(db: &Db, guild_id: u64) -> anyhow::Result<()> {
     let t_0 = Instant::now();
-
-    let data = ctx.data.read().await;
-    let db = data.get::<Db>().expect("Expected Db in TypeMap");
 
     // Get a Vec of all users in database
     let mut all_users = db.get_all_users(guild_id).await?;
