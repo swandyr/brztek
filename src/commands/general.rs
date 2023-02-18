@@ -1,54 +1,45 @@
-use serenity::{
-    framework::standard::{macros::command, Args, CommandResult},
-    model::channel::Message,
-    prelude::*,
-};
+use poise::serenity_prelude as serenity;
 
-use crate::utils::db::Db;
+use crate::Data;
 
-#[command]
-pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.channel_id
-        .send_message(&ctx.http, |m| m.content("Pong!"))
-        .await?;
+type Error = Box<dyn std::error::Error + Send + Sync>;
+type Context<'a> = poise::Context<'a, Data, Error>;
+
+#[poise::command(
+    prefix_command,
+    slash_command,
+    //check = "owner_check",
+    category = "General"
+)]
+pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.say("Pong!").await?;
     Ok(())
 }
 
-#[command]
-pub async fn learn(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let command_name = args.single::<String>();
-    let command_link = args.single::<String>();
+#[poise::command(prefix_command, slash_command, category = "General")]
+pub async fn learn(
+    ctx: Context<'_>,
+    #[description = "Name"] name: String,
+    #[description = "Link"] link: String,
+) -> Result<(), Error> {
+    ctx.data().db.set_learned(&name, &link).await?;
 
-    if command_link.is_err() || command_link.is_err() {
-        msg.channel_id
-            .send_message(&ctx.http, |m| m.content("Need a name and a link."))
-            .await?;
-    } else {
-        let data = ctx.data.read().await;
-        let db = data.get::<Db>().expect("Expected Db in TypeMap.");
-        db.set_learned(&command_name.unwrap(), &command_link.unwrap())
-            .await?;
-    }
+    ctx.say(format!("I now know {name}")).await?;
 
     Ok(())
 }
 
-#[command]
-pub async fn learned(ctx: &Context, msg: &Message) -> CommandResult {
-    let data = ctx.data.read().await;
-    let db = data.get::<Db>().unwrap();
+#[poise::command(prefix_command, slash_command, category = "General")]
+pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
+    let commands = ctx.data().db.get_learned_list().await?;
 
-    let commands = db.get_learned_list().await?;
-
-    let mut content = String::from("> List of learned commands:\n");
+    let mut content = String::from(">>> List of learned commands: \n");
     for command in commands {
-        let line = format!("> - {command}\n");
+        let line = format!("  - {command}\n");
         content.push_str(&line);
     }
 
-    msg.channel_id
-        .send_message(&ctx.http, |m| m.content(content))
-        .await?;
+    ctx.say(content).await?;
 
     Ok(())
 }

@@ -1,5 +1,5 @@
+mod commands;
 mod levels;
-mod poise_commands;
 mod utils;
 
 use poise::serenity_prelude::{self as serenity, Mentionable};
@@ -156,14 +156,14 @@ async fn main() -> Result<(), Error> {
 
     let options = poise::FrameworkOptions {
         commands: vec![
-            poise_commands::register(),
-            poise_commands::help(),
-            poise_commands::general::ping(),
-            poise_commands::general::learn(),
-            poise_commands::general::learned(),
-            poise_commands::levels::rank(),
-            poise_commands::levels::top(),
-            poise_commands::admin::admin(),
+            commands::register(),
+            commands::help(),
+            commands::general::ping(),
+            commands::general::learn(),
+            commands::general::learned(),
+            commands::levels::rank(),
+            commands::levels::top(),
+            commands::admin::admin(),
         ],
         event_handler: |ctx, event, framework, user_data| {
             Box::pin(event_event_handler(ctx, event, framework, user_data))

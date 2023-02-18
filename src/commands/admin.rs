@@ -1,235 +1,159 @@
-use serenity::{
-    framework::standard::{macros::command, Args, CommandResult},
-    model::{channel::Message, prelude::PartialMember, user::User, Permissions},
-    prelude::*,
-};
-use tracing::{error, info};
+use poise::serenity_prelude as serenity;
+use tracing::info;
 
-use crate::levels::user_level::UserLevel;
-use crate::utils::db::Db;
+use crate::levels::xp;
+use crate::Data;
 
-#[command]
-#[description = "Check if you have administrator permissions"]
-pub async fn am_i_admin(ctx: &Context, msg: &Message) -> CommandResult {
-    let is_admin = if let Some(member) = &msg.member {
-        is_admin(ctx, member).await
+type Error = Box<dyn std::error::Error + Send + Sync>;
+type Context<'a> = poise::Context<'a, Data, Error>;
+
+#[allow(dead_code)]
+async fn is_admin(ctx: Context<'_>, member: serenity::PartialMember) -> Result<bool, Error> {
+    Ok(member.roles.iter().any(|r| {
+        r.to_role_cached(ctx).map_or(false, |r| {
+            r.has_permission(serenity::Permissions::ADMINISTRATOR)
+        })
+    }))
+}
+
+#[poise::command(
+    prefix_command,
+    slash_command,
+    subcommands("set_pub", "set_user", "spam_delay", "min_xp_gain", "max_xp_gain"),
+    required_permissions = "ADMINISTRATOR",
+    category = "Admin"
+)]
+pub async fn admin(_ctx: Context<'_>) -> Result<(), Error> {
+    Ok(())
+}
+
+#[poise::command(prefix_command, slash_command, category = "Admin")]
+pub async fn set_pub(
+    ctx: Context<'_>,
+    #[description = "The channel to set to public"] channel: serenity::ChannelId,
+) -> Result<(), Error> {
+    let guild_id = if let Some(id) = ctx.guild_id() {
+        id.0
     } else {
-        false
+        ctx.say("Must be in guild").await?;
+        return Ok(());
+    };
+    let channel_id = channel.0;
+
+    ctx.data()
+        .db
+        .set_pub_channel_id(channel_id, guild_id)
+        .await?;
+
+    info!("Channel {channel_id} set to pub for guild {guild_id}");
+
+    ctx.say(format!(
+        "{} is the new pub",
+        channel.name(ctx).await.unwrap()
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[poise::command(prefix_command, slash_command, category = "Admin")]
+pub async fn set_user(
+    ctx: Context<'_>,
+    #[description = "User to modify"] user: serenity::UserId,
+    #[description = "Messages count"] messages: i64,
+    #[description = "Amount of Xp"] xp: i64,
+) -> Result<(), Error> {
+    let guild_id = if let Some(id) = ctx.guild_id() {
+        id.0
+    } else {
+        ctx.say("Must be in guild").await?;
+        return Ok(());
+    };
+    let user_id = user.0;
+
+    let level = xp::calculate_level_from_xp(xp);
+
+    let mut user_level = ctx.data().db.get_user(user_id, guild_id).await?;
+    user_level.xp = xp;
+    user_level.level = level;
+    user_level.messages = messages;
+    ctx.data().db.update_user(&user_level, guild_id).await?;
+
+    info!("Admin updated user {user_id} in guild {guild_id}: {xp} - {level} - {messages}");
+
+    let username = user.to_user(ctx).await?;
+    ctx.say(format!("{} is now level {}", username, user_level.level))
+        .await?;
+
+    Ok(())
+}
+
+#[poise::command(prefix_command, slash_command, category = "Admin")]
+pub async fn spam_delay(
+    ctx: Context<'_>,
+    #[description = "Delay in seconds. Leave empty to get the actual value."] value: Option<i64>,
+) -> Result<(), Error> {
+    let guild_id = if let Some(id) = ctx.guild_id() {
+        id.0
+    } else {
+        ctx.say("Must be in guild").await?;
+        return Ok(());
     };
 
-    let content = if is_admin {
-        String::from("Yes, you are!")
+    if let Some(value) = value {
+        ctx.data().db.set_spam_delay(guild_id, value).await?;
+    }
+
+    let value = ctx.data().db.get_spam_delay(guild_id).await?;
+    ctx.say(format!("Spam delay is set to {value} seconds."))
+        .await?;
+
+    Ok(())
+}
+
+#[poise::command(prefix_command, slash_command, category = "Admin")]
+pub async fn min_xp_gain(
+    ctx: Context<'_>,
+    #[description = "Min xp points thaht can be gained. Leave empty to get the actual value."]
+    value: Option<i64>,
+) -> Result<(), Error> {
+    let guild_id = if let Some(id) = ctx.guild_id() {
+        id.0
     } else {
-        String::from("No, you're not.")
+        ctx.say("Must be in guild").await?;
+        return Ok(());
     };
 
-    msg.reply(&ctx.http, content).await?;
+    if let Some(value) = value {
+        ctx.data().db.set_min_xp_gain(guild_id, value).await?;
+    }
+
+    let value = ctx.data().db.get_min_xp_gain(guild_id).await?;
+    ctx.say(format!("Min Xp gain is set to {value} points."))
+        .await?;
 
     Ok(())
 }
 
-// Check if the author of the message has admin permissions
-async fn is_admin(ctx: &Context, member: &PartialMember) -> bool {
-    member.roles.iter().any(|r| {
-        r.to_role_cached(&ctx.cache)
-            .map_or(false, |r| r.has_permission(Permissions::ADMINISTRATOR))
-    })
-}
-
-// -------------- Admin Xp Commands -------------------
-// Retrieve a user from username in the guild
-// Possibility to set level and/or xp
-
-#[command]
-#[description = "Set a user's Xp"]
-pub async fn setxp(ctx: &Context, msg: &Message, arg: Args) -> CommandResult {
-    todo!()
-}
-
-#[command]
-#[description = "Set a user's level"]
-pub async fn setlevel(ctx: &Context, msg: &Message, arg: Args) -> CommandResult {
-    todo!()
-}
-
-async fn get_user(ctx: &Context) -> Option<User> {
-    todo!()
-}
-
-#[command]
-#[description = "Clear database"]
-pub async fn delete_ranks(ctx: &Context, msg: &Message) -> CommandResult {
-    if let Some(member) = &msg.member {
-        if !is_admin(ctx, member).await {
-            msg.channel_id
-                .send_message(&ctx.http, |m| {
-                    m.content("You don't have the permission to do that")
-                })
-                .await?;
-            return Ok(());
-        }
-    }
-
-    let data = ctx.data.read().await;
-    let db = data.get::<Db>().expect("Expected Db in TypeMap.");
-
-    if let Some(guild_id) = msg.guild_id {
-        info!("Delete rows in table 'edn_ranks'");
-        db.delete_table(guild_id.0).await?;
-
-        msg.channel_id.say(&ctx.http, "All xp dropped to 0").await?;
+#[poise::command(prefix_command, slash_command, category = "Admin")]
+pub async fn max_xp_gain(
+    ctx: Context<'_>,
+    #[description = "Maximum xp points that can be gained. Leave empty to get the actual value."]
+    value: Option<i64>,
+) -> Result<(), Error> {
+    let guild_id = if let Some(id) = ctx.guild_id() {
+        id.0
     } else {
-        error!("No guild_id found");
-    }
-
-    Ok(())
-}
-
-// ------------ Configuration Parameters --------------
-use crate::utils::config::GuildCfgParam;
-use tracing::debug;
-
-#[command]
-#[description = "Get or set configuration parameters"]
-pub async fn config(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    if let Some(arg) = args.current() {
-        let parameter = GuildCfgParam::try_from(arg)?;
-        args.advance();
-        let value = args.current();
-
-        if handle_command(ctx, msg, parameter, value).await.is_err() {
-            msg.channel_id
-                .send_message(&ctx.http, |m| m.content("Argument is invalid."))
-                .await?;
-        }
-    } else {
-        let data = ctx.data.read().await;
-        let db = data.get::<Db>().expect("Expected Db in TypeMap");
-        let guild_id = msg.guild_id.unwrap().0;
-
-        let (spam_delay, min_xp_gain, max_xp_gain) = db.get_xpsettings(guild_id).await?;
-        let content = format!(
-            r#"> **Server config:**
-        > spam_delay: {spam_delay}
-        > min_xp_gain {min_xp_gain}
-        > max_xp_gain {max_xp_gain}"#
-        );
-
-        msg.channel_id
-            .send_message(&ctx.http, |m| m.content(&content))
-            .await?;
-    }
-
-    Ok(())
-}
-
-async fn handle_command(
-    ctx: &Context,
-    msg: &Message,
-    parameter: GuildCfgParam,
-    value: Option<&str>,
-) -> CommandResult {
-    let guild_id = msg.guild_id.unwrap().0;
-
-    if let Some(val) = value {
-        set_parameter(ctx, parameter, val, guild_id).await?;
-
-        let content = format!(
-            "Changing {} to {}",
-            parameter,
-            get_parameter(ctx, parameter, guild_id).await?
-        );
-        msg.channel_id
-            .send_message(&ctx.http, |m| m.content(content))
-            .await?;
-    } else {
-        {
-            let content = format!(
-                "{} is set to {}.",
-                parameter,
-                get_parameter(ctx, parameter, guild_id).await?
-            );
-            msg.channel_id
-                .send_message(&ctx.http, |m| m.content(content))
-                .await?;
-        }
-    }
-
-    Ok(())
-}
-
-async fn set_parameter(
-    ctx: &Context,
-    parameter: GuildCfgParam,
-    value: &str,
-    guild_id: u64,
-) -> anyhow::Result<()> {
-    // Acquire a write lock on the data
-    let data = ctx.data.write().await;
-    debug!("Data lock acquired.");
-    let db = data.get::<Db>().expect("Expected Db in TypeMap");
-
-    match parameter {
-        GuildCfgParam::SpamDelay => db.set_spam_delay(guild_id, value.parse()?).await?,
-        GuildCfgParam::MinXpGain => db.set_min_xp_gain(guild_id, value.parse()?).await?,
-        GuildCfgParam::MaxXpGain => db.set_max_xp_gain(guild_id, value.parse()?).await?,
+        ctx.say("Must be in guild").await?;
+        return Ok(());
     };
 
-    // // Get mut ref of the config
-    // let config = data.get::<Config>().expect("Expected Config in TypeMap.");
-    // debug!("Get mut Config.");
-
-    // // Acquire a write lock on the config
-    // let mut lock = config.write().await;
-    // debug!("Config lock acquired.");
-
-    // // Internal of Config are mutable
-    // match parameter {
-    //     SpamDelay => {
-    //         lock.xp_settings.delay_anti_spam = value.parse::<i64>()?;
-    //         debug!("delay set to {value}.");
-    //     }
-    //     MinXpGain => {
-    //         lock.xp_settings.min_xp_gain = value.parse::<i64>()?;
-    //         debug!("min xp gain set to {value}.");
-    //     }
-    //     MaxXpGain => {
-    //         lock.xp_settings.max_xp_gain = value.parse::<i64>()?;
-    //         debug!("max xp gain set to {value}.");
-    //     }
-    // }
-
-    // Drop acquired locks
-    // drop(lock);
-    // debug!("Config lock droped.");
-    // drop(data);
-    // debug!("Data lock droped.");
+    if let Some(value) = value {
+        ctx.data().db.set_max_xp_gain(guild_id, value).await?;
+    }
+    let value = ctx.data().db.get_max_xp_gain(guild_id).await?;
+    ctx.say(format!("Max Xp gain is set to {value} points."))
+        .await?;
 
     Ok(())
-}
-
-async fn get_parameter(
-    ctx: &Context,
-    parameter: GuildCfgParam,
-    guild_id: u64,
-) -> Result<String, anyhow::Error> {
-    let data = ctx.data.read().await;
-    let db = data.get::<Db>().expect("Expected Db in TypeMap");
-
-    let value = match parameter {
-        GuildCfgParam::SpamDelay => db.get_spam_delay(guild_id).await?,
-        GuildCfgParam::MinXpGain => db.get_min_xp_gain(guild_id).await?,
-        GuildCfgParam::MaxXpGain => db.get_max_xp_gain(guild_id).await?,
-    };
-
-    // let config = data.get::<Config>().unwrap();
-    // let lock = config.read().await;
-
-    // let value = match parameter {
-    //     SpamDelay => lock.xp_settings.delay_anti_spam.to_string(),
-    //     MinXpGain => lock.xp_settings.min_xp_gain.to_string(),
-    //     MaxXpGain => lock.xp_settings.max_xp_gain.to_string(),
-    // };
-
-    Ok(value.to_string())
 }
