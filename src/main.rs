@@ -161,6 +161,7 @@ async fn main() -> Result<(), Error> {
             commands::general::ping(),
             commands::general::learn(),
             commands::general::learned(),
+            commands::general::bigrig(),
             commands::levels::rank(),
             commands::levels::top(),
             commands::admin::admin(),
