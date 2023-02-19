@@ -6,12 +6,7 @@ use crate::Data;
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
-#[poise::command(
-    prefix_command,
-    slash_command,
-    //check = "owner_check",
-    category = "General"
-)]
+#[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("Pong!").await?;
     Ok(())
@@ -25,7 +20,7 @@ pub async fn learn(
 ) -> Result<(), Error> {
     ctx.data().db.set_learned(&name, &link).await?;
 
-    ctx.say(format!("I now know {name}")).await?;
+    ctx.say(format!("I know {name}")).await?;
 
     Ok(())
 }

@@ -2,7 +2,7 @@ mod commands;
 mod levels;
 mod utils;
 
-use poise::serenity_prelude::{self as serenity, Mentionable};
+use poise::serenity_prelude::{self as serenity, CacheHttp, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use std::{env, time::Instant};
 use tracing::{error, info};
@@ -119,12 +119,32 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                     .expect("Error sending learned command link");
             } else {
                 msg.channel_id
-                    .send_message(&ctx.http, |m| m.content("This is not a valid command."))
+                    .send_message(&ctx.http, |m| m.content("https://tenor.com/view/kaamelott-perceval-cest-pas-faux-not-false-gif-17161490"))
                     .await
                     .unwrap();
             }
         }
-        error => error!("Got some error: {error}"),
+        poise::FrameworkError::MissingUserPermissions {
+            missing_permissions,
+            ctx,
+        } => {
+            ctx.channel_id()
+                .send_message(&ctx, |m| {
+                    m.content(
+                "https://tenor.com/view/jurrasic-park-samuel-l-jackson-magic-word-you-didnt-say-the-magic-work-gif-3556977",
+            )
+                })
+                .await
+                .unwrap();
+        }
+        poise::FrameworkError::GuildOnly { ctx } => {
+            ctx.say("This does not work outside a guild.")
+                .await
+                .unwrap();
+        }
+        error => {
+            error!("Unhandled error on command: {error}")
+        }
     }
 }
 
@@ -171,6 +191,7 @@ async fn main() -> Result<(), Error> {
         },
         prefix_options: poise::PrefixFrameworkOptions {
             prefix: Some(PREFIX.into()),
+            case_insensitive_commands: true,
             ..Default::default()
         },
         on_error: |error| Box::pin(on_error(error)),

@@ -8,7 +8,7 @@ use crate::Data;
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
-#[poise::command(prefix_command, slash_command, category = "Levels")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
     let t_0 = Instant::now();
 
@@ -26,7 +26,10 @@ pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
     let user_level = ctx.data().db.get_user(user_id, guild_id).await?;
 
     // Get user info to display on the card
-    let username = format!("{}#{}", ctx.author().name, ctx.author().discriminator);
+    //let username = format!("{}#{}", ctx.author().name, ctx.author().discriminator);
+    let member = ctx.author_member().await.unwrap();
+    let username = member.display_name();
+
     let avatar_url = ctx.author().avatar_url();
     let user_http = ctx.http().get_user(user_id).await?;
     let accent_colour = user_http
@@ -60,7 +63,7 @@ pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(prefix_command, slash_command, category = "Levels")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn top(
     ctx: Context<'_>,
     #[description = "Number of users (default: 10)"] number: Option<usize>,
