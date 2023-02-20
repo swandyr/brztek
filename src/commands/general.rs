@@ -18,7 +18,9 @@ pub async fn learn(
     #[description = "Name"] name: String,
     #[description = "Link"] link: String,
 ) -> Result<(), Error> {
-    ctx.data().db.set_learned(&name, &link).await?;
+    let guild_id = ctx.guild_id().unwrap().0;
+
+    ctx.data().db.set_learned(&name, &link, guild_id).await?;
 
     ctx.say(format!("I know {name}")).await?;
 
@@ -27,7 +29,9 @@ pub async fn learn(
 
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
-    let commands = ctx.data().db.get_learned_list().await?;
+    let guild_id = ctx.guild_id().unwrap().0;
+
+    let commands = ctx.data().db.get_learned_list(guild_id).await?;
 
     let mut content = String::from(">>> List of learned commands: \n");
     for command in commands {

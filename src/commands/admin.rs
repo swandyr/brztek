@@ -60,7 +60,6 @@ pub async fn set_pub(
 pub async fn set_user(
     ctx: Context<'_>,
     #[description = "User to modify"] user: serenity::UserId,
-    #[description = "Messages count"] messages: i64,
     #[description = "Amount of Xp"] xp: i64,
 ) -> Result<(), Error> {
     let guild_id = if let Some(id) = ctx.guild_id() {
@@ -76,10 +75,9 @@ pub async fn set_user(
     let mut user_level = ctx.data().db.get_user(user_id, guild_id).await?;
     user_level.xp = xp;
     user_level.level = level;
-    user_level.messages = messages;
     ctx.data().db.update_user(&user_level, guild_id).await?;
 
-    info!("Admin updated user {user_id} in guild {guild_id}: {xp} - {level} - {messages}");
+    info!("Admin updated user {user_id} in guild {guild_id}: {xp} - {level}");
 
     let username = user.to_user(ctx).await?;
     ctx.say(format!("{} is now level {}", username, user_level.level))

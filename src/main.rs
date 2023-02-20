@@ -31,8 +31,22 @@ async fn event_event_handler(
         poise::Event::Ready { data_about_bot } => {
             info!("{} is connected.", data_about_bot.user.name);
         }
+
+        poise::Event::CacheReady { guilds } => {
+            let db = &user_data.db;
+
+            for guild in guilds {
+                let guild_id = guild.0;
+                db.create_config_entry(guild_id).await?;
+            }
+        }
+
         poise::Event::Message { new_message } => {
             let t_0 = Instant::now();
+
+            if new_message.author.bot {
+                return Ok(());
+            }
 
             // Ensure the command was sent from a guild channel
             let guild_id = if let Some(id) = new_message.guild_id {
@@ -50,6 +64,7 @@ async fn event_event_handler(
 
             info!("Message processed in: {} µs", t_0.elapsed().as_micros());
         }
+
         poise::Event::GuildMemberAddition { new_member } => {
             let join_messages = serenity::constants::JOIN_MESSAGES;
             let index = thread_rng().gen_range(0..join_messages.len());
@@ -69,6 +84,7 @@ async fn event_event_handler(
                     .await?;
             }
         }
+
         poise::Event::GuildMemberRemoval {
             guild_id,
             user,
@@ -108,8 +124,10 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             // Check in database if it's a learned command
             let db = &framework.user_data.db;
 
+            let guild_id = msg.guild_id.unwrap().0;
+
             let queried = db
-                .get_learned(msg_content)
+                .get_learned(msg_content, guild_id)
                 .await
                 .expect("Query learned_command returned with error");
             if let Some(link) = queried {
@@ -167,12 +185,6 @@ async fn main() -> Result<(), Error> {
     let db_url = env::var("DATABASE_URL").expect("database path not found");
     let db = Db::new(&db_url).await;
     db.run_migrations().await.expect("Unable to run migrations");
-    // Set config entry if not exists
-
-    // let mut config = Config::load().unwrap_or_else(|err| {
-    //     error!("Can't read config file: {err}");
-    //     Config::default()
-    // });
 
     let options = poise::FrameworkOptions {
         commands: vec![

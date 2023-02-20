@@ -38,7 +38,7 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let response = sqlx::query!(
-            "SELECT user_id, xp, level, rank, messages, last_message FROM levels 
+            "SELECT user_id, xp, level, rank, last_message FROM levels 
             WHERE user_id = ? 
             AND guild_id = ?",
             user_id,
@@ -53,7 +53,6 @@ impl Db {
                 record.xp.unwrap_or_default(),
                 record.level.unwrap_or_default(),
                 record.rank.unwrap_or_default(),
-                record.messages.unwrap_or_default(),
                 record.last_message.unwrap_or_default(),
             );
             Ok(UserLevel::from(user))
@@ -79,13 +78,11 @@ impl Db {
             "UPDATE levels
                 SET xp = ?,
                     level = ?,
-                    messages = ?,
                     last_message = ?
                 WHERE user_id = ?
                 AND guild_id = ?",
             user.xp,
             user.level,
-            user.messages,
             user.last_message,
             user_id,
             guild_id
@@ -124,7 +121,7 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let response = sqlx::query!(
-            "SELECT user_id, xp, level, rank, messages, last_message FROM levels
+            "SELECT user_id, xp, level, rank, last_message FROM levels
             WHERE guild_id = ?",
             guild_id
         )
@@ -139,7 +136,6 @@ impl Db {
                     record.xp.unwrap_or_default(),
                     record.level.unwrap_or_default(),
                     record.rank.unwrap_or_default(),
-                    record.messages.unwrap_or_default(),
                     record.last_message.unwrap_or_default(),
                 );
 
@@ -323,10 +319,17 @@ impl Db {
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    pub async fn get_learned(&self, command_name: &str) -> anyhow::Result<Option<String>> {
+    pub async fn get_learned(
+        &self,
+        command_name: &str,
+        guild_id: u64,
+    ) -> anyhow::Result<Option<String>> {
+        let guild_id = to_i64(guild_id);
+
         let response = sqlx::query!(
-            "SELECT content FROM learned_cmd WHERE name = ?",
-            command_name
+            "SELECT content FROM learned_cmd WHERE name = ? AND guild_id = ?",
+            command_name,
+            guild_id
         )
         .fetch_optional(&self.pool)
         .await?;
@@ -340,23 +343,30 @@ impl Db {
         }
     }
 
-    pub async fn get_learned_list(&self) -> anyhow::Result<Vec<String>> {
-        let records = sqlx::query!("SELECT name FROM learned_cmd",)
+    pub async fn get_learned_list(&self, guild_id: u64) -> anyhow::Result<Vec<String>> {
+        let guild_id = to_i64(guild_id);
+
+        let records = sqlx::query!("SELECT name FROM learned_cmd WHERE guild_id = ?", guild_id)
             .fetch_all(&self.pool)
             .await?;
 
-        let commands = records
-            .iter()
-            .map(|record| record.name.clone().unwrap_or("*unknown*".to_string()))
-            .collect();
+        let commands = records.iter().map(|record| record.name.clone()).collect();
 
         Ok(commands)
     }
 
-    pub async fn set_learned(&self, command_name: &str, content: &str) -> anyhow::Result<()> {
+    pub async fn set_learned(
+        &self,
+        command_name: &str,
+        content: &str,
+        guild_id: u64,
+    ) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+
         sqlx::query!(
-            "INSERT INTO learned_cmd (name, content) VALUES (?, ?) 
-            ON CONFLICT (name) DO UPDATE SET content = ?",
+            "INSERT INTO learned_cmd (guild_id, name, content) VALUES (?, ?, ?) 
+            ON CONFLICT (guild_id, name) DO UPDATE SET content = ?",
+            guild_id,
             command_name,
             content,
             content
