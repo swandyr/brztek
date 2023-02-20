@@ -29,25 +29,25 @@ pub async fn handle_message_xp(
     // has passed since his last message
     let has_gained_xp = user.gain_xp_if_not_spam(xp_settings);
 
-    // Increment level of the user if enough xp, then send a chat message
-    if user.has_level_up() {
-        channel_id
-            .send_message(&ctx.http, |m| {
-                let mention = serenity::Mention::from(*user_id);
-                let message = format!("Level Up, {mention}!");
-                m.content(&message)
-            })
-            .await?;
-    }
     // Update user in database with new xp and level
     if has_gained_xp {
+        // Increment level of the user if enough xp, then send a chat message
+        if user.has_level_up() {
+            channel_id
+                .send_message(&ctx.http, |m| {
+                    let mention = serenity::Mention::from(*user_id);
+                    let message = format!("Level Up, {mention}!");
+                    m.content(&message)
+                })
+                .await?;
+        }
+
         db.update_user(&user, guild_id.0).await?;
+        debug!("Update user : {user:#?}");
+
+        // Recalculate ranking of the user in the guild
+        update_users_ranks(db, guild_id.0).await?;
     }
-
-    debug!("User : {user:#?}");
-
-    // Recalculate ranking of the user in the guild
-    update_users_ranks(db, guild_id.0).await?;
 
     Ok(())
 }

@@ -34,10 +34,10 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     let commands = ctx.data().db.get_learned_list(guild_id).await?;
 
     let mut content = String::from(">>> List of learned commands: \n");
-    for command in commands {
+    commands.iter().for_each(|command| {
         let line = format!("  - {command}\n");
         content.push_str(&line);
-    }
+    });
 
     ctx.say(content).await?;
 
@@ -61,13 +61,20 @@ struct Song {
     data: SongData,
 }
 
+const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song/current";
+//const BIGRIG_RECENT_URL: &str = https://brfm.radiocloud.pro/api/public/v1/song/recent
+
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
-    let url = "https://brfm.radiocloud.pro/api/public/v1/song/current";
-    // https://brfm.radiocloud.pro/api/public/v1/song/recent
-    let song = reqwest::get(url).await?.json::<Song>().await?;
+    let song = reqwest::get(BIGRIG_CURRENT_URL)
+        .await?
+        .json::<Song>()
+        .await?;
 
-    info!("Requested bigrig.fm at: {} -> status: {}", url, song.status);
+    info!(
+        "Requested bigrig.fm at: {} -> status: {}",
+        BIGRIG_CURRENT_URL, song.status
+    );
 
     ctx.send(|b| {
         b.embed(|f| {
