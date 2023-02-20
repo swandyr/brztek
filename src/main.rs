@@ -197,6 +197,7 @@ async fn main() -> Result<(), Error> {
             commands::levels::rank(),
             commands::levels::top(),
             commands::admin::admin(),
+            commands::admin::import_mee6_levels(),
         ],
         event_handler: |ctx, event, framework, user_data| {
             Box::pin(event_event_handler(ctx, event, framework, user_data))

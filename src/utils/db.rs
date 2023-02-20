@@ -28,6 +28,38 @@ impl Db {
         Ok(())
     }
 
+    /// Import levels from Mee6.
+    ///
+    /// Clear all users entries corresponding to the guild_id first,
+    /// and insert all new entries in hte `uers: Vec<UserLevel>
+    pub async fn import_from_mee6(
+        &self,
+        users: &Vec<UserLevel>,
+        guild_id: u64,
+    ) -> anyhow::Result<()> {
+        self.delete_table(guild_id).await?;
+
+        let guild_id = to_i64(guild_id);
+
+        for user in users {
+            let user_id = to_i64(user.user_id);
+            sqlx::query!(
+                "INSERT INTO levels (user_id, guild_id, xp, level, rank, last_message)
+                VALUES (?, ?, ?, ?, ?, ?)",
+                user_id,
+                guild_id,
+                user.xp,
+                user.level,
+                user.rank,
+                user.last_message,
+            )
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(())
+    }
+
     /// Return `UserLevel` corresponding to `user_id` in the database.
     ///
     /// If no user is found, create a new entry with `user_id` and returns
