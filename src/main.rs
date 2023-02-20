@@ -2,7 +2,7 @@ mod commands;
 mod levels;
 mod utils;
 
-use poise::serenity_prelude::{self as serenity, CacheHttp, Mentionable};
+use poise::serenity_prelude::{self as serenity, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use std::{env, time::Instant};
 use tracing::{error, info};
@@ -143,7 +143,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             }
         }
         poise::FrameworkError::MissingUserPermissions {
-            missing_permissions,
+            missing_permissions: _,
             ctx,
         } => {
             ctx.channel_id()
