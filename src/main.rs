@@ -177,10 +177,7 @@ async fn main() -> Result<(), Error> {
         .init();
 
     let token = env::var("DISCORD_TOKEN").expect("token needed");
-    let intents = serenity::GatewayIntents::non_privileged()
-        | serenity::GatewayIntents::MESSAGE_CONTENT
-        | serenity::GatewayIntents::GUILDS
-        | serenity::GatewayIntents::GUILD_MEMBERS;
+    let intents = serenity::GatewayIntents::MESSAGE_CONTENT | serenity::GatewayIntents::GUILDS;
 
     let db_url = env::var("DATABASE_URL").expect("database path not found");
     let db = Db::new(&db_url).await;
