@@ -1,4 +1,5 @@
 use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{CacheHttp, RoleId};
 use tracing::info;
 
 use crate::Data;
@@ -50,6 +51,66 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     });
 
     ctx.say(content).await?;
+
+    Ok(())
+}
+/// Get your own role
+///
+/// Attribute yourself a role at your name with your banner color
+#[poise::command(prefix_command, slash_command, guild_only, category = "General")]
+pub async fn set_color(ctx: Context<'_>) -> Result<(), Error> {
+    // Request db for an `Option<u64>` if a role is already attributed to the user
+    let db = &ctx.data().db;
+    let guild = ctx.guild().unwrap();
+    let guild_id = guild.id.0;
+    let mut member = ctx.author_member().await.unwrap();
+    let user_id = member.user.id.0;
+    let role_id = db.get_role_color(guild_id, user_id).await?;
+
+    // Member display name will be the name of the role
+    let name = member.display_name();
+    let role_name = format!("bot_color_{name}");
+
+    // User banner colour will be the colour of the role
+    let colour = ctx
+        .http()
+        .get_user(ctx.author().id.0)
+        .await?
+        .accent_colour
+        .unwrap();
+
+    info!("role_id: {:?}", role_id);
+    match role_id {
+        Some(id) => {
+            guild
+                .edit_role(ctx, RoleId(id), |r| {
+                    r.colour(colour.0 as u64).name(role_name)
+                })
+                .await?;
+            info!("role_color {} updated", id);
+        }
+        None => {
+            let roles_count = guild.roles.len();
+            let role = guild
+                .create_role(ctx, |role| {
+                    role.name(role_name)
+                        .colour(colour.0 as u64)
+                        .permissions(serenity::Permissions::empty())
+                        .position(roles_count as u8 - 1)
+                })
+                .await?;
+            info!("role_color created: {}", role.id.0);
+
+            // Add the role to the user
+            member.to_mut().add_role(ctx, role.id).await?;
+            info!("role added to user");
+
+            let role_id = role.id.0;
+            db.set_role_color(guild_id, user_id, role_id).await?;
+        }
+    }
+
+    ctx.send(|b| b.reply(true).content("Done!")).await?;
 
     Ok(())
 }

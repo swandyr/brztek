@@ -189,6 +189,53 @@ impl Db {
         Ok(())
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    pub async fn set_role_color(
+        &self,
+        guild_id: u64,
+        user_id: u64,
+        role_id: u64,
+    ) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+        let user_id = to_i64(user_id);
+        let role_id = to_i64(role_id);
+
+        sqlx::query!(
+            "INSERT INTO role_color (guild_id, user_id, role_id) VALUES (?, ?, ?)
+            ON CONFLICT (guild_id, user_id) DO UPDATE SET role_id = ?",
+            guild_id,
+            user_id,
+            role_id,
+            role_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_role_color(&self, guild_id: u64, user_id: u64) -> anyhow::Result<Option<u64>> {
+        let guild_id = to_i64(guild_id);
+        let user_id = to_i64(user_id);
+
+        let response = sqlx::query!(
+            "SELECT role_id FROM role_color WHERE guild_id = ? AND user_id = ?",
+            guild_id,
+            user_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let role_id = if let Some(record) = response {
+            record.role_id.map(from_i64)
+        } else {
+            None
+        };
+
+        Ok(role_id)
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////:
 
     pub async fn create_config_entry(&self, guild_id: u64) -> anyhow::Result<()> {

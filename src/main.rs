@@ -155,13 +155,22 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 .await
                 .unwrap();
         }
+        poise::FrameworkError::MissingBotPermissions {
+            missing_permissions,
+            ctx,
+        } => {
+            error!("Bot miss permissions: {}", missing_permissions);
+        }
         poise::FrameworkError::GuildOnly { ctx } => {
             ctx.say("This does not work outside a guild.")
                 .await
                 .unwrap();
         }
+        poise::FrameworkError::Command { error, ctx } => {
+            error!("Error in command: {}", error);
+        }
         error => {
-            error!("Unhandled error on command: {error}")
+            error!("Unhandled error on command {error}")
         }
     }
 }
@@ -180,7 +189,8 @@ async fn main() -> Result<(), Error> {
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
         | serenity::GatewayIntents::GUILDS
-        | serenity::GatewayIntents::GUILD_MEMBERS;
+        | serenity::GatewayIntents::GUILD_MEMBERS
+        | serenity::GatewayIntents::GUILD_MESSAGES;
 
     let db_url = env::var("DATABASE_URL").expect("database path not found");
     let db = Db::new(&db_url).await;
@@ -194,6 +204,7 @@ async fn main() -> Result<(), Error> {
             commands::general::learn(),
             commands::general::learned(),
             commands::general::bigrig(),
+            commands::general::set_color(),
             commands::general::yt(),
             commands::levels::rank(),
             commands::levels::top(),

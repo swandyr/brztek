@@ -45,3 +45,4 @@ Create a `.env` file.
 <!-- TODO: Reaction roles>
 <!-- TODO: Round corners of avatar in rank card>
 <!-- TODO: Maybe find something to replace raqote>
+<!-- TODO: Youtube search command>
