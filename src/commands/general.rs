@@ -6,12 +6,19 @@ use crate::Data;
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
+/// Ping the bot!
+///
+/// He'll pong you back.
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("Pong!").await?;
     Ok(())
 }
 
+/// Make the bot remember.
+///
+/// Save a named command with a link the bot will post when responding
+/// to the command.
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn learn(
     ctx: Context<'_>,
@@ -27,6 +34,9 @@ pub async fn learn(
     Ok(())
 }
 
+/// What the bot learned.
+///
+/// List all learned command names.
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
@@ -64,6 +74,9 @@ struct Song {
 const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song/current";
 //const BIGRIG_RECENT_URL: &str = https://brfm.radiocloud.pro/api/public/v1/song/recent
 
+/// Check if Jolene is playing on BigRig FM
+///
+/// The bot will show what's now on BigRig, even if it isn't Dolly Parton.
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
     let song = reqwest::get(BIGRIG_CURRENT_URL)
@@ -91,6 +104,12 @@ pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+/// Search a Youtube video.
+///
+/// The bot will post the first video returned by the search phrase you entered.
+///
+/// It requests the Invidious API to get the video Id to avoid the need of a Google API Key.
+/// The link posted is Youtube though.
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn yt(
     ctx: Context<'_>,

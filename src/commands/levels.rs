@@ -8,6 +8,7 @@ use crate::Data;
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
+/// Show your rank
 #[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
     let t_0 = Instant::now();
@@ -63,6 +64,9 @@ pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+/// Show the top users of the server
+///
+/// Default is 10.
 #[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn top(
     ctx: Context<'_>,

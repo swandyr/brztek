@@ -17,6 +17,12 @@ async fn is_admin(ctx: Context<'_>, member: serenity::PartialMember) -> Result<b
     }))
 }
 
+/// Admin commands
+///
+/// Prefix subcommands that need Administrator priviledges.
+///
+/// Available subcommands are set_pub, set_user, spam_delay, min_xp_gain,
+/// max_xp_gain.
 #[poise::command(
     prefix_command,
     slash_command,
@@ -28,6 +34,7 @@ pub async fn admin(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+/// Set a channel public
 #[poise::command(prefix_command, slash_command, category = "Admin")]
 pub async fn set_pub(
     ctx: Context<'_>,
@@ -57,6 +64,7 @@ pub async fn set_pub(
     Ok(())
 }
 
+/// Set the user's xp points
 #[poise::command(prefix_command, slash_command, category = "Admin")]
 pub async fn set_user(
     ctx: Context<'_>,
@@ -87,6 +95,9 @@ pub async fn set_user(
     Ok(())
 }
 
+/// Specifie the spam delay
+///
+/// A user will not gain xp if his last message was sent earlier than the spam delay
 #[poise::command(prefix_command, slash_command, category = "Admin")]
 pub async fn spam_delay(
     ctx: Context<'_>,
@@ -110,6 +121,7 @@ pub async fn spam_delay(
     Ok(())
 }
 
+/// Set the minimum xp gain per message
 #[poise::command(prefix_command, slash_command, category = "Admin")]
 pub async fn min_xp_gain(
     ctx: Context<'_>,
@@ -134,6 +146,7 @@ pub async fn min_xp_gain(
     Ok(())
 }
 
+/// Set the maximum xp gain per message
 #[poise::command(prefix_command, slash_command, category = "Admin")]
 pub async fn max_xp_gain(
     ctx: Context<'_>,
@@ -157,6 +170,7 @@ pub async fn max_xp_gain(
     Ok(())
 }
 
+/// Import users levels from Mee6 leaderboard
 #[poise::command(
     slash_command,
     required_permissions = "ADMINISTRATOR",
