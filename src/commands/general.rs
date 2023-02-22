@@ -90,3 +90,53 @@ pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
 
     Ok(())
 }
+
+#[poise::command(prefix_command, slash_command, category = "General")]
+pub async fn yt(
+    ctx: Context<'_>,
+    #[rest]
+    #[description = "search input"]
+    search: String,
+) -> Result<(), Error> {
+    // Request available invidious instance
+    let instances_url = "https://api.invidious.io/instances.json?sort_by=health";
+    let response = reqwest::get(instances_url).await?.text().await?;
+    let instances: serde_json::Value = serde_json::from_str(&response)?;
+
+    // Keep only instance that have available api calls
+    let instances = instances
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|inst| inst[1]["api"] == true);
+
+    for instance in instances {
+        let instance_uri = &instance[1]["uri"].to_string();
+        let instance_uri = instance_uri.trim_matches('"');
+        let query_url = format!("{instance_uri}/api/v1/search?q={search}&type=video");
+
+        // Send GET request to the invidious instance
+        info!("GET {query_url}");
+        let response = reqwest::get(query_url).await?;
+        info!("Status: {}", response.status());
+
+        // Process the response if response status code is Ok then exit loop
+        // If status code is not Ok, try with next instance
+        if response.status() == reqwest::StatusCode::OK {
+            let text = response.text().await?;
+            let json: serde_json::Value = serde_json::from_str(&text)?;
+            let video_id = &json[0]["videoId"].to_string();
+            let video_id = video_id.trim_matches('"');
+            info!("Found video id: {video_id}");
+
+            let youtube_url = format!("https://www.youtube.com/watch?v={video_id}");
+            ctx.say(youtube_url).await?;
+
+            return Ok(());
+        }
+    }
+
+    // If no request to any invidious instance returned with Ok
+    ctx.say("Nothing to see here.").await?;
+    Ok(())
+}
