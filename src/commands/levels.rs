@@ -70,7 +70,10 @@ pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn top(
     ctx: Context<'_>,
-    #[description = "Number of users (default: 10)"] number: Option<usize>,
+    #[description = "Number of users (default: 10)"]
+    #[min = 1]
+    #[max = 30]
+    number: Option<usize>,
 ) -> Result<(), Error> {
     let number = number.unwrap_or(10);
 

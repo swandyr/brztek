@@ -65,6 +65,7 @@ async fn event_event_handler(
             info!("Message processed in: {} µs", t_0.elapsed().as_micros());
         }
 
+        //? Discord already do this
         poise::Event::GuildMemberAddition { new_member } => {
             let join_messages = serenity::constants::JOIN_MESSAGES;
             let index = thread_rng().gen_range(0..join_messages.len());
@@ -85,6 +86,7 @@ async fn event_event_handler(
             }
         }
 
+        //? Discord already do this
         poise::Event::GuildMemberRemoval {
             guild_id,
             user,
@@ -112,6 +114,7 @@ async fn event_event_handler(
 
 // -------------------------------------- Error handling ----------------------------------
 
+// TODO: more error handling
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     match error {
         poise::FrameworkError::UnknownCommand {
@@ -142,10 +145,17 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                     .unwrap();
             }
         }
+
         poise::FrameworkError::MissingUserPermissions {
-            missing_permissions: _,
+            missing_permissions,
             ctx,
         } => {
+            info!(
+                "{} used command {} but misses permissions: {}",
+                ctx.author().name,
+                ctx.command().name,
+                missing_permissions.unwrap()
+            );
             ctx.channel_id()
                 .send_message(&ctx, |m| {
                     m.content(
@@ -155,20 +165,28 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 .await
                 .unwrap();
         }
+
         poise::FrameworkError::MissingBotPermissions {
             missing_permissions,
             ctx,
         } => {
-            error!("Bot miss permissions: {}", missing_permissions);
+            error!(
+                "Bot misses permissions: {} for command {}",
+                missing_permissions,
+                ctx.command().name
+            );
         }
+
         poise::FrameworkError::GuildOnly { ctx } => {
             ctx.say("This does not work outside a guild.")
                 .await
                 .unwrap();
         }
+
         poise::FrameworkError::Command { error, ctx } => {
             error!("Error in command: {}", error);
         }
+
         error => {
             error!("Unhandled error on command {error}")
         }
@@ -186,6 +204,7 @@ async fn main() -> Result<(), Error> {
         .init();
 
     let token = env::var("DISCORD_TOKEN").expect("token needed");
+    //? Intents are still a mystery to me
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
         | serenity::GatewayIntents::GUILDS
@@ -220,6 +239,7 @@ async fn main() -> Result<(), Error> {
             ..Default::default()
         },
         on_error: |error| Box::pin(on_error(error)),
+        //TODO: see for more options (liek `before` hook and so..)
         ..Default::default()
     };
 

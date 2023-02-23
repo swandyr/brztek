@@ -35,7 +35,7 @@ pub async fn admin(_ctx: Context<'_>) -> Result<(), Error> {
 }
 
 /// Set a channel public
-#[poise::command(prefix_command, slash_command, category = "Admin")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 pub async fn set_pub(
     ctx: Context<'_>,
     #[description = "The channel to set to public"] channel: serenity::ChannelId,
@@ -65,7 +65,7 @@ pub async fn set_pub(
 }
 
 /// Set the user's xp points
-#[poise::command(prefix_command, slash_command, category = "Admin")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 pub async fn set_user(
     ctx: Context<'_>,
     #[description = "User to modify"] user: serenity::UserId,
@@ -98,7 +98,7 @@ pub async fn set_user(
 /// Specifie the spam delay
 ///
 /// A user will not gain xp if his last message was sent earlier than the spam delay
-#[poise::command(prefix_command, slash_command, category = "Admin")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 pub async fn spam_delay(
     ctx: Context<'_>,
     #[description = "Delay in seconds. Leave empty to get the actual value."] value: Option<i64>,
@@ -122,7 +122,7 @@ pub async fn spam_delay(
 }
 
 /// Set the minimum xp gain per message
-#[poise::command(prefix_command, slash_command, category = "Admin")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 pub async fn min_xp_gain(
     ctx: Context<'_>,
     #[description = "Min xp points thaht can be gained. Leave empty to get the actual value."]
@@ -147,7 +147,7 @@ pub async fn min_xp_gain(
 }
 
 /// Set the maximum xp gain per message
-#[poise::command(prefix_command, slash_command, category = "Admin")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 pub async fn max_xp_gain(
     ctx: Context<'_>,
     #[description = "Maximum xp points that can be gained. Leave empty to get the actual value."]
@@ -174,6 +174,7 @@ pub async fn max_xp_gain(
 #[poise::command(
     slash_command,
     required_permissions = "ADMINISTRATOR",
+    guild_only,
     category = "Admin"
 )]
 pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {

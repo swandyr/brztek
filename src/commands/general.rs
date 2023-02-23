@@ -7,6 +7,8 @@ use crate::Data;
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
+//TODO: see commands options, for aliases and stuff
+
 /// Ping the bot!
 ///
 /// He'll pong you back.
@@ -57,7 +59,13 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
 /// Get your own role
 ///
 /// Attribute yourself a role at your name with your banner color
-#[poise::command(prefix_command, slash_command, guild_only, category = "General")]
+#[poise::command(
+    prefix_command,
+    slash_command,
+    guild_only,
+    required_bot_permissions = "MANAGE_ROLES",
+    category = "General"
+)]
 pub async fn set_color(ctx: Context<'_>) -> Result<(), Error> {
     // Request db for an `Option<u64>` if a role is already attributed to the user
     let db = &ctx.data().db;
@@ -115,23 +123,6 @@ pub async fn set_color(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[derive(Debug, serde::Deserialize)]
-struct SongData {
-    id: i32,
-    artist: String,
-    title: String,
-    album_art: String,
-    link: String,
-    played_at: i32,
-    playcount: i32,
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct Song {
-    status: String,
-    data: SongData,
-}
-
 const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song/current";
 //const BIGRIG_RECENT_URL: &str = https://brfm.radiocloud.pro/api/public/v1/song/recent
 
@@ -140,6 +131,23 @@ const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song
 /// The bot will show what's now on BigRig, even if it isn't Dolly Parton.
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
+    #[derive(Debug, serde::Deserialize)]
+    struct SongData {
+        id: i32,
+        artist: String,
+        title: String,
+        album_art: String,
+        link: String,
+        played_at: i32,
+        playcount: i32,
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct Song {
+        status: String,
+        data: SongData,
+    }
+
     let song = reqwest::get(BIGRIG_CURRENT_URL)
         .await?
         .json::<Song>()

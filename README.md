@@ -39,10 +39,8 @@ Create a `.env` file.
 ### Help
 - `help`
 
-
+<!-- TODO: Use tracing>
 <!-- TODO: Add logging to file>
-<!-- TODO: Add create  color roles command>
 <!-- TODO: Reaction roles>
 <!-- TODO: Round corners of avatar in rank card>
 <!-- TODO: Maybe find something to replace raqote>
-<!-- TODO: Youtube search command>

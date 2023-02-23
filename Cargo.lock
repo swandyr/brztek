@@ -116,6 +116,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "brztek"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dotenvy",
+ "font-kit",
+ "image",
+ "poise",
+ "rand",
+ "raqote",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serenity",
+ "sqlx",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -483,28 +505,6 @@ dependencies = [
  "libc",
  "redox_users",
  "winapi",
-]
-
-[[package]]
-name = "discord-bot"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "dotenvy",
- "font-kit",
- "image",
- "poise",
- "rand",
- "raqote",
- "reqwest",
- "serde",
- "serde_json",
- "serenity",
- "sqlx",
- "time",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
