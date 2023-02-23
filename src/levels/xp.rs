@@ -1,9 +1,5 @@
 use rand::prelude::*;
 
-const _MIN_XP_GAIN: i64 = 15;
-const _MAX_XP_GAIN: i64 = 25;
-pub const _ANTI_SPAM_DELAY: i64 = 30;
-
 pub fn rand_xp(min_gain: i64, max_gain: i64) -> i64 {
     let mut rng = rand::thread_rng();
     rng.gen_range(min_gain..=max_gain)

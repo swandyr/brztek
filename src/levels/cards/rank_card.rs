@@ -1,32 +1,16 @@
 use font_kit::font::Font;
 use raqote::{DrawOptions, DrawTarget, Spread, Image, Point, SolidSource, Source, Color, PathBuilder, GradientStop, Gradient};
 
-use super::xp::{xp_needed_to_level_up, total_xp_required_for_level};
+use super::{
+    to_png_buffer,
+    xp::{xp_needed_to_level_up, total_xp_required_for_level},
+    FONT, DEFAULT_PP_TESSELATION_VIOLET, Colors
+};
 
 const CARD_WIDTH: i32 = 440;
 const CARD_HEIGHT: i32 = 128;
 const AVATAR_WIDTH: f32 = 96.0;
 const AVATAR_HEIGHT: f32 = 96.0;
-
-const FONT: &str = "assets/fonts/eurostile font/EurostileBold.ttf";
-
-const DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tessellation-Violet.png";
-
-struct Colors {
-    white: Color,
-    dark_gray: Color,
-    light_gray: Color,
-}
-
-impl Default for Colors {
-    fn default() -> Self {
-        Self {
-            white: Color::new(0xff, 0xdc, 0xdc, 0xdc),
-            dark_gray: Color::new(0xfa, 0x23, 0x23, 0x23),
-            light_gray: Color::new(0xff, 0x57, 0x57, 0x57),
-        }
-    }
-}
 
 pub async fn gen_card(
     username: &str,
@@ -35,7 +19,7 @@ pub async fn gen_card(
     level: i64,
     rank: i64,
     user_xp: i64,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Vec<u8>> {
     // Xp values
     let xp_for_actual_level = total_xp_required_for_level(level);
     let xp_needed_to_level_up = xp_needed_to_level_up(level);
@@ -111,20 +95,6 @@ pub async fn gen_card(
     let path = pb.finish();
     dt.fill(&path, &gradient, &DrawOptions::new());
 
-    // Transform rgba Vec<u8> to argb Vec<u32>
-    let mut buffer: Vec<u32> = vec![];
-    for i in profile_picture.as_bytes().chunks(4) {
-        buffer.push((i[3] as u32) << 24 | (i[0] as u32) << 16 | (i[1] as u32) << 8 | i[2] as u32);
-    }
-
-    // Create an image that will be drawn on the target
-    let image = Image {
-        width: profile_picture.width().try_into()?,
-        height: profile_picture.height().try_into()?,
-        data: &buffer,
-    };
-
-
     // Opacity background for readability
     let (a, r, g, b) = (
         0xc0_u8,
@@ -144,6 +114,19 @@ pub async fn gen_card(
             alpha: 1.0,
             antialias: raqote::AntialiasMode::None,
         });
+
+    // Transform rgba Vec<u8> to argb Vec<u32>
+    let mut buffer: Vec<u32> = vec![];
+    for i in profile_picture.as_bytes().chunks(4) {
+        buffer.push((i[3] as u32) << 24 | (i[0] as u32) << 16 | (i[1] as u32) << 8 | i[2] as u32);
+    }
+
+    // Create an image that will be drawn on the target
+    let image = Image {
+        width: profile_picture.width().try_into()?,
+        height: profile_picture.height().try_into()?,
+        data: &buffer,
+    };    
     
     // dt.draw_image_at(margin, margin, &image, &DrawOptions::new());
     dt.draw_image_with_size_at(AVATAR_WIDTH, AVATAR_HEIGHT, margin, margin, &image, &DrawOptions::new());
@@ -187,47 +170,10 @@ pub async fn gen_card(
         &DrawOptions::new(),
     );
 
-    // Draw xp gauge
-    // let start = margin.mul_add(2.0, avatar_width); // let start = margin * 2.0 + avatar_width as f32;
-    // let start = margin * 4.0;
-    // let end = CARD_WIDTH as f32 - start;
-    // let length = end - start;
-
-    // let style = StrokeStyle {
-    //     cap: raqote::LineCap::Round,
-    //     width: 4.0,
-    //     ..Default::default()
-    // };
-
-    // let mut pb = PathBuilder::new();
-    // pb.move_to(start, 130.);
-    // pb.line_to(end, 130.);
-    // let path = pb.finish();
-
-    // dt.stroke(
-    //     &path, 
-    //     &Source::Solid(SolidSource::from(colors.light_gray)), 
-    //     &style, 
-    //     &DrawOptions::new());
-
-
-    // let end = (user_xp_in_level as f32 / xp_needed_to_level_up as f32).mul_add(length, start); // let end = (user_xp_in_level / xp_to_next_level) * length + start;
-    // let mut pb = PathBuilder::new();
-    // pb.move_to(start, 130.0);
-    // pb.line_to(end, 130.0);
-    // let path = pb.finish();
-
-    // dt.stroke(
-    //     &path,
-    //     &Source::Solid(SolidSource::from(colors.yellow)),
-    //     &style,
-    //     &DrawOptions::new(),
-    // );
-
-    dt.write_png("rank.png")?;
-    // ? See for later use `write_png_to_vec`: https://github.com/jrmuizel/raqote/pull/180
+    let card_buf = dt.get_data_u8().to_vec();
+    let buf = to_png_buffer(card_buf, CARD_WIDTH as u32, CARD_HEIGHT as u32)?;
     
-    Ok(())
+    Ok(buf)
 }
 
 // Change .webp extension to .png and remove parameters from URL

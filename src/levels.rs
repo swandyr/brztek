@@ -1,15 +1,14 @@
-pub mod rank_card;
-pub mod top_ten_card;
+pub mod cards;
 pub mod user_level;
 pub mod xp;
 
+use poise::serenity_prelude as serenity;
 use std::time::Instant;
+use tracing::{debug, info};
 
 use crate::utils::config::XpSettings;
 use crate::utils::db::Db;
 use crate::Data;
-use poise::serenity_prelude as serenity;
-use tracing::{debug, info};
 
 pub async fn handle_message_xp(
     ctx: &serenity::Context,
@@ -70,7 +69,7 @@ async fn update_users_ranks(db: &Db, guild_id: u64) -> anyhow::Result<()> {
     }
 
     if !rank_has_changed.is_empty() {
-        db.update_ranks(&rank_has_changed, guild_id).await?;
+        db.update_ranks(rank_has_changed, guild_id).await?;
     }
 
     info!("Updated all ranks in : {} µs", t_0.elapsed().as_micros());

@@ -36,7 +36,7 @@ pub async fn admin(_ctx: Context<'_>) -> Result<(), Error> {
 
 /// Set a channel public
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
-pub async fn set_pub(
+async fn set_pub(
     ctx: Context<'_>,
     #[description = "The channel to set to public"] channel: serenity::ChannelId,
 ) -> Result<(), Error> {
@@ -66,7 +66,7 @@ pub async fn set_pub(
 
 /// Set the user's xp points
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
-pub async fn set_user(
+async fn set_user(
     ctx: Context<'_>,
     #[description = "User to modify"] user: serenity::UserId,
     #[description = "Amount of Xp"] xp: i64,
@@ -99,7 +99,7 @@ pub async fn set_user(
 ///
 /// A user will not gain xp if his last message was sent earlier than the spam delay
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
-pub async fn spam_delay(
+async fn spam_delay(
     ctx: Context<'_>,
     #[description = "Delay in seconds. Leave empty to get the actual value."] value: Option<i64>,
 ) -> Result<(), Error> {
@@ -123,7 +123,7 @@ pub async fn spam_delay(
 
 /// Set the minimum xp gain per message
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
-pub async fn min_xp_gain(
+async fn min_xp_gain(
     ctx: Context<'_>,
     #[description = "Min xp points thaht can be gained. Leave empty to get the actual value."]
     value: Option<i64>,
@@ -148,7 +148,7 @@ pub async fn min_xp_gain(
 
 /// Set the maximum xp gain per message
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
-pub async fn max_xp_gain(
+async fn max_xp_gain(
     ctx: Context<'_>,
     #[description = "Maximum xp points that can be gained. Leave empty to get the actual value."]
     value: Option<i64>,
@@ -232,7 +232,7 @@ pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {
 
     ctx.data()
         .db
-        .import_from_mee6(&user_levels, guild_id)
+        .import_from_mee6(user_levels, guild_id)
         .await?;
 
     Ok(())

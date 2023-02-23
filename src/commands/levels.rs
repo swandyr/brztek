@@ -2,7 +2,7 @@ use poise::serenity_prelude::{self as serenity, CacheHttp};
 use std::time::Instant;
 use tracing::info;
 
-use crate::levels::{rank_card, top_ten_card};
+use crate::levels::cards::{rank_card, top_card};
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -40,7 +40,7 @@ pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
 
     // Generate the card that will be save with name "rank.png"
     let t_1 = Instant::now();
-    rank_card::gen_card(
+    let image = rank_card::gen_card(
         &username,
         avatar_url,
         accent_colour,
@@ -53,7 +53,7 @@ pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
 
     let t_1 = Instant::now();
     ctx.send(|m| {
-        let file = serenity::AttachmentType::from("rank.png");
+        let file = serenity::AttachmentType::from((image.as_slice(), "rank_card.png"));
         m.attachment(file)
     })
     .await?;
@@ -99,11 +99,11 @@ pub async fn top(
     }
 
     // Generate an image that is saved with name "top_ten.png"
-    top_ten_card::gen_top_ten_card(&top_users, &guild_name).await?;
+    let image = top_card::gen_top_ten_card(&top_users, &guild_name).await?;
 
     // Send generated "top_ten.png" file
     ctx.send(|b| {
-        let file = serenity::AttachmentType::from("top_ten.png");
+        let file = serenity::AttachmentType::from((image.as_slice(), "top_card.png"));
         b.attachment(file)
     })
     .await?;

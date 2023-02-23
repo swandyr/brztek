@@ -34,7 +34,7 @@ impl Db {
     /// and insert all new entries in hte `uers: Vec<UserLevel>
     pub async fn import_from_mee6(
         &self,
-        users: &Vec<UserLevel>,
+        users: Vec<UserLevel>,
         guild_id: u64,
     ) -> anyhow::Result<()> {
         self.delete_table(guild_id).await?;
@@ -71,8 +71,7 @@ impl Db {
 
         let response = sqlx::query!(
             "SELECT user_id, xp, level, rank, last_message FROM levels 
-            WHERE user_id = ? 
-            AND guild_id = ?",
+            WHERE user_id = ? AND guild_id = ?",
             user_id,
             guild_id,
         )
@@ -108,11 +107,8 @@ impl Db {
 
         sqlx::query!(
             "UPDATE levels
-                SET xp = ?,
-                    level = ?,
-                    last_message = ?
-                WHERE user_id = ?
-                AND guild_id = ?",
+            SET xp = ?, level = ?, last_message = ?
+            WHERE user_id = ? AND guild_id = ?",
             user.xp,
             user.level,
             user.last_message,
@@ -126,7 +122,7 @@ impl Db {
     }
 
     // Update user rank in the database
-    pub async fn update_ranks(&self, users: &Vec<UserLevel>, guild_id: u64) -> anyhow::Result<()> {
+    pub async fn update_ranks(&self, users: Vec<UserLevel>, guild_id: u64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 
         for user in users {
@@ -135,8 +131,7 @@ impl Db {
             sqlx::query!(
                 "UPDATE levels
                 SET rank = ?
-                WHERE user_id = ?
-                AND guild_id = ?",
+                WHERE user_id = ? AND guild_id = ?",
                 user.rank,
                 user_id,
                 guild_id
@@ -255,8 +250,7 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let record = sqlx::query!(
-            "SELECT spam_delay, min_xp_gain, max_xp_gain 
-            FROM config
+            "SELECT spam_delay, min_xp_gain, max_xp_gain FROM config
             WHERE guild_id = ?",
             guild_id
         )
@@ -270,8 +264,7 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let record = sqlx::query!(
-            "SELECT spam_delay 
-            FROM config 
+            "SELECT spam_delay FROM config 
             WHERE guild_id = ?",
             guild_id,
         )
@@ -301,8 +294,7 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let record = sqlx::query!(
-            "SELECT min_xp_gain
-            FROM config
+            "SELECT min_xp_gain FROM config
             WHERE guild_id = ?",
             guild_id
         )
@@ -332,8 +324,7 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let record = sqlx::query!(
-            "SELECT max_xp_gain
-            FROM config
+            "SELECT max_xp_gain FROM config
             WHERE guild_id = ?",
             guild_id
         )

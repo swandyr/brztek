@@ -14,7 +14,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 
 const PREFIX: &str = "$";
 
-/// Store database accessor
+/// Store shared data
 pub struct Data {
     pub db: std::sync::Arc<Db>,
 }
@@ -54,8 +54,6 @@ async fn event_event_handler(
             } else {
                 return Ok(());
             };
-
-            // poise does
 
             let user_id = new_message.author.id;
             let channel_id = new_message.channel_id;
@@ -207,9 +205,9 @@ async fn main() -> Result<(), Error> {
     //? Intents are still a mystery to me
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
-        | serenity::GatewayIntents::GUILDS
-        | serenity::GatewayIntents::GUILD_MEMBERS
-        | serenity::GatewayIntents::GUILD_MESSAGES;
+        //| serenity::GatewayIntents::GUILDS
+        | serenity::GatewayIntents::GUILD_MEMBERS;
+    //| serenity::GatewayIntents::GUILD_MESSAGES;
 
     let db_url = env::var("DATABASE_URL").expect("database path not found");
     let db = Db::new(&db_url).await;
@@ -239,7 +237,7 @@ async fn main() -> Result<(), Error> {
             ..Default::default()
         },
         on_error: |error| Box::pin(on_error(error)),
-        //TODO: see for more options (liek `before` hook and so..)
+        //TODO: see for more options (like `before` hook and so..)
         ..Default::default()
     };
 
