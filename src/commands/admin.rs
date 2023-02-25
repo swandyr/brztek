@@ -26,11 +26,26 @@ pub async fn admin(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+async fn autocomplete_channel<'a>(
+    ctx: Context<'_>,
+    _partial: &'a str,
+) -> impl Iterator<Item = serenity::GuildChannel> {
+    ctx.guild()
+        .unwrap()
+        .channels(ctx)
+        .await
+        .unwrap()
+        .into_values()
+        .filter(|chan| chan.is_text_based()) //? filter doesn't seem to work
+}
+
 /// Set a channel public
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 async fn set_pub(
     ctx: Context<'_>,
-    #[description = "The channel to set to public"] channel: serenity::ChannelId,
+    #[description = "The channel to set to public"]
+    #[autocomplete = "autocomplete_channel"]
+    channel: serenity::GuildChannel,
 ) -> Result<(), Error> {
     let guild_id = if let Some(id) = ctx.guild_id() {
         id.0
@@ -38,7 +53,7 @@ async fn set_pub(
         ctx.say("Must be in guild").await?;
         return Ok(());
     };
-    let channel_id = channel.0;
+    let channel_id = channel.id.0;
 
     ctx.data()
         .db
@@ -47,11 +62,8 @@ async fn set_pub(
 
     info!("Channel {channel_id} set to pub for guild {guild_id}");
 
-    ctx.say(format!(
-        "{} is the new pub",
-        channel.name(ctx).await.unwrap()
-    ))
-    .await?;
+    ctx.say(format!("{} is the new pub", channel.name()))
+        .await?;
 
     Ok(())
 }
