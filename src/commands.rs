@@ -2,7 +2,7 @@ pub mod admin;
 pub mod general;
 pub mod levels;
 
-use poise::serenity_prelude as serenity;
+// use poise::serenity_prelude as serenity;
 
 use crate::Data;
 
@@ -28,9 +28,9 @@ pub async fn help(
         command.as_deref(),
         poise::builtins::HelpConfiguration {
             extra_text_at_bottom: "\
-This is an example bot made to showcase features of my custom Discord bot framework",
+Type $help command for more info on a command.",
             show_context_menu_commands: true,
-            ..Default::default()
+            ephemeral: true,
         },
     )
     .await?;

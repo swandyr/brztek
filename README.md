@@ -21,6 +21,8 @@ Create a `.env` file.
 - `learn <name> <link>` : save a link that can be called with `$*name*`
 - `learned` : list of all commands saved using `$learn`
 - `bigrig` : show the current that is playing on BigRig FM
+- `yt <search>` : Send the first Youtube video of the search query
+- `set_color` : Gives your username the same color as your banner
 
 ### Levels
 - `rank` : show user's rank card
@@ -39,7 +41,6 @@ Create a `.env` file.
 ### Help
 - `help`
 
-<!-- TODO: Use tracing>
 <!-- TODO: Add logging to file>
 <!-- TODO: Reaction roles>
 <!-- TODO: Round corners of avatar in rank card>

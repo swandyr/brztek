@@ -1,10 +1,11 @@
 use serenity::prelude::TypeMapKey;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::levels::user_level::UserLevel;
 
+#[derive(Debug)]
 pub struct Db {
     pool: SqlitePool,
 }
@@ -14,6 +15,7 @@ impl TypeMapKey for Db {
 }
 
 impl Db {
+    #[instrument]
     pub async fn new(db_path: &str) -> Self {
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
@@ -23,6 +25,7 @@ impl Db {
         Self { pool }
     }
 
+    #[instrument]
     pub async fn run_migrations(&self) -> anyhow::Result<()> {
         sqlx::migrate!("./migrations").run(&self.pool).await?;
         Ok(())
@@ -32,6 +35,7 @@ impl Db {
     ///
     /// Clear all users entries corresponding to the guild_id first,
     /// and insert all new entries in hte `uers: Vec<UserLevel>
+    #[instrument]
     pub async fn import_from_mee6(
         &self,
         users: Vec<UserLevel>,
@@ -64,6 +68,7 @@ impl Db {
     ///
     /// If no user is found, create a new entry with `user_id` and returns
     /// new `UserLevel`.
+    #[instrument]
     pub async fn get_user(&self, user_id: u64, guild_id: u64) -> anyhow::Result<UserLevel> {
         // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user_id);
@@ -100,6 +105,7 @@ impl Db {
     }
 
     /// Update user's entry in the database with new values.
+    #[instrument]
     pub async fn update_user(&self, user: &UserLevel, guild_id: u64) -> anyhow::Result<()> {
         // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user.user_id);
@@ -122,6 +128,7 @@ impl Db {
     }
 
     // Update user rank in the database
+    #[instrument]
     pub async fn update_ranks(&self, users: Vec<UserLevel>, guild_id: u64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 
@@ -144,6 +151,7 @@ impl Db {
     }
 
     /// Get all entries in the dabase and returns a `Vec<UserLevel>`
+    #[instrument]
     pub async fn get_all_users(&self, guild_id: u64) -> anyhow::Result<Vec<UserLevel>> {
         let guild_id = to_i64(guild_id);
 
@@ -186,6 +194,7 @@ impl Db {
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
+    #[instrument]
     pub async fn set_role_color(
         &self,
         guild_id: u64,
@@ -210,6 +219,7 @@ impl Db {
         Ok(())
     }
 
+    #[instrument]
     pub async fn get_role_color(&self, guild_id: u64, user_id: u64) -> anyhow::Result<Option<u64>> {
         let guild_id = to_i64(guild_id);
         let user_id = to_i64(user_id);
@@ -233,6 +243,7 @@ impl Db {
 
     ///////////////////////////////////////////////////////////////////////////////////////:
 
+    #[instrument]
     pub async fn create_config_entry(&self, guild_id: u64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 

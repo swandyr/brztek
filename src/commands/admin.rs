@@ -1,5 +1,5 @@
 use poise::serenity_prelude as serenity;
-use tracing::info;
+use tracing::{info, instrument};
 
 use crate::levels::user_level::UserLevel;
 use crate::levels::xp;
@@ -23,6 +23,7 @@ async fn is_admin(ctx: Context<'_>, member: serenity::PartialMember) -> Result<b
 ///
 /// Available subcommands are set_pub, set_user, spam_delay, min_xp_gain,
 /// max_xp_gain.
+#[instrument]
 #[poise::command(
     prefix_command,
     slash_command,
@@ -171,6 +172,7 @@ async fn max_xp_gain(
 }
 
 /// Import users levels from Mee6 leaderboard
+#[instrument]
 #[poise::command(
     slash_command,
     required_permissions = "ADMINISTRATOR",

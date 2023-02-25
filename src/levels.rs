@@ -4,12 +4,13 @@ pub mod xp;
 
 use poise::serenity_prelude as serenity;
 use std::time::Instant;
-use tracing::{debug, info};
+use tracing::{debug, info, instrument};
 
 use crate::utils::config::XpSettings;
 use crate::utils::db::Db;
 use crate::Data;
 
+#[instrument(skip(ctx))]
 pub async fn handle_message_xp(
     ctx: &serenity::Context,
     user_data: &Data,
@@ -17,8 +18,6 @@ pub async fn handle_message_xp(
     channel_id: &serenity::ChannelId,
     user_id: &serenity::UserId,
 ) -> anyhow::Result<()> {
-    info!("Entered handle_message_xp");
-
     let db = &user_data.db;
     let mut user = db.get_user(user_id.0, guild_id.0).await?;
 

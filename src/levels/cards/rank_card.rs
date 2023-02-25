@@ -24,10 +24,6 @@ pub async fn gen_card(
     let xp_for_actual_level = total_xp_required_for_level(level);
     let xp_needed_to_level_up = xp_needed_to_level_up(level);
     let user_xp_in_level = user_xp - xp_for_actual_level;
-    println!("total xp for level {level}: {xp_for_actual_level}");
-    println!("user xp: {user_xp}");
-    println!("xp in his level: {user_xp_in_level}");
-
 
     // Request profile picture through HTTP if `avatar_url` is Some().
     // Fallback to a default picture if None.
@@ -48,11 +44,11 @@ pub async fn gen_card(
     // let margin: f32 = (CARD_HEIGHT as f32 / 2.0) - (AVATAR_HEIGHT / 2.0);
     let margin = 16.0_f32;
 
-    // Create the target and fill with white
+    // Create the target
     let mut dt = DrawTarget::new(CARD_WIDTH, CARD_HEIGHT);
     dt.clear(SolidSource::from(colors.white));
 
-    // Play with some gradients
+    // Draw the user's xp gauge as a background gradient
     let (r, g, b) = banner_colour;
     let color_gradient = Color::new(0xff, r, g, b);
 
@@ -90,7 +86,6 @@ pub async fn gen_card(
         Spread::Pad,
     );
     let mut pb = PathBuilder::new();
-    // pb.rect(5.0, 5.0, (CARD_WIDTH - 10) as f32, (CARD_HEIGHT - 10) as f32);
     pb.rect(0.0, 0.0, CARD_WIDTH as f32, CARD_HEIGHT as f32);
     let path = pb.finish();
     dt.fill(&path, &gradient, &DrawOptions::new());
@@ -118,19 +113,20 @@ pub async fn gen_card(
     // Transform rgba Vec<u8> to argb Vec<u32>
     let mut buffer: Vec<u32> = vec![];
     for i in profile_picture.as_bytes().chunks(4) {
+        // RGBA to ARGB
         buffer.push((i[3] as u32) << 24 | (i[0] as u32) << 16 | (i[1] as u32) << 8 | i[2] as u32);
     }
 
-    // Create an image that will be drawn on the target
+    // Create an image from the avatar and draw it on the target
     let image = Image {
         width: profile_picture.width().try_into()?,
         height: profile_picture.height().try_into()?,
         data: &buffer,
     };    
     
-    // dt.draw_image_at(margin, margin, &image, &DrawOptions::new());
     dt.draw_image_with_size_at(AVATAR_WIDTH, AVATAR_HEIGHT, margin, margin, &image, &DrawOptions::new());
 
+    // Draw texts
     let font: Font = font_kit::loader::Loader::from_file(
         &mut std::fs::File::open(FONT)?,
         0,
@@ -170,6 +166,7 @@ pub async fn gen_card(
         &DrawOptions::new(),
     );
 
+    // Encode the image data into png and returned in Vec<u8>
     let card_buf = dt.get_data_u8().to_vec();
     let buf = to_png_buffer(card_buf, CARD_WIDTH as u32, CARD_HEIGHT as u32)?;
     
@@ -180,7 +177,7 @@ pub async fn gen_card(
 fn clean_url(mut url: String) -> String {
     if let Some(index) = url.find("webp") {
         let _  = url.split_off(index);
-        url.push_str("png?size=96");  // Ensure the size of the image to be 96x96 (assuming nobody use smaller image)
+        url.push_str("png?size=96");  // Ensure the size of the image to be at max 96x96
     }
     url
 }

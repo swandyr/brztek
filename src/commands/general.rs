@@ -1,6 +1,6 @@
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{CacheHttp, RoleId};
-use tracing::info;
+use tracing::{info, instrument};
 
 use crate::Data;
 
@@ -22,6 +22,7 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
 ///
 /// Save a named command with a link the bot will post when responding
 /// to the command.
+#[instrument]
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn learn(
     ctx: Context<'_>,
@@ -40,6 +41,7 @@ pub async fn learn(
 /// What the bot learned.
 ///
 /// List all learned command names.
+#[instrument]
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
@@ -59,6 +61,7 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
 /// Get your own role
 ///
 /// Attribute yourself a role at your name with your banner color
+#[instrument]
 #[poise::command(
     prefix_command,
     slash_command,
@@ -129,6 +132,7 @@ const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song
 /// Check if Jolene is playing on BigRig FM
 ///
 /// The bot will show what's now on BigRig, even if it isn't Dolly Parton.
+#[instrument]
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
     #[derive(Debug, serde::Deserialize)]
@@ -179,6 +183,7 @@ pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
 ///
 /// It requests the Invidious API to get the video Id to avoid the need of a Google API Key.
 /// The link posted is Youtube though.
+#[instrument]
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn yt(
     ctx: Context<'_>,

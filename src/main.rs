@@ -5,22 +5,24 @@ mod utils;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use std::{env, time::Instant};
-use tracing::{error, info};
+use tracing::{error, info, instrument};
 
 use utils::db::Db;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+// type Context<'a> = poise::Context<'a, Data, Error>;
 
 const PREFIX: &str = "$";
 
 /// Store shared data
+#[derive(Debug)]
 pub struct Data {
     pub db: std::sync::Arc<Db>,
 }
 
 // ------------------------------------- Event handler -----------------------------------------
 
+#[instrument(skip(ctx, _framework))]
 async fn event_event_handler(
     ctx: &serenity::Context,
     event: &poise::Event<'_>,
@@ -44,6 +46,7 @@ async fn event_event_handler(
         poise::Event::Message { new_message } => {
             let t_0 = Instant::now();
 
+            // Do not handle message from bot users
             if new_message.author.bot {
                 return Ok(());
             }
@@ -84,14 +87,13 @@ async fn event_event_handler(
             }
         }
 
-        //? Discord already do this
         poise::Event::GuildMemberRemoval {
             guild_id,
             user,
             member_data_if_available: _,
         } => {
             let username = format!("{}{}", user.name, user.discriminator);
-            let content = format!("RIP **{username}**, you'll be missed");
+            let content = format!("RIP **{username}**, you'll be missed maybe");
             let guild_id = guild_id.0;
 
             let channel_id = user_data.db.get_pub_channel_id(guild_id).await?;
@@ -112,9 +114,27 @@ async fn event_event_handler(
 
 // -------------------------------------- Error handling ----------------------------------
 
-// TODO: more error handling
+#[instrument]
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     match error {
+        poise::FrameworkError::Setup {
+            error,
+            framework: _,
+            data_about_bot,
+            ctx: _,
+        } => {
+            error!("Error during setup: {error:?}\ndata_about_bot: {data_about_bot:#?}");
+        }
+
+        poise::FrameworkError::EventHandler {
+            error,
+            ctx: _,
+            event,
+            framework: _,
+        } => {
+            error!("Error while handling event {event:?}: {error:?}");
+        }
+
         poise::FrameworkError::UnknownCommand {
             ctx,
             msg,
@@ -124,7 +144,6 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
         } => {
             // Check in database if it's a learned command
             let db = &framework.user_data.db;
-
             let guild_id = msg.guild_id.unwrap().0;
 
             let queried = db
@@ -181,12 +200,12 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 .unwrap();
         }
 
-        poise::FrameworkError::Command { error, ctx } => {
+        poise::FrameworkError::Command { error, ctx: _ } => {
             error!("Error in command: {}", error);
         }
 
         error => {
-            error!("Unhandled error on command {error}")
+            error!("Unhandled error on command: {error}")
         }
     }
 }
@@ -196,18 +215,13 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenvy::dotenv().expect("Failed to load .env file");
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .with_target(false)
-        .init();
+    tracing_subscriber::fmt().init();
 
     let token = env::var("DISCORD_TOKEN").expect("token needed");
     //? Intents are still a mystery to me
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
-        //| serenity::GatewayIntents::GUILDS
         | serenity::GatewayIntents::GUILD_MEMBERS;
-    //| serenity::GatewayIntents::GUILD_MESSAGES;
 
     let db_url = env::var("DATABASE_URL").expect("database path not found");
     let db = Db::new(&db_url).await;
@@ -236,8 +250,12 @@ async fn main() -> Result<(), Error> {
             case_insensitive_commands: true,
             ..Default::default()
         },
+        pre_command: |ctx| {
+            Box::pin(async move {
+                info!("Executing command {}", ctx.command().qualified_name);
+            })
+        },
         on_error: |error| Box::pin(on_error(error)),
-        //TODO: see for more options (like `before` hook and so..)
         ..Default::default()
     };
 
