@@ -1,6 +1,6 @@
 use rand::prelude::*;
 
-pub fn rand_xp(min_gain: i64, max_gain: i64) -> i64 {
+pub fn rand_xp_points(min_gain: i64, max_gain: i64) -> i64 {
     let mut rng = rand::thread_rng();
     rng.gen_range(min_gain..=max_gain)
 }
@@ -15,12 +15,12 @@ pub fn total_xp_required_for_level(level: i64) -> i64 {
     (0..level).map(xp_needed_to_level_up).sum() // https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closures
 }
 
-pub fn calculate_level_from_xp(mut xp: i64) -> i64 {
+pub const fn calculate_level_from_xp(mut xp: i64) -> i64 {
     let mut level = 0;
     loop {
         xp -= xp_needed_to_level_up(level);
         if xp > 0 {
-            level += 1
+            level += 1;
         } else {
             return level;
         }

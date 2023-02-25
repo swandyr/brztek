@@ -8,15 +8,6 @@ use crate::Data;
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
-#[allow(dead_code)]
-async fn is_admin(ctx: Context<'_>, member: serenity::PartialMember) -> Result<bool, Error> {
-    Ok(member.roles.iter().any(|r| {
-        r.to_role_cached(ctx).map_or(false, |r| {
-            r.has_permission(serenity::Permissions::ADMINISTRATOR)
-        })
-    }))
-}
-
 /// Admin commands
 ///
 /// Prefix subcommands that need Administrator priviledges.
@@ -184,24 +175,21 @@ pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {
         .await?;
 
     // Wait for a confirmation from the user
-    match ctx
+    if let Some(response) = ctx
         .author()
         .await_reply(ctx)
-        .timeout(std::time::Duration::from_secs(60))
+        .timeout(std::time::Duration::from_secs(30))
         .await
     {
-        Some(response) => {
-            if &response.content == "yes" {
-                ctx.say("Ok lesgo").await?;
-            } else {
-                ctx.say("ABORT ABORT").await?;
-                return Ok(());
-            }
-        }
-        None => {
-            ctx.say("I'm not waiting any longer").await?;
+        if &response.content == "yes" {
+            ctx.say("Ok lesgo!").await?;
+        } else {
+            ctx.say("ABORT ABORT").await?;
             return Ok(());
         }
+    } else {
+        ctx.say("I'm not waiting any longer.").await?;
+        return Ok(());
     }
 
     let guild_id = ctx.guild_id().unwrap().0;

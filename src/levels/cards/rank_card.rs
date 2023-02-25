@@ -12,7 +12,7 @@ const CARD_HEIGHT: i32 = 128;
 const AVATAR_WIDTH: f32 = 96.0;
 const AVATAR_HEIGHT: f32 = 96.0;
 
-pub async fn gen_card(
+pub async fn gen_user_card(
     username: &str,
     avatar_url: Option<String>,
     banner_colour: (u8, u8, u8),
@@ -52,7 +52,7 @@ pub async fn gen_card(
     let (r, g, b) = banner_colour;
     let color_gradient = Color::new(0xff, r, g, b);
 
-    let end_rect = (user_xp_in_level as f32 / xp_needed_to_level_up as f32) * CARD_WIDTH as f32 - 50.0;
+    let end_rect = (user_xp_in_level as f32 / xp_needed_to_level_up as f32).mul_add(CARD_WIDTH as f32, -50.0);
     dt.fill_rect(
         0.0, 
         0.0, 
@@ -168,7 +168,7 @@ pub async fn gen_card(
 
     // Encode the image data into png and returned in Vec<u8>
     let card_buf = dt.get_data_u8().to_vec();
-    let buf = to_png_buffer(card_buf, CARD_WIDTH as u32, CARD_HEIGHT as u32)?;
+    let buf = to_png_buffer(&card_buf, CARD_WIDTH as u32, CARD_HEIGHT as u32)?;
     
     Ok(buf)
 }
@@ -189,14 +189,14 @@ async fn test_gen_card_with_url() {
         "https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.webp?size=1024",
     );
     let colour = (255, 255, 0);
-    assert!(gen_card(&username, Some(avatar_url), colour, 2, 1, 354).await.is_ok());
+    assert!(gen_user_card(&username, Some(avatar_url), colour, 2, 1, 354).await.is_ok());
 }
 
 #[tokio::test]
 async fn test_gen_card_with_default_pp() {
     let username = String::from("Username#64523");
     let colour = (255, 255, 0);
-    assert!(gen_card(&username, None, colour, 2, 1, 275).await.is_ok());
+    assert!(gen_user_card(&username, None, colour, 2, 1, 275).await.is_ok());
 }
 
 #[test]

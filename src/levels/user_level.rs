@@ -1,4 +1,4 @@
-use super::xp::{rand_xp, total_xp_required_for_level};
+use super::xp::{rand_xp_points, total_xp_required_for_level};
 use time::OffsetDateTime;
 
 use crate::utils::config::XpSettings;
@@ -30,7 +30,7 @@ impl UserLevel {
         let now: i64 = OffsetDateTime::now_utc().unix_timestamp();
         if now - self.last_message > xp_settings.delay_anti_spam {
             self.last_message = now;
-            self.xp += rand_xp(xp_settings.min_xp_gain, xp_settings.max_xp_gain);
+            self.xp += rand_xp_points(xp_settings.min_xp_gain, xp_settings.max_xp_gain);
             true
         } else {
             false

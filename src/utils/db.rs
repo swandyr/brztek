@@ -232,11 +232,7 @@ impl Db {
         .fetch_optional(&self.pool)
         .await?;
 
-        let role_id = if let Some(record) = response {
-            record.role_id.map(from_i64)
-        } else {
-            None
-        };
+        let role_id = response.and_then(|record| record.role_id.map(from_i64));
 
         Ok(role_id)
     }
@@ -389,11 +385,7 @@ impl Db {
         .fetch_optional(&self.pool)
         .await?;
 
-        let channel_id = if let Some(record) = response {
-            record.pub_channel_id.map(from_i64)
-        } else {
-            None
-        };
+        let channel_id = response.and_then(|record| record.pub_channel_id.map(from_i64));
 
         Ok(channel_id)
     }

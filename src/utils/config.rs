@@ -38,7 +38,7 @@ pub enum GuildCfgParam {
     MinXpGain,
     MaxXpGain,
 }
-use GuildCfgParam::*;
+use GuildCfgParam::{MaxXpGain, MinXpGain, SpamDelay};
 
 impl TryFrom<&str> for GuildCfgParam {
     type Error = &'static str;

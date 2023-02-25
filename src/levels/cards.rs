@@ -27,7 +27,7 @@ impl Default for Colors {
     }
 }
 
-fn to_png_buffer(card_buf: Vec<u8>, width: u32, height: u32) -> Result<Vec<u8>, ImageError> {
+fn to_png_buffer(card_buf: &[u8], width: u32, height: u32) -> Result<Vec<u8>, ImageError> {
     let mut buffer: Vec<u8> = vec![];
     for i in card_buf.chunks(4) {
         buffer.push(i[2]);

@@ -63,7 +63,7 @@ async fn update_users_ranks(db: &Db, guild_id: u64) -> anyhow::Result<()> {
     for (i, user) in &mut all_users.iter_mut().enumerate() {
         if user.rank != i as i64 + 1 {
             user.rank = i as i64 + 1;
-            rank_has_changed.push(*user)
+            rank_has_changed.push(*user);
         }
     }
 

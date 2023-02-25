@@ -14,7 +14,7 @@ const CARD_WIDTH: i32 = 440;
 const TITLE_HEIGHT: i32 = 60;
 const USER_HEIGHT: i32 = 40;
 
-pub async fn gen_top_ten_card(
+pub async fn gen_top_card(
     users: &[(
         String, //username
         i64,    // rank
@@ -169,7 +169,7 @@ pub async fn gen_top_ten_card(
 
     // Encode the image data into png and returned in Vec<u8>
     let card_buf = dt.get_data_u8().to_vec();
-    let buf = to_png_buffer(card_buf, CARD_WIDTH as u32, target_height as u32)?;
+    let buf = to_png_buffer(&card_buf, CARD_WIDTH as u32, target_height as u32)?;
 
     Ok(buf)
 }
@@ -183,5 +183,5 @@ async fn test_gen_top() {
         ("user".to_string(), 4, 0, 2),
     ];
     let guild_name = "The Guild".to_string();
-    assert!(gen_top_ten_card(&users, &guild_name).await.is_ok());
+    assert!(gen_top_card(&users, &guild_name).await.is_ok());
 }

@@ -49,10 +49,10 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     let commands = ctx.data().db.get_learned_list(guild_id).await?;
 
     let mut content = String::from(">>> List of learned commands: \n");
-    commands.iter().for_each(|command| {
+    for command in commands {
         let line = format!("  - {command}\n");
         content.push_str(&line);
-    });
+    }
 
     ctx.say(content).await?;
 
@@ -83,42 +83,37 @@ pub async fn set_color(ctx: Context<'_>) -> Result<(), Error> {
     let role_name = format!("bot_color_{name}");
 
     // User banner colour will be the colour of the role
-    let colour = ctx
-        .http()
-        .get_user(ctx.author().id.0)
-        .await?
-        .accent_colour
-        .unwrap();
+    let Some(colour) = ctx.http().get_user(ctx.author().id.0).await?.accent_colour else {
+        ctx.say("Cannot find banner color").await?;
+        return Ok(());
+    };
 
     info!("role_id: {:?}", role_id);
-    match role_id {
-        Some(id) => {
-            guild
-                .edit_role(ctx, RoleId(id), |r| {
-                    r.colour(colour.0 as u64).name(role_name)
-                })
-                .await?;
-            info!("role_color {} updated", id);
-        }
-        None => {
-            let roles_count = guild.roles.len();
-            let role = guild
-                .create_role(ctx, |role| {
-                    role.name(role_name)
-                        .colour(colour.0 as u64)
-                        .permissions(serenity::Permissions::empty())
-                        .position(roles_count as u8 - 1)
-                })
-                .await?;
-            info!("role_color created: {}", role.id.0);
+    if let Some(id) = role_id {
+        guild
+            .edit_role(ctx, RoleId(id), |r| {
+                r.colour(colour.0 as u64).name(role_name)
+            })
+            .await?;
+        info!("role_color {} updated", id);
+    } else {
+        let roles_count = guild.roles.len();
+        let role = guild
+            .create_role(ctx, |role| {
+                role.name(role_name)
+                    .colour(colour.0 as u64)
+                    .permissions(serenity::Permissions::empty())
+                    .position(roles_count as u8 - 1)
+            })
+            .await?;
+        info!("role_color created: {}", role.id.0);
 
-            // Add the role to the user
-            member.to_mut().add_role(ctx, role.id).await?;
-            info!("role added to user");
+        // Add the role to the user
+        member.to_mut().add_role(ctx, role.id).await?;
+        info!("role added to user");
 
-            let role_id = role.id.0;
-            db.set_role_color(guild_id, user_id, role_id).await?;
-        }
+        let role_id = role.id.0;
+        db.set_role_color(guild_id, user_id, role_id).await?;
     }
 
     ctx.send(|b| b.reply(true).content("Done!")).await?;
@@ -132,6 +127,7 @@ const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song
 /// Check if Jolene is playing on BigRig FM
 ///
 /// The bot will show what's now on BigRig, even if it isn't Dolly Parton.
+#[allow(dead_code)]
 #[instrument]
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {

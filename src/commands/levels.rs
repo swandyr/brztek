@@ -41,7 +41,7 @@ pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
 
     // Generate the card that will be save with name "rank.png"
     let t_1 = Instant::now();
-    let image = rank_card::gen_card(
+    let image = rank_card::gen_user_card(
         &username,
         avatar_url,
         accent_colour,
@@ -101,7 +101,7 @@ pub async fn top(
     }
 
     // Generate an image that is saved with name "top_ten.png"
-    let image = top_card::gen_top_ten_card(&top_users, &guild_name).await?;
+    let image = top_card::gen_top_card(&top_users, &guild_name).await?;
 
     // Send generated "top_ten.png" file
     ctx.send(|b| {

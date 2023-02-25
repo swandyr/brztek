@@ -52,9 +52,7 @@ async fn event_event_handler(
             }
 
             // Ensure the command was sent from a guild channel
-            let guild_id = if let Some(id) = new_message.guild_id {
-                id
-            } else {
+            let Some(guild_id) = new_message.guild_id else {
                 return Ok(());
             };
 
@@ -205,7 +203,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
         }
 
         error => {
-            error!("Unhandled error on command: {error}")
+            error!("Unhandled error on command: {error}");
         }
     }
 }
