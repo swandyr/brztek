@@ -1,47 +1,28 @@
-use super::xp::{total_xp_required_for_level, xp_needed_to_level_up};
 use font_kit::font::Font;
 use raqote::{
-    Color, DrawOptions, DrawTarget, Gradient, GradientStop, PathBuilder, Point, SolidSource,
-    Source, Spread, StrokeStyle,
+    DrawOptions, DrawTarget, Gradient, GradientStop, PathBuilder, Point, SolidSource, Source,
+    Spread, StrokeStyle,
+};
+
+use super::{
+    to_png_buffer,
+    xp::{total_xp_required_for_level, xp_needed_to_level_up},
+    Colors, FONT,
 };
 
 const CARD_WIDTH: i32 = 440;
 const TITLE_HEIGHT: i32 = 60;
 const USER_HEIGHT: i32 = 40;
-const _AVATAR_HEIGHT: i32 = 42;
 
-const FONT: &str = "assets/fonts/eurostile font/EurostileBold.ttf";
-
-const _DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tesselation-Violet.png";
-
-struct Colors {
-    white: Color,
-    dark_gray: Color,
-    light_gray: Color,
-    yellow: Color,
-}
-
-impl Default for Colors {
-    fn default() -> Self {
-        Self {
-            white: Color::new(0xff, 0xdc, 0xdc, 0xdc),
-            dark_gray: Color::new(0xff, 0x23, 0x23, 0x23),
-            light_gray: Color::new(0xff, 0x57, 0x57, 0x57),
-            yellow: Color::new(0xff, 0xff, 0xcc, 0x00),
-        }
-    }
-}
-
-pub async fn gen_top_ten_card(
+pub async fn gen_top_card(
     users: &[(
         String, //username
-        // Option<&str>, // avatar url
-        i64, // rank
-        i64, // level
-        i64, // current xp
+        i64,    // rank
+        i64,    // level
+        i64,    // current xp
     )],
-    guild_name: &str,
-) -> anyhow::Result<()> {
+    _guild_name: &str,
+) -> anyhow::Result<Vec<u8>> {
     // Some colors
     let colors = Colors::default();
 
@@ -83,23 +64,6 @@ pub async fn gen_top_ten_card(
 
     // Create header
     let solid_source = Source::Solid(SolidSource::from(colors.white));
-    // dt.draw_text(
-    //     &font,
-    //     55.0,
-    //     guild_name,
-    //     Point::new(20.0, 45.0),
-    //     &solid_source,
-    //     &DrawOptions::new(),
-    // );
-    let text = format!("Top {}", users.len());
-    dt.draw_text(
-        &font,
-        55.0,
-        guild_name,
-        Point::new(20.0, 45.0),
-        &solid_source,
-        &DrawOptions::new(),
-    );
     let text = format!("Top {}", users.len());
     dt.draw_text(
         &font,
@@ -112,7 +76,7 @@ pub async fn gen_top_ten_card(
 
     // Draw elements for each users
     //
-    // y_offset set where vertically the darget is drawn,
+    // y_offset set where vertically the target is drawn,
     // it is incremented with the USER_HEIGHT constant when all elements
     // of a user are drawn
     let mut y_offset = TITLE_HEIGHT as f32;
@@ -122,9 +86,6 @@ pub async fn gen_top_ten_card(
         let xp_for_actual_level = total_xp_required_for_level(*level);
         let xp_needed_to_level_up = xp_needed_to_level_up(*level);
         let user_xp_in_level = current_xp - xp_for_actual_level;
-        println!("total xp for level {level}: {xp_for_actual_level}");
-        println!("user xp: {current_xp}");
-        println!("xp in his level: {user_xp_in_level}");
 
         // x_pos tracks the horizontal position to draw elements
         // relatively to the others, by incrementing or decrementing
@@ -206,9 +167,11 @@ pub async fn gen_top_ten_card(
         y_offset += USER_HEIGHT as f32;
     }
 
-    // Save to file
-    dt.write_png("top_ten.png")?;
-    Ok(())
+    // Encode the image data into png and returned in Vec<u8>
+    let card_buf = dt.get_data_u8().to_vec();
+    let buf = to_png_buffer(&card_buf, CARD_WIDTH as u32, target_height as u32)?;
+
+    Ok(buf)
 }
 
 #[tokio::test]
@@ -220,5 +183,5 @@ async fn test_gen_top() {
         ("user".to_string(), 4, 0, 2),
     ];
     let guild_name = "The Guild".to_string();
-    assert!(gen_top_ten_card(&users, &guild_name).await.is_ok());
+    assert!(gen_top_card(&users, &guild_name).await.is_ok());
 }

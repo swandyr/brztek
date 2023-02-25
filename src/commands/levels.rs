@@ -1,146 +1,114 @@
-use serenity::{
-    framework::standard::{macros::command, Args, CommandResult},
-    model::{
-        channel::Message,
-        prelude::{AttachmentType, UserId},
-    },
-    prelude::*,
-    utils::Colour,
-};
+use poise::serenity_prelude::{self as serenity, CacheHttp};
 use std::time::Instant;
-use tracing::info;
+use tracing::{info, instrument};
 
-use crate::levels::{rank_card::gen_card, top_ten_card::gen_top_ten_card};
-use crate::utils::db::Db;
+use crate::levels::cards::{rank_card, top_card};
+use crate::Data;
 
-#[command]
-#[description = "Print your level stats"]
-pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
+type Error = Box<dyn std::error::Error + Send + Sync>;
+type Context<'a> = poise::Context<'a, Data, Error>;
+
+/// Show your rank
+#[instrument]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
+pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
     let t_0 = Instant::now();
 
-    let user_id = msg.author.id.0;
-
-    let data = ctx.data.read().await;
-    let db = data.get::<Db>().expect("Expected Db in TypeMap.");
+    let user_id = ctx.author().id.0;
 
     // Ensure the command was sent from a guild channel
-    let guild_id = if let Some(id) = msg.guild_id {
+    let guild_id = if let Some(id) = ctx.guild_id() {
         id.0
     } else {
-        msg.channel_id
-            .send_message(&ctx.http, |m| m.content("No guild id found"))
-            .await?;
+        ctx.say("This does not work outside a guild.").await?;
         return Ok(());
     };
 
     // Get user from database
-    let user_level = db.get_user(user_id, guild_id).await?;
+    let user_level = ctx.data().db.get_user(user_id, guild_id).await?;
 
-    // Generate a rank card and attach it to a message
-    let username = format!("{}#{}", msg.author.name, msg.author.discriminator);
-    let avatar_url = msg.author.avatar_url();
-    let user_http = ctx.http.get_user(user_id).await?;
-    let banner_colour = user_http
+    // Get user info to display on the card
+    //let username = format!("{}#{}", ctx.author().name, ctx.author().discriminator);
+    let member = ctx.author_member().await.unwrap();
+    let username = member.display_name();
+
+    let avatar_url = ctx.author().avatar_url();
+    let user_http = ctx.http().get_user(user_id).await?;
+    let accent_colour = user_http
         .accent_colour
-        .unwrap_or(Colour::LIGHTER_GREY)
+        .unwrap_or(serenity::Colour::LIGHTER_GREY)
         .tuple();
 
-    // Generate an image that is saved with name "rank.png"
+    // Generate the card that will be save with name "rank.png"
     let t_1 = Instant::now();
-    gen_card(
+    let image = rank_card::gen_user_card(
         &username,
         avatar_url,
-        banner_colour,
+        accent_colour,
         user_level.level,
         user_level.rank,
         user_level.xp,
     )
     .await?;
-    info!("Rank_card generated in : {} µs", t_1.elapsed().as_micros());
+    info!("Rank card generated in {} µs", t_1.elapsed().as_micros());
 
     let t_1 = Instant::now();
-    // Send generated "rank.png" file
-    msg.channel_id
-        .send_message(&ctx.http, |m| {
-            let file = AttachmentType::from("rank.png");
-            m.add_file(file)
-        })
-        .await?;
-    info!("rank_card sent in : {} µs", t_1.elapsed().as_micros());
+    ctx.send(|m| {
+        let file = serenity::AttachmentType::from((image.as_slice(), "rank_card.png"));
+        m.attachment(file)
+    })
+    .await?;
+    info!("Rank card sent in {} µs", t_1.elapsed().as_micros());
 
-    // msg.channel_id
-    //         .send_message(&ctx.http, |m| {
-    //             m.embed(|e| {
-    //                 let name = msg.author.name.clone();
-    //                 let thumbnail = msg.author.avatar_url().unwrap_or_default();
-    //                 let value = format!(
-    //                     "Xp: {}\nLevel:{}\nMessages:{}",
-    //                     user_level.xp, user_level.level, user_level.messages
-    //                 );
-
-    //                 e.title("Rank")
-    //                     .field(name, value, false)
-    //                     .thumbnail(thumbnail)
-    //             })
-    //         })
-    //         .await?;
-
-    info!(
-        "Command !rank processed in : {} µs",
-        t_0.elapsed().as_micros()
-    );
+    info!("Command processed in {} µs", t_0.elapsed().as_micros());
 
     Ok(())
 }
 
-#[command]
-#[description = "Show the 10 most active users"]
-pub async fn top(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let data = ctx.data.read().await;
-    let db = data.get::<Db>().expect("Expected Db in TypeMap.");
+/// Show the top users of the server
+///
+/// Default is 10.
+#[instrument]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
+pub async fn top(
+    ctx: Context<'_>,
+    #[description = "Number of users (default: 10)"]
+    #[min = 1]
+    #[max = 30]
+    number: Option<usize>,
+) -> Result<(), Error> {
+    let number = number.unwrap_or(10);
 
-    // Number of users to keep
-    let top_x = if let Ok(num) = args.single::<usize>() {
-        num
+    // Ensure the message was sent from a guild
+    let (guild_id, guild_name) = if let Some(guild) = ctx.guild() {
+        (guild.id.0, guild.name)
     } else {
-        10
-    };
-
-    // Ensure the command was sent from a guild channel
-    let guild_id = if let Some(id) = msg.guild_id {
-        id.0
-    } else {
-        msg.channel_id
-            .send_message(&ctx.http, |m| m.content("No guild id found"))
-            .await?;
+        ctx.say("This does not work outside a guild.").await?;
         return Ok(());
     };
 
-    let guild_name = msg.guild_field(ctx, |guild| guild.name.to_owned()).unwrap();
-
     // Get a vec of all users in database
-    let mut all_users_id = db.get_all_users(guild_id).await?;
+    let mut all_users = ctx.data().db.get_all_users(guild_id).await?;
 
-    // Sort users by descendant xp
-    all_users_id.sort_by(|a, b| a.rank.cmp(&b.rank));
+    // Sort all users by rank
+    all_users.sort_by(|a, b| a.rank.cmp(&b.rank));
 
     let mut top_users = vec![];
-    for user in all_users_id.iter().take(top_x) {
-        let name = UserId::from(user.user_id).to_user(&ctx.http).await?.name;
+    for user in all_users.iter().take(number) {
+        let name = ctx.http().get_user(user.user_id).await?.name;
         let user_tup = (name, user.rank, user.level, user.xp);
         top_users.push(user_tup);
     }
 
     // Generate an image that is saved with name "top_ten.png"
-    gen_top_ten_card(&top_users, &guild_name).await?;
+    let image = top_card::gen_top_card(&top_users, &guild_name).await?;
 
     // Send generated "top_ten.png" file
-    msg.channel_id
-        .send_message(&ctx.http, |m| {
-            let file = AttachmentType::from("top_ten.png");
-            m.add_file(file)
-        })
-        .await?;
+    ctx.send(|b| {
+        let file = serenity::AttachmentType::from((image.as_slice(), "top_card.png"));
+        b.attachment(file)
+    })
+    .await?;
 
     Ok(())
 }

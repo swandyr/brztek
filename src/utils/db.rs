@@ -1,10 +1,11 @@
 use serenity::prelude::TypeMapKey;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::levels::user_level::UserLevel;
 
+#[derive(Debug)]
 pub struct Db {
     pool: SqlitePool,
 }
@@ -14,6 +15,7 @@ impl TypeMapKey for Db {
 }
 
 impl Db {
+    #[instrument]
     pub async fn new(db_path: &str) -> Self {
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
@@ -23,8 +25,42 @@ impl Db {
         Self { pool }
     }
 
+    #[instrument]
     pub async fn run_migrations(&self) -> anyhow::Result<()> {
         sqlx::migrate!("./migrations").run(&self.pool).await?;
+        Ok(())
+    }
+
+    /// Import levels from Mee6.
+    ///
+    /// Clear all users entries corresponding to the guild_id first,
+    /// and insert all new entries in hte `uers: Vec<UserLevel>
+    #[instrument]
+    pub async fn import_from_mee6(
+        &self,
+        users: Vec<UserLevel>,
+        guild_id: u64,
+    ) -> anyhow::Result<()> {
+        self.delete_table(guild_id).await?;
+
+        let guild_id = to_i64(guild_id);
+
+        for user in users {
+            let user_id = to_i64(user.user_id);
+            sqlx::query!(
+                "INSERT INTO levels (user_id, guild_id, xp, level, rank, last_message)
+                VALUES (?, ?, ?, ?, ?, ?)",
+                user_id,
+                guild_id,
+                user.xp,
+                user.level,
+                user.rank,
+                user.last_message,
+            )
+            .execute(&self.pool)
+            .await?;
+        }
+
         Ok(())
     }
 
@@ -32,15 +68,15 @@ impl Db {
     ///
     /// If no user is found, create a new entry with `user_id` and returns
     /// new `UserLevel`.
+    #[instrument]
     pub async fn get_user(&self, user_id: u64, guild_id: u64) -> anyhow::Result<UserLevel> {
         // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user_id);
         let guild_id = to_i64(guild_id);
 
         let response = sqlx::query!(
-            "SELECT user_id, xp, level, rank, messages, last_message FROM levels 
-            WHERE user_id = ? 
-            AND guild_id = ?",
+            "SELECT user_id, xp, level, rank, last_message FROM levels 
+            WHERE user_id = ? AND guild_id = ?",
             user_id,
             guild_id,
         )
@@ -53,7 +89,6 @@ impl Db {
                 record.xp.unwrap_or_default(),
                 record.level.unwrap_or_default(),
                 record.rank.unwrap_or_default(),
-                record.messages.unwrap_or_default(),
                 record.last_message.unwrap_or_default(),
             );
             Ok(UserLevel::from(user))
@@ -70,6 +105,7 @@ impl Db {
     }
 
     /// Update user's entry in the database with new values.
+    #[instrument]
     pub async fn update_user(&self, user: &UserLevel, guild_id: u64) -> anyhow::Result<()> {
         // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user.user_id);
@@ -77,15 +113,10 @@ impl Db {
 
         sqlx::query!(
             "UPDATE levels
-                SET xp = ?,
-                    level = ?,
-                    messages = ?,
-                    last_message = ?
-                WHERE user_id = ?
-                AND guild_id = ?",
+            SET xp = ?, level = ?, last_message = ?
+            WHERE user_id = ? AND guild_id = ?",
             user.xp,
             user.level,
-            user.messages,
             user.last_message,
             user_id,
             guild_id
@@ -97,7 +128,8 @@ impl Db {
     }
 
     // Update user rank in the database
-    pub async fn update_ranks(&self, users: &Vec<UserLevel>, guild_id: u64) -> anyhow::Result<()> {
+    #[instrument]
+    pub async fn update_ranks(&self, users: Vec<UserLevel>, guild_id: u64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 
         for user in users {
@@ -106,8 +138,7 @@ impl Db {
             sqlx::query!(
                 "UPDATE levels
                 SET rank = ?
-                WHERE user_id = ?
-                AND guild_id = ?",
+                WHERE user_id = ? AND guild_id = ?",
                 user.rank,
                 user_id,
                 guild_id
@@ -120,11 +151,12 @@ impl Db {
     }
 
     /// Get all entries in the dabase and returns a `Vec<UserLevel>`
+    #[instrument]
     pub async fn get_all_users(&self, guild_id: u64) -> anyhow::Result<Vec<UserLevel>> {
         let guild_id = to_i64(guild_id);
 
         let response = sqlx::query!(
-            "SELECT user_id, xp, level, rank, messages, last_message FROM levels
+            "SELECT user_id, xp, level, rank, last_message FROM levels
             WHERE guild_id = ?",
             guild_id
         )
@@ -139,7 +171,6 @@ impl Db {
                     record.xp.unwrap_or_default(),
                     record.level.unwrap_or_default(),
                     record.rank.unwrap_or_default(),
-                    record.messages.unwrap_or_default(),
                     record.last_message.unwrap_or_default(),
                 );
 
@@ -161,8 +192,54 @@ impl Db {
         Ok(())
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    #[instrument]
+    pub async fn set_role_color(
+        &self,
+        guild_id: u64,
+        user_id: u64,
+        role_id: u64,
+    ) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+        let user_id = to_i64(user_id);
+        let role_id = to_i64(role_id);
+
+        sqlx::query!(
+            "INSERT INTO role_color (guild_id, user_id, role_id) VALUES (?, ?, ?)
+            ON CONFLICT (guild_id, user_id) DO UPDATE SET role_id = ?",
+            guild_id,
+            user_id,
+            role_id,
+            role_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    #[instrument]
+    pub async fn get_role_color(&self, guild_id: u64, user_id: u64) -> anyhow::Result<Option<u64>> {
+        let guild_id = to_i64(guild_id);
+        let user_id = to_i64(user_id);
+
+        let response = sqlx::query!(
+            "SELECT role_id FROM role_color WHERE guild_id = ? AND user_id = ?",
+            guild_id,
+            user_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let role_id = response.and_then(|record| record.role_id.map(from_i64));
+
+        Ok(role_id)
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////:
 
+    #[instrument]
     pub async fn create_config_entry(&self, guild_id: u64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 
@@ -180,8 +257,7 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let record = sqlx::query!(
-            "SELECT spam_delay, min_xp_gain, max_xp_gain 
-            FROM config
+            "SELECT spam_delay, min_xp_gain, max_xp_gain FROM config
             WHERE guild_id = ?",
             guild_id
         )
@@ -195,8 +271,7 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let record = sqlx::query!(
-            "SELECT spam_delay 
-            FROM config 
+            "SELECT spam_delay FROM config 
             WHERE guild_id = ?",
             guild_id,
         )
@@ -226,8 +301,7 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let record = sqlx::query!(
-            "SELECT min_xp_gain
-            FROM config
+            "SELECT min_xp_gain FROM config
             WHERE guild_id = ?",
             guild_id
         )
@@ -257,8 +331,7 @@ impl Db {
         let guild_id = to_i64(guild_id);
 
         let record = sqlx::query!(
-            "SELECT max_xp_gain
-            FROM config
+            "SELECT max_xp_gain FROM config
             WHERE guild_id = ?",
             guild_id
         )
@@ -312,21 +385,24 @@ impl Db {
         .fetch_optional(&self.pool)
         .await?;
 
-        let channel_id = if let Some(record) = response {
-            record.pub_channel_id.map(from_i64)
-        } else {
-            None
-        };
+        let channel_id = response.and_then(|record| record.pub_channel_id.map(from_i64));
 
         Ok(channel_id)
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    pub async fn get_learned(&self, command_name: &str) -> anyhow::Result<Option<String>> {
+    pub async fn get_learned(
+        &self,
+        command_name: &str,
+        guild_id: u64,
+    ) -> anyhow::Result<Option<String>> {
+        let guild_id = to_i64(guild_id);
+
         let response = sqlx::query!(
-            "SELECT content FROM learned_cmd WHERE name = ?",
-            command_name
+            "SELECT content FROM learned_cmd WHERE name = ? AND guild_id = ?",
+            command_name,
+            guild_id
         )
         .fetch_optional(&self.pool)
         .await?;
@@ -340,23 +416,30 @@ impl Db {
         }
     }
 
-    pub async fn get_learned_list(&self) -> anyhow::Result<Vec<String>> {
-        let records = sqlx::query!("SELECT name FROM learned_cmd",)
+    pub async fn get_learned_list(&self, guild_id: u64) -> anyhow::Result<Vec<String>> {
+        let guild_id = to_i64(guild_id);
+
+        let records = sqlx::query!("SELECT name FROM learned_cmd WHERE guild_id = ?", guild_id)
             .fetch_all(&self.pool)
             .await?;
 
-        let commands = records
-            .iter()
-            .map(|record| record.name.clone().unwrap_or("*unknown*".to_string()))
-            .collect();
+        let commands = records.iter().map(|record| record.name.clone()).collect();
 
         Ok(commands)
     }
 
-    pub async fn set_learned(&self, command_name: &str, content: &str) -> anyhow::Result<()> {
+    pub async fn set_learned(
+        &self,
+        command_name: &str,
+        content: &str,
+        guild_id: u64,
+    ) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+
         sqlx::query!(
-            "INSERT INTO learned_cmd (name, content) VALUES (?, ?) 
-            ON CONFLICT (name) DO UPDATE SET content = ?",
+            "INSERT INTO learned_cmd (guild_id, name, content) VALUES (?, ?, ?) 
+            ON CONFLICT (guild_id, name) DO UPDATE SET content = ?",
+            guild_id,
             command_name,
             content,
             content

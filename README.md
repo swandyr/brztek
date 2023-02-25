@@ -16,29 +16,32 @@ Create a `.env` file.
 
 ## Commands
 
-### Chat commands (prefix `$`)
-- `$am_i_admin` : check for administrator permissions
-- `$delete_ranks`  clear all entries in the config table for the guild
-- `$config <param> <value>` : get the value of a parameter, set if `value` is provided
-    - `spam_delay`
-    - `min_xp_gain`
-    - `max_xp_gain`
-- `$ping` : pong!
-- `$learn <name> <link>` : save a link that can be called with `$*name*`
-- `$learned` : list of all commands saved using `$learn`
-- `$rank` : show user's rank card
-- `$top <x>` : show a card of `x` most active users
-- `$help`
+### General
+- `ping` : pong!
+- `learn <name> <link>` : save a link that can be called with `$*name*`
+- `learned` : list of all commands saved using `$learn`
+- `bigrig` : show the current that is playing on BigRig FM
+- `yt <search>` : Send the first Youtube video of the search query
+- `set_color` : Gives your username the same color as your banner
 
+### Levels
+- `rank` : show user's rank card
+- `top <x>` : show a card of `x` most active users
 
-### Slash commands
-- `/set <xp> <messages> <user>` : set the values of xp and messages counts to a user
-- `/pub <channel>` : Set the public channel where are send the welcome messages
-- `/learn <name> <link>` : as above
+### Admin
+- `delete_ranks`  clear all entries in the config table for the guild
+- `admin <subcommand>` : Change server configuration
+    - `spam_delay <int>` : Consecutives messages sent below this delay will not grant xp points
+    - `min_xp_gain <int>` : Minimal xp points gained per message
+    - `max_xp_gain <int>` : Maximal xp points gained per message
+    - `set_pub <channel>` : Set a channel where the bot will sent welcome messages
+    - `set_user <user> <int>` : Set the amount of xp points of a user
+- `import_mee6_levels` : Automatically import levels from Mee6 (only with slash command)
 
-<!-- TODO: Add possibility to add fonts, profile pictures...>
+### Help
+- `help`
+
 <!-- TODO: Add logging to file>
-<!-- TODO: Possibility to set xp to users OR find a way to get meee6 leaderboard>
-<!-- TODO: reaction roles>
-<!-- TODO: Try Piet (https://github.com/linebender/piet) to replace raqote (issue with text drawing)>
-<!-- TODO: Migrate to slash commands>
+<!-- TODO: Reaction roles>
+<!-- TODO: Round corners of avatar in rank card>
+<!-- TODO: Maybe find something to replace raqote>

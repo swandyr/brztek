@@ -1,5 +1,5 @@
-use super::xp::{rand_xp, total_xp_required_for_level};
-use chrono::Utc;
+use super::xp::{rand_xp_points, total_xp_required_for_level};
+use time::OffsetDateTime;
 
 use crate::utils::config::XpSettings;
 
@@ -9,7 +9,6 @@ pub struct UserLevel {
     pub xp: i64,           // User's xp
     pub level: i64,        // User's level
     pub rank: i64,         // User's rank
-    pub messages: i64,     // User's messages count
     pub last_message: i64, // Timestamp of the last message posted
 }
 
@@ -20,7 +19,6 @@ impl UserLevel {
             xp: 0,
             level: 0,
             rank: 0,
-            messages: 0,
             last_message: 0,
         }
     }
@@ -29,11 +27,10 @@ impl UserLevel {
         // Check the time between last and new message.
         // Return true if below anti_spam setting,
         // else false without adding xp
-        let now: i64 = Utc::now().timestamp();
+        let now: i64 = OffsetDateTime::now_utc().unix_timestamp();
         if now - self.last_message > xp_settings.delay_anti_spam {
-            self.messages += 1;
             self.last_message = now;
-            self.xp += rand_xp(xp_settings.min_xp_gain, xp_settings.max_xp_gain);
+            self.xp += rand_xp_points(xp_settings.min_xp_gain, xp_settings.max_xp_gain);
             true
         } else {
             false
@@ -51,15 +48,14 @@ impl UserLevel {
     }
 }
 
-impl From<(u64, i64, i64, i64, i64, i64)> for UserLevel {
-    fn from(item: (u64, i64, i64, i64, i64, i64)) -> Self {
-        let (user_id, xp, level, rank, messages, last_message) = item;
+impl From<(u64, i64, i64, i64, i64)> for UserLevel {
+    fn from(item: (u64, i64, i64, i64, i64)) -> Self {
+        let (user_id, xp, level, rank, last_message) = item;
         Self {
             user_id,
             xp,
             level,
             rank,
-            messages,
             last_message,
         }
     }

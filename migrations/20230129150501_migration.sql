@@ -12,12 +12,14 @@ CREATE TABLE IF NOT EXISTS levels (
     xp              INTEGER DEFAULT 0,
     level           INTEGER DEFAULT 0,
     rank            INTEGER DEFAULT 0,
-    messages        INTEGER DEFAULT 0,
     last_message    INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, guild_id)
     FOREIGN KEY (guild_id) REFERENCES config(guild_id)
 );
 CREATE TABLE IF NOT EXISTS learned_cmd (
-    name            TEXT PRIMARY KEY,
-    content         TEXT
+    guild_id        INTEGER NOT NULL,
+    name            TEXT NOT NULL,
+    content         TEXT,
+    PRIMARY KEY (guild_id, name)
+    FOREIGN KEY (guild_id) REFERENCES config(guild_id)
 );
