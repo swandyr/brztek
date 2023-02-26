@@ -10,7 +10,7 @@ use super::{
     Colors, FONT,
 };
 
-const CARD_WIDTH: i32 = 440;
+const CARD_WIDTH: i32 = 480;
 const TITLE_HEIGHT: i32 = 60;
 const USER_HEIGHT: i32 = 40;
 
@@ -99,7 +99,7 @@ pub async fn gen_top_card(
             &DrawOptions::new(),
         );
 
-        x_pos += 35.0;
+        x_pos += 40.0;
         dt.draw_text(
             &font,
             20.0,
