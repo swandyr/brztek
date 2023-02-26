@@ -30,7 +30,9 @@ pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
     // Get user info to display on the card
     //let username = format!("{}#{}", ctx.author().name, ctx.author().discriminator);
     let member = ctx.author_member().await.unwrap();
-    let username = member.display_name();
+    let username = member
+        .display_name()
+        .replace(|c: char| !c.is_alphanumeric(), "");
 
     let avatar_url = ctx.author().avatar_url();
     let user_http = ctx.http().get_user(user_id).await?;
@@ -100,7 +102,8 @@ pub async fn top(
             .get_member(guild_id, user.user_id)
             .await?
             .display_name()
-            .into_owned();
+            .into_owned()
+            .replace(|c: char| !c.is_alphanumeric(), "");
         let user_tup = (name, user.rank, user.level, user.xp);
         top_users.push(user_tup);
     }

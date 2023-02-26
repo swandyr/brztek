@@ -3,6 +3,7 @@ use raqote::{
     DrawOptions, DrawTarget, Gradient, GradientStop, PathBuilder, Point, SolidSource, Source,
     Spread, StrokeStyle,
 };
+use tracing::info;
 
 use super::{
     to_png_buffer,
@@ -23,6 +24,8 @@ pub async fn gen_top_card(
     )],
     _guild_name: &str,
 ) -> anyhow::Result<Vec<u8>> {
+    info!("gen top_card for users:\n{users:#?}");
+
     // Some colors
     let colors = Colors::default();
 
