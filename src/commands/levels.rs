@@ -95,7 +95,12 @@ pub async fn top(
 
     let mut top_users = vec![];
     for user in all_users.iter().take(number) {
-        let name = ctx.http().get_user(user.user_id).await?.name;
+        let name = ctx
+            .http()
+            .get_member(guild_id, user.user_id)
+            .await?
+            .display_name()
+            .into_owned();
         let user_tup = (name, user.rank, user.level, user.xp);
         top_users.push(user_tup);
     }

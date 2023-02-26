@@ -67,6 +67,7 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     slash_command,
     guild_only,
     required_bot_permissions = "MANAGE_ROLES",
+    ephemeral,
     category = "General"
 )]
 pub async fn set_color(ctx: Context<'_>) -> Result<(), Error> {
