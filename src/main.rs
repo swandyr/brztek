@@ -213,7 +213,9 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenvy::dotenv().expect("Failed to load .env file");
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
 
     let token = env::var("DISCORD_TOKEN").expect("token needed");
     //? Intents are still a mystery to me

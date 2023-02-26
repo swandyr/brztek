@@ -1,6 +1,6 @@
 use poise::serenity_prelude::{self as serenity, CacheHttp};
 use std::time::Instant;
-use tracing::{info, instrument};
+use tracing::{debug, info, instrument};
 
 use crate::levels::cards::{rank_card, top_card};
 use crate::Data;
@@ -11,12 +11,16 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 /// Show your rank
 #[instrument]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
-pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn rank(
+    ctx: Context<'_>,
+    #[description = "The user"] user: Option<serenity::Member>,
+) -> Result<(), Error> {
     let t_0 = Instant::now();
 
-    let user_id = ctx.author().id.0;
+    debug!("user: {user:?}");
+    let member = user.unwrap_or(ctx.author_member().await.unwrap().into_owned());
 
-    // Ensure the command was sent from a guild channel
+    let user_id = member.user.id.0; // Ensure the command was sent from a guild channel
     let guild_id = if let Some(id) = ctx.guild_id() {
         id.0
     } else {
@@ -29,12 +33,11 @@ pub async fn rank(ctx: Context<'_>) -> Result<(), Error> {
 
     // Get user info to display on the card
     //let username = format!("{}#{}", ctx.author().name, ctx.author().discriminator);
-    let member = ctx.author_member().await.unwrap();
     let username = member
         .display_name()
         .replace(|c: char| !c.is_alphanumeric(), "");
 
-    let avatar_url = ctx.author().avatar_url();
+    let avatar_url = member.user.avatar_url();
     let user_http = ctx.http().get_user(user_id).await?;
     let accent_colour = user_http
         .accent_colour
