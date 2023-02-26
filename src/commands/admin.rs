@@ -12,8 +12,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 ///
 /// Prefix subcommands that need Administrator priviledges.
 ///
-/// Available subcommands are set_pub, set_user, spam_delay, min_xp_gain,
-/// max_xp_gain.
+/// Available subcommands are set_pub, set_user, spam_delay, min_xp_gain, max_xp_gain.
 #[instrument]
 #[poise::command(
     prefix_command,
@@ -69,7 +68,13 @@ async fn set_pub(
 }
 
 /// Set the user's xp points
-#[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
+#[poise::command(
+    prefix_command,
+    slash_command,
+    guild_only,
+    ephemeral,
+    category = "Admin"
+)]
 async fn set_user(
     ctx: Context<'_>,
     #[description = "User to modify"] user: serenity::UserId,
@@ -180,6 +185,7 @@ async fn max_xp_gain(
     slash_command,
     required_permissions = "ADMINISTRATOR",
     guild_only,
+    ephemeral,
     category = "Admin"
 )]
 pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {
