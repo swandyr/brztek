@@ -43,3 +43,22 @@ fn to_png_buffer(card_buf: &[u8], width: u32, height: u32) -> Result<Vec<u8>, Im
 
     Ok(buf)
 }
+
+// Change .webp extension to .png and remove parameters from URL
+fn clean_url(mut url: String) -> String {
+    if let Some(index) = url.find("webp") {
+        let _ = url.split_off(index);
+        url.push_str("png?size=96"); // Ensure the size of the image to be at max 96x96
+    }
+    url
+}
+
+#[test]
+fn url_cleaned() {
+    let dirty = 
+        String::from("https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.webp?size=1024");
+    let clean = String::from(
+        "https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.png?size=96",
+    );
+    assert_eq!(clean_url(dirty), clean);
+}
