@@ -9,8 +9,8 @@ use crate::levels::xp::{total_xp_required_for_level, xp_needed_to_level_up};
 
 use super::{clean_url, to_png_buffer, DEFAULT_PP_TESSELATION_VIOLET};
 
-const CARD_HEIGHT: usize = 440;
-const CARD_WIDTH: usize = 128;
+const CARD_HEIGHT: usize = 128;
+const CARD_WIDTH: usize = 440;
 const MARGIN: f64 = 16.0;
 
 // Move in cards.rs when all is migrated to piet
@@ -34,8 +34,7 @@ impl Default for Colors {
     }
 }
 
-//! piet is not thread safe, make this function sync
-pub async fn gen_user_card(
+pub fn gen_user_card(
     username: &str,
     avatar_url: Option<String>,
     banner_colour: (u8, u8, u8),
@@ -91,11 +90,10 @@ pub async fn gen_user_card(
 
     // Request profile picture through HTTP if `avatar_url` is Some().
     // Fallback to a default picture if None.
-    //! Call reqwest outside this function
     let profile_picture = if let Some(url) = avatar_url {
         let url = clean_url(url);
-        let bytes = reqwest::get(&url).await?.bytes().await?;
-        info!("Recieved avater from {url}");
+        let bytes = reqwest::blocking::get(&url)?.bytes()?;
+        info!("Received avater from {url}");
         image::load_from_memory(&bytes)?
     } else {
         let default_file = DEFAULT_PP_TESSELATION_VIOLET;
@@ -135,6 +133,7 @@ pub async fn gen_user_card(
         .text_color(colors.white)
         .build()
         .unwrap();
+    rc.draw_text(&layout, pos);
 
     pos.y += layout.image_bounds().height() + 7.;
     let layout = text
@@ -143,6 +142,7 @@ pub async fn gen_user_card(
         .text_color(colors.light_gray)
         .build()
         .unwrap();
+    rc.draw_text(&layout, pos);
 
     pos.x += layout.trailing_whitespace_width();
     let layout = text
@@ -151,6 +151,7 @@ pub async fn gen_user_card(
         .text_color(colors.white)
         .build()
         .unwrap();
+    rc.draw_text(&layout, pos);
 
     pos.x = image.size().width + 2. * MARGIN;
     pos.y += layout.image_bounds().height() + 7.;
@@ -160,6 +161,7 @@ pub async fn gen_user_card(
         .text_color(colors.light_gray)
         .build()
         .unwrap();
+    rc.draw_text(&layout, pos);
 
     pos.x += layout.trailing_whitespace_width();
     let layout = text
@@ -168,47 +170,50 @@ pub async fn gen_user_card(
         .text_color(colors.white)
         .build()
         .unwrap();
+    rc.draw_text(&layout, pos);
 
     pos = Point::new(140., 90.);
     let total_xp_required_for_next_level = xp_for_actual_level + xp_needed_to_level_up;
     let layout = text
         .new_text_layout(format!("{user_xp}/{total_xp_required_for_next_level}"))
         .font(font, 15.)
+        .text_color(colors.white)
         .build()
         .unwrap();
+    rc.draw_text(&layout, pos);
 
     let card_buf = bitmap
         .to_image_buf(ImageFormat::RgbaPremul)
         .expect("Unable to get image buffer.");
     let buf = to_png_buffer(
         card_buf.raw_pixels(),
-        CARD_HEIGHT as u32,
+        CARD_WIDTH as u32,
         CARD_HEIGHT as u32,
     )?;
     info!("Card image encoded in PNG and saved in Vec<u8>");
 
+    //bitmap.save_to_file("rank.png").unwrap();
+
     Ok(buf)
 }
 
-#[tokio::test]
-async fn test_gen_card_with_url() {
-    let username = String::from("Username#64523");
+#[test]
+fn test_gen_card_with_url() {
+    let username = String::from("Username");
     let avatar_url = String::from(
         "https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.webp?size=1024",
     );
     let colour = (255, 255, 0);
     assert!(
-        gen_user_card(&username, Some(avatar_url), colour, 2, 1, 354)
-            .await
+        gen_user_card(&username, Some(avatar_url), colour, 2, 1, 275)
             .is_ok()
     );
 }
 
-#[tokio::test]
-async fn test_gen_card_with_default_pp() {
+#[test]
+fn test_gen_card_with_default_pp() {
     let username = String::from("Username#64523");
     let colour = (255, 255, 0);
     assert!(gen_user_card(&username, None, colour, 2, 1, 275)
-        .await
         .is_ok());
 }

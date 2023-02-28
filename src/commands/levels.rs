@@ -53,8 +53,7 @@ pub async fn rank(
         user_level.level,
         user_level.rank,
         user_level.xp,
-    )
-    .await?;
+    )?;
     info!("Rank card generated in {} µs", t_1.elapsed().as_micros());
 
     let t_1 = Instant::now();
