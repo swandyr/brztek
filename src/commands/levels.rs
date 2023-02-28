@@ -1,15 +1,23 @@
 use poise::serenity_prelude::{self as serenity, CacheHttp};
 use std::time::Instant;
-use tracing::{debug, info, instrument};
+use tracing::{debug, info};
 
-use crate::levels::cards::{rank_card, top_card};
+use crate::levels::cards::{rank_card, top_card, DEFAULT_PP_TESSELATION_VIOLET};
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
+// Change .webp extension to .png and remove parameters from URL
+fn clean_url(mut url: String) -> String {
+    if let Some(index) = url.find("webp") {
+        let _ = url.split_off(index);
+        url.push_str("png?size=96"); // Ensure the size of the image to be at max 96x96
+    }
+    url
+}
+
 /// Show your rank
-#[instrument]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn rank(
     ctx: Context<'_>,
@@ -37,7 +45,24 @@ pub async fn rank(
         .display_name()
         .replace(|c: char| !c.is_alphanumeric(), "");
 
+    // Request profile picture through HTTP if `avatar_url` is Some().
+    // Fallback to a default picture if None.
     let avatar_url = member.user.avatar_url();
+    let image = if let Some(url) = avatar_url {
+        let url = clean_url(url);
+        debug!("avatar url: {url}");
+        let bytes = reqwest::get(&url).await?.bytes().await?;
+        info!("Received avater from {url}");
+        image::load_from_memory(&bytes)?
+    } else {
+        let default_file = DEFAULT_PP_TESSELATION_VIOLET;
+        let bytes = std::fs::read(default_file)?;
+        info!("Loaded defaut avatar");
+        image::load_from_memory(&bytes)?
+    };
+    let (image_width, image_height) = (image.width() as usize, image.height() as usize);
+    let image_buf = image.into_bytes();
+
     let user_http = ctx.http().get_user(user_id).await?;
     let accent_colour = user_http
         .accent_colour
@@ -48,7 +73,7 @@ pub async fn rank(
     let t_1 = Instant::now();
     let image = rank_card::gen_user_card(
         &username,
-        avatar_url,
+        (image_width, image_height, &image_buf),
         accent_colour,
         user_level.level,
         user_level.rank,
@@ -72,7 +97,6 @@ pub async fn rank(
 /// Show the top users of the server
 ///
 /// Default is 10.
-#[instrument]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn top(
     ctx: Context<'_>,
