@@ -78,7 +78,9 @@ async fn set_pub(
 async fn set_user(
     ctx: Context<'_>,
     #[description = "User to modify"] user: serenity::UserId,
-    #[description = "Amount of Xp"] xp: i64,
+    #[description = "Amount of Xp"]
+    #[min = 0]
+    xp: u32,
 ) -> Result<(), Error> {
     let guild_id = if let Some(id) = ctx.guild_id() {
         id.0
@@ -88,10 +90,10 @@ async fn set_user(
     };
     let user_id = user.0;
 
-    let level = xp::calculate_level_from_xp(xp);
+    let level = xp::calculate_level_from_xp(xp as i64);
 
     let mut user_level = ctx.data().db.get_user(user_id, guild_id).await?;
-    user_level.xp = xp;
+    user_level.xp = xp as i64;
     user_level.level = level;
     ctx.data().db.update_user(&user_level, guild_id).await?;
 
@@ -110,8 +112,11 @@ async fn set_user(
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 async fn spam_delay(
     ctx: Context<'_>,
-    #[description = "Delay in seconds. Leave empty to get the actual value."] value: Option<i64>,
+    #[description = "Delay in seconds. Leave empty to get the actual value."]
+    #[min = 0]
+    value: Option<u32>,
 ) -> Result<(), Error> {
+    println!("SPAMDELAY: {value:?}");
     let guild_id = if let Some(id) = ctx.guild_id() {
         id.0
     } else {
@@ -120,7 +125,7 @@ async fn spam_delay(
     };
 
     if let Some(value) = value {
-        ctx.data().db.set_spam_delay(guild_id, value).await?;
+        ctx.data().db.set_spam_delay(guild_id, value as i64).await?;
     }
 
     let value = ctx.data().db.get_spam_delay(guild_id).await?;
@@ -135,7 +140,8 @@ async fn spam_delay(
 async fn min_xp_gain(
     ctx: Context<'_>,
     #[description = "Min xp points thaht can be gained. Leave empty to get the actual value."]
-    value: Option<i64>,
+    #[min = 0]
+    value: Option<u32>,
 ) -> Result<(), Error> {
     let guild_id = if let Some(id) = ctx.guild_id() {
         id.0
@@ -145,7 +151,10 @@ async fn min_xp_gain(
     };
 
     if let Some(value) = value {
-        ctx.data().db.set_min_xp_gain(guild_id, value).await?;
+        ctx.data()
+            .db
+            .set_min_xp_gain(guild_id, value as i64)
+            .await?;
     }
 
     let value = ctx.data().db.get_min_xp_gain(guild_id).await?;
@@ -160,7 +169,8 @@ async fn min_xp_gain(
 async fn max_xp_gain(
     ctx: Context<'_>,
     #[description = "Maximum xp points that can be gained. Leave empty to get the actual value."]
-    value: Option<i64>,
+    #[min = 0]
+    value: Option<u32>,
 ) -> Result<(), Error> {
     let guild_id = if let Some(id) = ctx.guild_id() {
         id.0
@@ -170,7 +180,10 @@ async fn max_xp_gain(
     };
 
     if let Some(value) = value {
-        ctx.data().db.set_max_xp_gain(guild_id, value).await?;
+        ctx.data()
+            .db
+            .set_max_xp_gain(guild_id, value as i64)
+            .await?;
     }
     let value = ctx.data().db.get_max_xp_gain(guild_id).await?;
     ctx.say(format!("Max Xp gain is set to {value} points."))
