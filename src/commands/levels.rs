@@ -130,7 +130,14 @@ pub async fn top(
             .display_name()
             .into_owned()
             .replace(|c: char| !c.is_alphanumeric(), "");
-        let user_tup = (name, user.rank, user.level, user.xp);
+        let accent_colour = ctx
+            .http()
+            .get_user(user.user_id)
+            .await?
+            .accent_colour
+            .unwrap_or(serenity::Colour::LIGHTER_GREY)
+            .tuple();
+        let user_tup = (name, user.rank, user.level, user.xp, accent_colour);
         top_users.push(user_tup);
     }
 

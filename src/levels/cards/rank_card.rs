@@ -3,9 +3,12 @@ use piet_common::{
     Color, Device, Image, ImageFormat, InterpolationMode, LinearGradient, PietText, RenderContext,
     Text, TextLayout, TextLayoutBuilder, UnitPoint,
 };
-use tracing::{debug, info};
+use tracing::info;
 
-use crate::levels::xp::{total_xp_required_for_level, xp_needed_to_level_up};
+use crate::levels::{
+    cards::FONT,
+    xp::{total_xp_required_for_level, xp_needed_to_level_up},
+};
 
 use super::{to_png_buffer, Colors};
 
@@ -86,7 +89,7 @@ pub fn gen_user_card(
     // Load font
     let mut text = PietText::new();
     let font = text
-        .font_family("Akira Expanded")
+        .font_family(FONT)
         .expect("Cannot load font Akira Expanded");
     info!("Font loaded.");
 
