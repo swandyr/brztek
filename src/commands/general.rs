@@ -96,13 +96,14 @@ pub async fn set_color(ctx: Context<'_>) -> Result<(), Error> {
             .await?;
         info!("role_color {} updated", id);
     } else {
-        let roles_count = guild.roles.len();
+        let bot_role_position = guild.role_by_name("brztek").unwrap().position;
+        info!("bot role position: {}", bot_role_position);
         let role = guild
             .create_role(ctx, |role| {
                 role.name(role_name)
                     .colour(colour.0 as u64)
                     .permissions(serenity::Permissions::empty())
-                    .position(roles_count as u8 - 1)
+                    .position(bot_role_position as u8 - 1)
             })
             .await?;
         info!("role_color created: {}", role.id.0);
