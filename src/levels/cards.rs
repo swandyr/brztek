@@ -51,23 +51,23 @@ pub struct UserInfoCard {
     rank: i64,
     level: i64,
     current_xp: i64,
-    color: Color
+    colour: Color
 }
 
 impl UserInfoCard {
-    pub fn new(name: String, rank: i64, level: i64, current_xp: i64, color: (u8, u8, u8)) -> Self {
-        let color = Color::rgba8(color.0, color.1, color.2, 0xff);
+    pub fn new(name: String, rank: i64, level: i64, current_xp: i64, colour: (u8, u8, u8)) -> Self {
+        let colour = Color::rgba8(colour.0, colour.1, colour.2, 0xff);
         
         Self {
             name,
             rank,
             level,
             current_xp,
-            color,
+            colour,
         }
     }
 
     fn tuple(&self) -> (&str, i64, i64, i64, Color) {
-        (&self.name, self.rank, self.level, self.current_xp, self.color)
+        (&self.name, self.rank, self.level, self.current_xp, self.colour)
     }
 }

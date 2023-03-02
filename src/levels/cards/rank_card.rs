@@ -1,6 +1,6 @@
 use piet_common::{
     kurbo::{Point, Rect, Size},
-    Color, Device, Image, ImageFormat, InterpolationMode, LinearGradient, PietText, RenderContext,
+    Device, Image, ImageFormat, InterpolationMode, LinearGradient, PietText, RenderContext,
     Text, TextLayout, TextLayoutBuilder, UnitPoint,
 };
 use tracing::info;
@@ -10,7 +10,7 @@ use crate::levels::{
     xp::{total_xp_required_for_level, xp_needed_to_level_up},
 };
 
-use super::{to_png_buffer, Colors};
+use super::{to_png_buffer, Colors, UserInfoCard};
 
 const CARD_HEIGHT: usize = 128;
 const CARD_WIDTH: usize = 440;
@@ -19,14 +19,12 @@ const MARGIN: f64 = 16.0;
 // Move in cards.rs when all is migrated to piet
 
 pub fn gen_user_card(
-    username: &str,
+    user_info: UserInfoCard,
     profile_picture: (usize, usize, &[u8]),
-    banner_colour: (u8, u8, u8),
-    level: i64,
-    rank: i64,
-    user_xp: i64,
 ) -> anyhow::Result<Vec<u8>> {
     info!("Start drawing user card.");
+
+    let (username, rank, level, user_xp, banner_colour) = user_info.tuple();
 
     // Xp values
     let xp_for_actual_level = total_xp_required_for_level(level);
@@ -52,19 +50,16 @@ pub fn gen_user_card(
     rc.fill(rect, &colors.dark_gray);
 
     // Draw the user's xp gauge as a background gradient
-    let (r, g, b) = banner_colour;
-    let gradient_colour = Color::rgba8(r, g, b, 0xff);
-
     let gradient_start =
         (user_xp_in_level as f64 / xp_needed_to_level_up as f64).mul_add(width, -50.);
     let rect = Rect::from_origin_size(Point::new(0., 0.), Size::new(gradient_start + 0.5, height));
-    rc.fill(rect, &gradient_colour);
+    rc.fill(rect, &banner_colour);
 
     let rect = Rect::from_origin_size(Point::new(gradient_start, 0.), Size::new(100., height));
     let gradient = LinearGradient::new(
         UnitPoint::TOP_LEFT,
         UnitPoint::TOP_RIGHT,
-        (gradient_colour, colors.dark_gray),
+        (banner_colour, colors.dark_gray),
     );
     rc.fill(rect, &gradient);
 
@@ -173,20 +168,10 @@ pub fn gen_user_card(
     let buf = to_png_buffer(card_buf.raw_pixels(), CARD_WIDTH as u32, CARD_HEIGHT as u32)?;
     info!("Card image encoded in PNG and saved in Vec<u8>");
 
-    bitmap.save_to_file("rank.png").unwrap();
+    //bitmap.save_to_file("rank.png").unwrap();
 
     Ok(buf)
 }
-
-// #[test]
-// fn test_gen_card_with_url() {
-//     let username = String::from("Username");
-//     let avatar_url = String::from(
-//         "https://cdn.discordapp.com/avatars/164445708827492353/700d1f83e3d68d6a32dca1269093f81f.webp?size=1024",
-//     );
-//     let colour = (255, 255, 0);
-//     assert!(gen_user_card(&username, Some(avatar_url), colour, 2, 1, 275).is_ok());
-// }
 
 #[test]
 fn test_gen_card_with_default_pp() {
@@ -200,13 +185,11 @@ fn test_gen_card_with_default_pp() {
     let image = image.resize(96, 96, image::imageops::FilterType::Gaussian);
     let (image_width, image_height) = (image.width() as usize, image.height() as usize);
     let image_buf = image.into_bytes();
+
+    let user_info = UserInfoCard::new(username, 1, 2, 275, colour);
     assert!(gen_user_card(
-        &username,
+        user_info,
         (image_width, image_height, &image_buf),
-        colour,
-        2,
-        1,
-        275
     )
     .is_ok());
 }

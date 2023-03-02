@@ -215,7 +215,7 @@ pub async fn gen_top_card(
         target_height.try_into()?,
     )?;
 
-    bitmap.save_to_file("card.png").unwrap();
+    //bitmap.save_to_file("card.png").unwrap();
 
     Ok(buf)
 }

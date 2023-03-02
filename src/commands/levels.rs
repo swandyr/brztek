@@ -69,15 +69,13 @@ pub async fn rank(
         .unwrap_or(serenity::Colour::LIGHTER_GREY)
         .tuple();
 
-    // Generate the card that will be save with name "rank.png"
+    let user_info = UserInfoCard::new(username, user_level.rank, user_level.level, user_level.xp, accent_colour);
+
+    // Generate the card
     let t_1 = Instant::now();
     let image = rank_card::gen_user_card(
-        &username,
+        user_info,
         (image_width, image_height, &image_buf),
-        accent_colour,
-        user_level.level,
-        user_level.rank,
-        user_level.xp,
     )?;
     info!("Rank card generated in {} µs", t_1.elapsed().as_micros());
 
@@ -141,10 +139,10 @@ pub async fn top(
         top_users.push(user_info_card);
     }
 
-    // Generate an image that is saved with name "top_ten.png"
+    // Generate card
     let image = top_card::gen_top_card(&top_users, &guild_name).await?;
 
-    // Send generated "top_ten.png" file
+    // Send generated file
     ctx.send(|b| {
         let file = serenity::AttachmentType::from((image.as_slice(), "top_card.png"));
         b.attachment(file)
