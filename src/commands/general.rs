@@ -22,8 +22,7 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
 ///
 /// Save a named command with a link the bot will post when responding
 /// to the command.
-#[instrument]
-#[poise::command(prefix_command, slash_command, category = "General")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "General")]
 pub async fn learn(
     ctx: Context<'_>,
     #[description = "Name"] name: String,
@@ -41,8 +40,7 @@ pub async fn learn(
 /// What the bot learned.
 ///
 /// List all learned command names.
-#[instrument]
-#[poise::command(prefix_command, slash_command, category = "General")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "General")]
 pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
 
@@ -84,7 +82,7 @@ pub async fn set_color(ctx: Context<'_>) -> Result<(), Error> {
     let role_name = format!("bot_color_{name}");
 
     // User banner colour will be the colour of the role
-    let Some(colour) = ctx.http().get_user(ctx.author().id.0).await?.accent_colour else {
+    let Some(colour) = ctx.http().get_user(user_id).await?.accent_colour else {
         ctx.say("Cannot find banner color").await?;
         return Ok(());
     };
@@ -129,7 +127,6 @@ const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song
 ///
 /// The bot will show what's now on BigRig, even if it isn't Dolly Parton.
 #[allow(dead_code)]
-#[instrument]
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
     #[derive(Debug, serde::Deserialize)]
@@ -180,7 +177,6 @@ pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
 ///
 /// It requests the Invidious API to get the video Id to avoid the need of a Google API Key.
 /// The link posted is Youtube though.
-#[instrument]
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn yt(
     ctx: Context<'_>,

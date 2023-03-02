@@ -1,5 +1,5 @@
 use poise::serenity_prelude as serenity;
-use tracing::{info, instrument};
+use tracing::info;
 
 use crate::levels::user_level::UserLevel;
 use crate::levels::xp;
@@ -13,10 +13,10 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 /// Prefix subcommands that need Administrator priviledges.
 ///
 /// Available subcommands are set_pub, set_user, spam_delay, min_xp_gain, max_xp_gain.
-#[instrument]
 #[poise::command(
     prefix_command,
     slash_command,
+    guild_only,
     subcommands("set_pub", "set_user", "spam_delay", "min_xp_gain", "max_xp_gain"),
     required_permissions = "ADMINISTRATOR",
     category = "Admin"
@@ -193,7 +193,6 @@ async fn max_xp_gain(
 }
 
 /// Import users levels from Mee6 leaderboard
-#[instrument]
 #[poise::command(
     slash_command,
     required_permissions = "ADMINISTRATOR",
