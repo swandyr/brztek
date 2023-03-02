@@ -4,13 +4,12 @@ pub mod xp;
 
 use poise::serenity_prelude as serenity;
 use std::time::Instant;
-use tracing::{debug, info, instrument};
+use tracing::{debug, info};
 
 use crate::utils::config::XpSettings;
 use crate::utils::db::Db;
 use crate::Data;
 
-#[instrument(skip(ctx))]
 pub async fn handle_message_xp(
     ctx: &serenity::Context,
     user_data: &Data,

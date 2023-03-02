@@ -1,178 +1,221 @@
-use font_kit::font::Font;
-use raqote::{
-    DrawOptions, DrawTarget, Gradient, GradientStop, PathBuilder, Point, SolidSource, Source,
-    Spread, StrokeStyle,
+use piet_common::{
+    kurbo::{Line, Point, Rect, Size},
+    CairoTextLayout, Color, Device, ImageFormat, LineCap, LinearGradient, PietText, RenderContext,
+    StrokeStyle, Text, TextLayout, TextLayoutBuilder, UnitPoint,
 };
 use tracing::info;
 
-use super::{
-    to_png_buffer,
+use crate::levels::{
+    cards::{to_png_buffer, Colors, FONT},
     xp::{total_xp_required_for_level, xp_needed_to_level_up},
-    Colors, FONT,
 };
+use super::UserInfoCard;
 
-const CARD_WIDTH: i32 = 480;
-const TITLE_HEIGHT: i32 = 60;
-const USER_HEIGHT: i32 = 40;
+const TITLE_HEIGHT: usize = 60;
+const USER_HEIGHT: usize = 32;
+
+struct UserLayout {
+    rank: CairoTextLayout,
+    name: CairoTextLayout,
+    xp: CairoTextLayout,
+    stroke: (f64, Color),
+    level: CairoTextLayout,
+}
 
 pub async fn gen_top_card(
-    users: &[(
-        String, //username
-        i64,    // rank
-        i64,    // level
-        i64,    // current xp
-    )],
+    users: &[UserInfoCard],
     _guild_name: &str,
 ) -> anyhow::Result<Vec<u8>> {
-    info!("gen top_card for users:\n{users:#?}");
+    info!("get top_card for users:\n{users:#?}");
 
     // Some colors
     let colors = Colors::default();
 
-    // Calculate image height in function of the size of `users` Vec
-    let target_height = users.len() as i32 * USER_HEIGHT + TITLE_HEIGHT;
+    // Load font
+    let mut text = PietText::new();
+    let font = text.font_family(FONT).expect("Cannot load font family");
+    info!("Font loaded");
 
-    // Create the target
-    let mut dt = DrawTarget::new(CARD_WIDTH, target_height);
-    dt.clear(SolidSource::from(colors.white));
+    let xp_gauge_width = 180_usize;
 
-    // Create a gradient and fill the target
-    let gradient = Source::new_linear_gradient(
-        Gradient {
-            stops: vec![
-                GradientStop {
-                    position: 0.0,
-                    color: colors.light_gray,
-                },
-                GradientStop {
-                    position: 0.99,
-                    color: colors.dark_gray,
-                },
-                GradientStop {
-                    position: 1.0,
-                    color: colors.dark_gray,
-                },
-            ],
-        },
-        Point::new(40.0, 0.0),
-        Point::new(190.0, target_height as f32 / 2.0),
-        Spread::Pad,
+    // Creates users layouts
+    let user_layouts = users
+        .iter()
+        .enumerate()
+        .map(|(i, user)| {
+            let (name, rank, level, current_xp, color) = user.tuple();
+            // Xp values
+            let xp_for_actual_level = total_xp_required_for_level(level);
+            let xp_needed_to_level_up = xp_needed_to_level_up(level);
+            let user_xp_in_level = current_xp - xp_for_actual_level;
+
+            // Create text layouts
+            let rank = text
+                .new_text_layout(format!("#{rank}"))
+                .font(font.clone(), 18.)
+                .text_color(match i {
+                    0 => colors.gold,
+                    1 => colors.silver,
+                    2 => colors.bronze,
+                    _ => colors.white,
+                })
+                .build()
+                .unwrap();
+            let name = text
+                .new_text_layout(name.to_owned())
+                .font(font.clone(), 16.)
+                .text_color(colors.white)
+                .build()
+                .unwrap();
+            let total_xp_required_for_next_level = xp_for_actual_level + xp_needed_to_level_up;
+            let xp = text
+                .new_text_layout(format!("{current_xp}/{total_xp_required_for_next_level}"))
+                .font(font.clone(), 12.0)
+                .text_color(colors.white)
+                .build()
+                .unwrap();
+            let level = text
+                .new_text_layout(format!("{level}"))
+                .font(font.clone(), 16.)
+                .text_color(colors.white)
+                .build()
+                .unwrap();
+
+            let end_stroke =
+                (user_xp_in_level as f64 / xp_needed_to_level_up as f64) * xp_gauge_width as f64;
+            let stroke = (end_stroke, color);
+
+            UserLayout {
+                rank,
+                name,
+                xp,
+                stroke,
+                level,
+            }
+        })
+        .collect::<Vec<UserLayout>>();
+
+    // Get max sizes of layouts
+    let rank_layout_max = user_layouts
+        .iter()
+        .map(|user| user.rank.trailing_whitespace_width() as usize)
+        .max()
+        .unwrap();
+    let name_layout_max = user_layouts
+        .iter()
+        .map(|user| user.name.trailing_whitespace_width() as usize)
+        .max()
+        .unwrap();
+    let xp_layout_max = user_layouts
+        .iter()
+        .map(|user| user.xp.trailing_whitespace_width() as usize)
+        .max()
+        .unwrap();
+    let level_layout_max = user_layouts
+        .iter()
+        .map(|user| user.level.trailing_whitespace_width() as usize)
+        .max()
+        .unwrap();
+
+    // Calculate image size in function of the size of the `users` Vec
+    let target_width = 10
+        + rank_layout_max
+        + 10
+        + name_layout_max
+        + 10
+        + xp_layout_max
+        + 10
+        + xp_gauge_width
+        + 10
+        + level_layout_max
+        + 10;
+    let target_height = users.len() * USER_HEIGHT + TITLE_HEIGHT + 40;
+
+    // Create context
+    let mut device = Device::new().expect("Cannot create device");
+    let mut bitmap = device
+        .bitmap_target(target_width, target_height, 1.0)
+        .expect("Cannot create bitmap target");
+    let mut rc = bitmap.render_context();
+    info!("Render context created");
+
+    let width = target_width as f64;
+    let height = target_height as f64;
+
+    // Draw background
+    let gradient = LinearGradient::new(
+        UnitPoint::TOP_LEFT,
+        UnitPoint::BOTTOM_RIGHT,
+        (colors.mid_gray, colors.dark_gray, colors.dark_gray),
     );
-    let mut pb = PathBuilder::new();
-    pb.rect(0.0, 0.0, CARD_WIDTH as f32, target_height as f32);
-    let path = pb.finish();
-    dt.fill(&path, &gradient, &DrawOptions::new());
+    let rect = Rect::from_origin_size(Point::new(0., 0.), Size::new(width, height));
+    rc.fill(rect, &gradient);
 
-    let font: Font = font_kit::loader::Loader::from_file(&mut std::fs::File::open(FONT)?, 0)?;
-
-    // Create header
-    let solid_source = Source::Solid(SolidSource::from(colors.white));
-    let text = format!("Top {}", users.len());
-    dt.draw_text(
-        &font,
-        45.0,
-        &text,
-        Point::new(260.0, 45.0),
-        &solid_source,
-        &DrawOptions::new(),
+    // Title
+    let title_layout = text
+        .new_text_layout(format!("Top {}", users.len()))
+        .font(font, 45.)
+        .text_color(colors.white)
+        .build()
+        .unwrap();
+    let pos = Point::new(
+        width - (title_layout.trailing_whitespace_width() + 50.),
+        25.,
     );
+    rc.draw_text(&title_layout, pos);
 
     // Draw elements for each users
     //
     // y_offset set where vertically the target is drawn,
     // it is incremented with the USER_HEIGHT constant when all elements
     // of a user are drawn
-    let mut y_offset = TITLE_HEIGHT as f32;
-    for user in users {
-        let (name, rank, level, current_xp) = user;
-        // Xp values
-        let xp_for_actual_level = total_xp_required_for_level(*level);
-        let xp_needed_to_level_up = xp_needed_to_level_up(*level);
-        let user_xp_in_level = current_xp - xp_for_actual_level;
-
+    let mut y_offset = TITLE_HEIGHT as f64;
+    for user in user_layouts {
         // x_pos tracks the horizontal position to draw elements
         // relatively to the others, by incrementing or decrementing
         let mut x_pos = 10.0;
-        dt.draw_text(
-            &font,
-            22.0,
-            &format!("#{rank}"),
-            Point::new(x_pos, 30.0 + y_offset),
-            &solid_source,
-            &DrawOptions::new(),
+        rc.draw_text(&user.rank, Point::new(x_pos, 30. + y_offset));
+
+        x_pos += rank_layout_max as f64 + 10.;
+        // y offset is actually 'y_offset + difference in text height with rank_layout"
+        rc.draw_text(&user.name, Point::new(x_pos, 30. + y_offset + 2.));
+
+        x_pos += name_layout_max as f64 + 10.;
+        rc.draw_text(&user.xp, Point::new(x_pos, 24. + y_offset + 10.));
+
+        x_pos += xp_layout_max as f64 + 10.;
+        let y_pos = y_offset + 42.5;
+        let back_line = Line::new(
+            Point::new(x_pos, y_pos),
+            Point::new(x_pos + xp_gauge_width as f64, y_pos),
         );
-
-        x_pos += 40.0;
-        dt.draw_text(
-            &font,
-            20.0,
-            name,
-            Point::new(x_pos, 30.0 + y_offset),
-            &solid_source,
-            &DrawOptions::new(),
+        let front_line = Line::new(
+            Point::new(x_pos, y_pos),
+            Point::new(x_pos + user.stroke.0, y_pos),
         );
-
-        x_pos += 165.0;
-        let total_xp_required_for_next_level = xp_for_actual_level + xp_needed_to_level_up;
-        dt.draw_text(
-            &font,
-            14.0,
-            &format!("{current_xp}/{total_xp_required_for_next_level}"),
-            Point::new(x_pos, 24.0 + y_offset),
-            &solid_source,
-            &DrawOptions::new(),
-        );
-
-        x_pos += 200.0;
-        dt.draw_text(
-            &font,
-            20.0,
-            &format!("{level}"),
-            Point::new(x_pos, 30.0 + y_offset),
-            &solid_source,
-            &DrawOptions::new(),
-        );
-
-        // Draw xp gauge
-        let start = x_pos - 220.0;
-        let end = start + 200.0;
-        let length = end - start;
-
-        let style = StrokeStyle {
-            cap: raqote::LineCap::Round,
-            width: 3.0,
+        let stroke_style = StrokeStyle {
+            line_cap: LineCap::Round,
             ..Default::default()
         };
+        rc.stroke_styled(back_line, &colors.mid_gray, 3., &stroke_style);
+        rc.stroke_styled(front_line, &user.stroke.1, 3., &stroke_style);
 
-        let mut pb = PathBuilder::new();
-        pb.move_to(start, 30.0 + y_offset);
-        pb.line_to(end, 30.0 + y_offset);
-        let path = pb.finish();
-        dt.stroke(
-            &path,
-            &Source::Solid(SolidSource::from(colors.light_gray)),
-            &style,
-            &DrawOptions::new(),
-        );
+        x_pos += xp_gauge_width as f64 + 10.;
+        rc.draw_text(&user.level, Point::new(x_pos, 30. + y_offset + 2.));
 
-        let end = (user_xp_in_level as f32 / xp_needed_to_level_up as f32).mul_add(length, start);
-        let mut pb = PathBuilder::new();
-        pb.move_to(start, 30.0 + y_offset);
-        pb.line_to(end, 30.0 + y_offset);
-        let path = pb.finish();
-        dt.stroke(
-            &path,
-            &Source::Solid(SolidSource::from(colors.yellow)),
-            &style,
-            &DrawOptions::new(),
-        );
-
-        y_offset += USER_HEIGHT as f32;
+        y_offset += USER_HEIGHT as f64;
     }
 
-    // Encode the image data into png and returned in Vec<u8>
-    let card_buf = dt.get_data_u8().to_vec();
-    let buf = to_png_buffer(&card_buf, CARD_WIDTH as u32, target_height as u32)?;
+    let card_buf = bitmap
+        .to_image_buf(ImageFormat::RgbaPremul)
+        .expect("Unable to get image buf");
+    let buf = to_png_buffer(
+        card_buf.raw_pixels(),
+        target_width.try_into()?,
+        target_height.try_into()?,
+    )?;
+
+    //bitmap.save_to_file("card.png").unwrap();
 
     Ok(buf)
 }
@@ -180,11 +223,15 @@ pub async fn gen_top_card(
 #[tokio::test]
 async fn test_gen_top() {
     let users = vec![
-        ("EKXZMANE".to_string(), 1, 4, 950),
-        ("Meeeeeeelent".to_string(), 2, 3, 760),
-        ("Bobish".to_string(), 3, 2, 298),
-        ("user".to_string(), 4, 0, 2),
+        ("EKXZMANE".to_string(), 1, 4, 950, (35, 12, 50)),
+        ("Meeeeeeelent".to_string(), 2, 3, 760, (48, 48, 0)),
+        ("Bobish".to_string(), 3, 2, 298, (127, 0, 0)),
+        ("user".to_string(), 4, 0, 2, (24, 102, 98)),
     ];
+    let users = users.into_iter().map(|u| {
+        UserInfoCard::new(u.0, u.1, u.2, u.3, u.4)
+    })
+    .collect::<Vec<_>>();
     let guild_name = "The Guild".to_string();
     assert!(gen_top_card(&users, &guild_name).await.is_ok());
 }

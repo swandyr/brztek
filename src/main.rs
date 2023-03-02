@@ -5,7 +5,7 @@ mod utils;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use std::{env, time::Instant};
-use tracing::{error, info, instrument};
+use tracing::{error, info};
 
 use utils::db::Db;
 
@@ -22,7 +22,6 @@ pub struct Data {
 
 // ------------------------------------- Event handler -----------------------------------------
 
-#[instrument(skip(ctx, _framework))]
 async fn event_event_handler(
     ctx: &serenity::Context,
     event: &poise::Event<'_>,
@@ -112,7 +111,6 @@ async fn event_event_handler(
 
 // -------------------------------------- Error handling ----------------------------------
 
-#[instrument]
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     match error {
         poise::FrameworkError::Setup {
