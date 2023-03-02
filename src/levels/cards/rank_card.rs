@@ -1,7 +1,7 @@
 use piet_common::{
     kurbo::{Point, Rect, Size},
-    Device, Image, ImageFormat, InterpolationMode, LinearGradient, PietText, RenderContext,
-    Text, TextLayout, TextLayoutBuilder, UnitPoint,
+    Device, Image, ImageFormat, InterpolationMode, LinearGradient, PietText, RenderContext, Text,
+    TextLayout, TextLayoutBuilder, UnitPoint,
 };
 use tracing::info;
 
@@ -66,11 +66,17 @@ pub fn gen_user_card(
     // Opacity mask
     let rect = Rect::from_origin_size(Point::new(0., 0.), Size::new(width, height));
     rc.fill(rect, &colors.opacity_mask);
+    info!("opacity mask applied");
 
     // Draw profile picture
     let (pp_width, pp_height, image_buf) = profile_picture;
+    println!("pp: {} {} {}", pp_width, pp_height, image_buf.len());
+    let format = match image_buf.len() {
+        36864 => ImageFormat::RgbaSeparate, // 96 * 96 * 4 : 4 bytes per pixels
+        _ => ImageFormat::Rgb,              // 3 bytes per pixels
+    };
     let image = rc
-        .make_image(pp_width, pp_height, image_buf, ImageFormat::RgbaSeparate)
+        .make_image(pp_width, pp_height, image_buf, format)
         .expect("Cannot make image from profile_picture buffer");
     info!("Image created from avatar bytes");
 
@@ -168,7 +174,7 @@ pub fn gen_user_card(
     let buf = to_png_buffer(card_buf.raw_pixels(), CARD_WIDTH as u32, CARD_HEIGHT as u32)?;
     info!("Card image encoded in PNG and saved in Vec<u8>");
 
-    //bitmap.save_to_file("rank.png").unwrap();
+    bitmap.save_to_file("rank.png").unwrap();
 
     Ok(buf)
 }
@@ -180,16 +186,14 @@ fn test_gen_card_with_default_pp() {
     let username = String::from("Username");
     let colour = (255, 255, 0);
     let default_file = DEFAULT_PP_TESSELATION_VIOLET;
+    let default_file = "d9a9464835ae4d43e30c33933319fb11.png"; // Dydy
+    let _default_file = "700d1f83e3d68d6a32dca1269093f81f.png"; // Me
     let bytes = std::fs::read(default_file).unwrap();
     let image = image::load_from_memory(&bytes).unwrap();
-    let image = image.resize(96, 96, image::imageops::FilterType::Gaussian);
+    //let image = image.resize(96, 96, image::imageops::FilterType::Gaussian);
     let (image_width, image_height) = (image.width() as usize, image.height() as usize);
     let image_buf = image.into_bytes();
 
     let user_info = UserInfoCard::new(username, 1, 2, 275, colour);
-    assert!(gen_user_card(
-        user_info,
-        (image_width, image_height, &image_buf),
-    )
-    .is_ok());
+    assert!(gen_user_card(user_info, (image_width, image_height, &image_buf),).is_ok());
 }
