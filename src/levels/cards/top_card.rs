@@ -9,6 +9,7 @@ use crate::levels::{
     cards::{to_png_buffer, Colors, FONT},
     xp::{total_xp_required_for_level, xp_needed_to_level_up},
 };
+use super::UserInfoCard;
 
 const TITLE_HEIGHT: usize = 60;
 const USER_HEIGHT: usize = 32;
@@ -22,13 +23,7 @@ struct UserLayout {
 }
 
 pub async fn gen_top_card(
-    users: &[(
-        String,       //username
-        i64,          // rank
-        i64,          // level
-        i64,          // current xp
-        (u8, u8, u8), // color
-    )],
+    users: &[UserInfoCard],
     _guild_name: &str,
 ) -> anyhow::Result<Vec<u8>> {
     info!("get top_card for users:\n{users:#?}");
@@ -48,10 +43,10 @@ pub async fn gen_top_card(
         .iter()
         .enumerate()
         .map(|(i, user)| {
-            let (name, rank, level, current_xp, color) = user;
+            let (name, rank, level, current_xp, color) = user.tuple();
             // Xp values
-            let xp_for_actual_level = total_xp_required_for_level(*level);
-            let xp_needed_to_level_up = xp_needed_to_level_up(*level);
+            let xp_for_actual_level = total_xp_required_for_level(level);
+            let xp_needed_to_level_up = xp_needed_to_level_up(level);
             let user_xp_in_level = current_xp - xp_for_actual_level;
 
             // Create text layouts
@@ -88,8 +83,7 @@ pub async fn gen_top_card(
 
             let end_stroke =
                 (user_xp_in_level as f64 / xp_needed_to_level_up as f64) * xp_gauge_width as f64;
-            let color_stroke = Color::rgba8(color.0, color.1, color.2, 0xff);
-            let stroke = (end_stroke, color_stroke);
+            let stroke = (end_stroke, color);
 
             UserLayout {
                 rank,
@@ -234,6 +228,10 @@ async fn test_gen_top() {
         ("Bobish".to_string(), 3, 2, 298, (127, 0, 0)),
         ("user".to_string(), 4, 0, 2, (24, 102, 98)),
     ];
+    let users = users.into_iter().map(|u| {
+        UserInfoCard::new(u.0, u.1, u.2, u.3, u.4)
+    })
+    .collect::<Vec<_>>();
     let guild_name = "The Guild".to_string();
     assert!(gen_top_card(&users, &guild_name).await.is_ok());
 }

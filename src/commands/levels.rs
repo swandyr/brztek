@@ -2,7 +2,7 @@ use poise::serenity_prelude::{self as serenity, CacheHttp};
 use std::time::Instant;
 use tracing::{debug, info};
 
-use crate::levels::cards::{rank_card, top_card, DEFAULT_PP_TESSELATION_VIOLET};
+use crate::levels::cards::{rank_card, top_card, DEFAULT_PP_TESSELATION_VIOLET, UserInfoCard};
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -137,8 +137,8 @@ pub async fn top(
             .accent_colour
             .unwrap_or(serenity::Colour::LIGHTER_GREY)
             .tuple();
-        let user_tup = (name, user.rank, user.level, user.xp, accent_colour);
-        top_users.push(user_tup);
+        let user_info_card = UserInfoCard::new(name, user.rank, user.level, user.xp, accent_colour);
+        top_users.push(user_info_card);
     }
 
     // Generate an image that is saved with name "top_ten.png"

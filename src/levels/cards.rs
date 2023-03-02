@@ -43,3 +43,31 @@ fn to_png_buffer(card_buf: &[u8], width: u32, height: u32) -> Result<Vec<u8>, Im
 
     Ok(buf)
 }
+
+/// This struct contains informations that are printed on the top_card
+#[derive(Debug)]
+pub struct UserInfoCard {
+    name: String,
+    rank: i64,
+    level: i64,
+    current_xp: i64,
+    color: Color
+}
+
+impl UserInfoCard {
+    pub fn new(name: String, rank: i64, level: i64, current_xp: i64, color: (u8, u8, u8)) -> Self {
+        let color = Color::rgba8(color.0, color.1, color.2, 0xff);
+        
+        Self {
+            name,
+            rank,
+            level,
+            current_xp,
+            color,
+        }
+    }
+
+    fn tuple(&self) -> (&str, i64, i64, i64, Color) {
+        (&self.name, self.rank, self.level, self.current_xp, self.color)
+    }
+}
