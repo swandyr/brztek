@@ -5,11 +5,11 @@ use piet_common::{
 };
 use tracing::info;
 
+use super::UserInfoCard;
 use crate::levels::{
     cards::{to_png_buffer, Colors, FONT},
     xp::{total_xp_required_for_level, xp_needed_to_level_up},
 };
-use super::UserInfoCard;
 
 const TITLE_HEIGHT: usize = 60;
 const USER_HEIGHT: usize = 32;
@@ -22,10 +22,7 @@ struct UserLayout {
     level: CairoTextLayout,
 }
 
-pub async fn gen_top_card(
-    users: &[UserInfoCard],
-    _guild_name: &str,
-) -> anyhow::Result<Vec<u8>> {
+pub async fn gen_top_card(users: &[UserInfoCard], _guild_name: &str) -> anyhow::Result<Vec<u8>> {
     info!("get top_card for users:\n{users:#?}");
 
     // Some colors
@@ -70,7 +67,7 @@ pub async fn gen_top_card(
             let total_xp_required_for_next_level = xp_for_actual_level + xp_needed_to_level_up;
             let xp = text
                 .new_text_layout(format!("{current_xp}/{total_xp_required_for_next_level}"))
-                .font(font.clone(), 12.0)
+                .font(font.clone(), 12.)
                 .text_color(colors.white)
                 .build()
                 .unwrap();
@@ -215,7 +212,7 @@ pub async fn gen_top_card(
         target_height.try_into()?,
     )?;
 
-    //bitmap.save_to_file("card.png").unwrap();
+    // bitmap.save_to_file("card.png").unwrap();
 
     Ok(buf)
 }
@@ -228,10 +225,10 @@ async fn test_gen_top() {
         ("Bobish".to_string(), 3, 2, 298, (127, 0, 0)),
         ("user".to_string(), 4, 0, 2, (24, 102, 98)),
     ];
-    let users = users.into_iter().map(|u| {
-        UserInfoCard::new(u.0, u.1, u.2, u.3, u.4)
-    })
-    .collect::<Vec<_>>();
+    let users = users
+        .into_iter()
+        .map(|u| UserInfoCard::new(u.0, u.1, u.2, u.3, u.4))
+        .collect::<Vec<_>>();
     let guild_name = "The Guild".to_string();
     assert!(gen_top_card(&users, &guild_name).await.is_ok());
 }
