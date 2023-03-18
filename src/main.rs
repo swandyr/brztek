@@ -225,8 +225,8 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenvy::dotenv().expect("Failed to load .env file");
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+    let _subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
         .init();
 
     let token = env::var("DISCORD_TOKEN").expect("token needed");

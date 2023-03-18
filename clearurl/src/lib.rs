@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use regex::Regex;
-use tracing::{debug, info};
+use tracing::{debug, info, instrument};
 use url::Url;
 
 const PROVIDERS_URL: &str = "https://rules2.clearurls.xyz/data.minify.json";
@@ -13,11 +13,8 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 
 /// Remove tracking elements from url using the ClearURLs rules, which can be found
 /// on the [github repo](https://github.com/ClearURLs/Addon)
+#[instrument(level = "debug")]
 pub async fn clear_url(url: &str) -> Result<String, Error> {
-    /* tracing_subscriber::fmt()
-    .with_max_level(tracing::Level::DEBUG)
-    .init(); */
-
     let providers_path = PathBuf::from(PROVIDERS_FILE);
 
     // Download json file if not exists on disk or of last modified time is more
@@ -40,6 +37,7 @@ pub async fn clear_url(url: &str) -> Result<String, Error> {
     process_url(url, &json)
 }
 
+#[instrument(level = "debug")]
 fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
     let mut url = url.to_owned();
 
