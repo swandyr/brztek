@@ -2,6 +2,7 @@ mod commands;
 mod levels;
 mod utils;
 
+use clearurl::clear_url;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use std::{env, time::Instant};
@@ -57,6 +58,19 @@ async fn event_event_handler(
 
             let user_id = new_message.author.id;
             let channel_id = new_message.channel_id;
+
+            let content = new_message.content.split(' ');
+            let links = content
+                .filter(|f| f.starts_with("https://") || f.starts_with("http://"))
+                .collect::<Vec<&str>>();
+            for link in links {
+                let cleaned = clear_url(link).await?;
+                if link != &cleaned {
+                    let mention = new_message.author.mention();
+                    let content = format!("Cleaned that shit for you, {mention}\n{cleaned}");
+                    channel_id.say(ctx, content).await?;
+                }
+            }
 
             levels::handle_message_xp(ctx, user_data, &guild_id, &channel_id, &user_id).await?;
 
@@ -211,8 +225,8 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenvy::dotenv().expect("Failed to load .env file");
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+    let _subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
         .init();
 
     let token = env::var("DISCORD_TOKEN").expect("token needed");

@@ -47,9 +47,18 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     let commands = ctx.data().db.get_learned_list(guild_id).await?;
 
     let mut content = String::from(">>> List of learned commands: \n");
+    let mut content_len = content.len();
     for command in commands {
         let line = format!("  - {command}\n");
-        content.push_str(&line);
+        content_len += line.len();
+
+        if content_len <= 2000 {    // Limit of character accepted in a discord message
+            content.push_str(&line);
+        } else {
+            ctx.say(content).await?;
+            content = format!(">>> {line}");
+            content_len = content.len();
+        }
     }
 
     ctx.say(content).await?;

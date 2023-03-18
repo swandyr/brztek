@@ -103,13 +103,23 @@ pub fn gen_user_card(
     let rank_label_layout = text
         .new_text_layout("Rank ")
         .font(font.clone(), 15.)
-        .text_color(colors.light_gray)
+        .text_color(match rank {
+            0 => colors.gold,
+            1 => colors.silver,
+            2 => colors.bronze,
+            _ => colors.light_gray,
+        })
         .build()
         .unwrap();
     let rank_layout = text
         .new_text_layout(format!("#{rank}"))
         .font(font.clone(), 18.)
-        .text_color(colors.white)
+        .text_color(match rank {
+            0 => colors.gold,
+            1 => colors.silver,
+            2 => colors.bronze,
+            _ => colors.white,
+        })
         .build()
         .unwrap();
     let level_label_layout = text
@@ -138,7 +148,7 @@ pub fn gen_user_card(
         .build()
         .unwrap();
 
-    // pos it he top-left point of the drawn text rectangle
+    // pos is the top-left point of the drawn text rectangle
     let mut pos = Point::new(image.size().width + 2. * MARGIN, MARGIN);
     rc.draw_text(&username_layout, pos);
 
@@ -174,7 +184,7 @@ pub fn gen_user_card(
     let buf = to_png_buffer(card_buf.raw_pixels(), CARD_WIDTH as u32, CARD_HEIGHT as u32)?;
     info!("Card image encoded in PNG and saved in Vec<u8>");
 
-    bitmap.save_to_file("rank.png").unwrap();
+    // bitmap.save_to_file("rank.png").unwrap();
 
     Ok(buf)
 }
@@ -186,8 +196,6 @@ fn test_gen_card_with_default_pp() {
     let username = String::from("Username");
     let colour = (255, 255, 0);
     let default_file = DEFAULT_PP_TESSELATION_VIOLET;
-    let default_file = "d9a9464835ae4d43e30c33933319fb11.png"; // Dydy
-    let _default_file = "700d1f83e3d68d6a32dca1269093f81f.png"; // Me
     let bytes = std::fs::read(default_file).unwrap();
     let image = image::load_from_memory(&bytes).unwrap();
     //let image = image.resize(96, 96, image::imageops::FilterType::Gaussian);

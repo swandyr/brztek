@@ -2,7 +2,7 @@ use poise::serenity_prelude::{self as serenity, CacheHttp};
 use std::time::Instant;
 use tracing::{debug, info};
 
-use crate::levels::cards::{rank_card, top_card, DEFAULT_PP_TESSELATION_VIOLET, UserInfoCard};
+use crate::levels::cards::{rank_card, top_card, UserInfoCard, DEFAULT_PP_TESSELATION_VIOLET};
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -43,7 +43,7 @@ pub async fn rank(
     //let username = format!("{}#{}", ctx.author().name, ctx.author().discriminator);
     let username = member
         .display_name()
-        .replace(|c: char| !c.is_alphanumeric(), "");
+        .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
 
     // Request profile picture through HTTP if `avatar_url` is Some().
     // Fallback to a default picture if None.
@@ -69,14 +69,17 @@ pub async fn rank(
         .unwrap_or(serenity::Colour::LIGHTER_GREY)
         .tuple();
 
-    let user_info = UserInfoCard::new(username, user_level.rank, user_level.level, user_level.xp, accent_colour);
+    let user_info = UserInfoCard::new(
+        username,
+        user_level.rank,
+        user_level.level,
+        user_level.xp,
+        accent_colour,
+    );
 
     // Generate the card
     let t_1 = Instant::now();
-    let image = rank_card::gen_user_card(
-        user_info,
-        (image_width, image_height, &image_buf),
-    )?;
+    let image = rank_card::gen_user_card(user_info, (image_width, image_height, &image_buf))?;
     info!("Rank card generated in {} µs", t_1.elapsed().as_micros());
 
     let t_1 = Instant::now();
@@ -127,7 +130,7 @@ pub async fn top(
             .await?
             .display_name()
             .into_owned()
-            .replace(|c: char| !c.is_alphanumeric(), "");
+            .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
         let accent_colour = ctx
             .http()
             .get_user(user.user_id)
