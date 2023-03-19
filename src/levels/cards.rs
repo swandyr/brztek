@@ -3,6 +3,7 @@ pub mod top_card;
 
 use image::{ImageEncoder, ImageError, RgbaImage};
 use piet_common::Color;
+use tracing::instrument;
 
 const FONT: &str = "Akira Expanded"; // Font needs to be installed on the system (https://www.dafont.com/akira-expanded.font)
 pub const DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tessellation-Violet.png";
@@ -35,6 +36,7 @@ impl Default for Colors {
     }
 }
 
+#[instrument]
 fn to_png_buffer(card_buf: &[u8], width: u32, height: u32) -> Result<Vec<u8>, ImageError> {
     let img = RgbaImage::from_vec(width, height, card_buf.to_vec()).unwrap();
     let mut buf = Vec::new();
@@ -51,13 +53,13 @@ pub struct UserInfoCard {
     rank: i64,
     level: i64,
     current_xp: i64,
-    colour: Color
+    colour: Color,
 }
 
 impl UserInfoCard {
     pub fn new(name: String, rank: i64, level: i64, current_xp: i64, colour: (u8, u8, u8)) -> Self {
         let colour = Color::rgba8(colour.0, colour.1, colour.2, 0xff);
-        
+
         Self {
             name,
             rank,
@@ -68,6 +70,12 @@ impl UserInfoCard {
     }
 
     fn tuple(&self) -> (&str, i64, i64, i64, Color) {
-        (&self.name, self.rank, self.level, self.current_xp, self.colour)
+        (
+            &self.name,
+            self.rank,
+            self.level,
+            self.current_xp,
+            self.colour,
+        )
     }
 }

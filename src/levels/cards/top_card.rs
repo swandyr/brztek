@@ -3,7 +3,7 @@ use piet_common::{
     CairoTextLayout, Color, Device, ImageFormat, LineCap, LinearGradient, PietText, RenderContext,
     StrokeStyle, Text, TextLayout, TextLayoutBuilder, UnitPoint,
 };
-use tracing::info;
+use tracing::{info, instrument};
 
 use super::UserInfoCard;
 use crate::levels::{
@@ -22,6 +22,7 @@ struct UserLayout {
     level: CairoTextLayout,
 }
 
+#[instrument]
 pub async fn gen_top_card(users: &[UserInfoCard], _guild_name: &str) -> anyhow::Result<Vec<u8>> {
     info!("get top_card for users:\n{users:#?}");
 

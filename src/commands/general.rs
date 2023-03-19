@@ -12,6 +12,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 /// Ping the bot!
 ///
 /// He'll pong you back.
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("Pong!").await?;
@@ -22,6 +23,7 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
 ///
 /// Save a named command with a link the bot will post when responding
 /// to the command.
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "General")]
 pub async fn learn(
     ctx: Context<'_>,
@@ -40,6 +42,7 @@ pub async fn learn(
 /// What the bot learned.
 ///
 /// List all learned command names.
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "General")]
 pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
@@ -52,7 +55,8 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
         let line = format!("  - {command}\n");
         content_len += line.len();
 
-        if content_len <= 2000 {    // Limit of character accepted in a discord message
+        if content_len <= 2000 {
+            // Limit of character accepted in a discord message
             content.push_str(&line);
         } else {
             ctx.say(content).await?;
@@ -68,7 +72,7 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
 /// Get your own role
 ///
 /// Attribute yourself a role at your name with your banner color
-#[instrument]
+#[instrument(skip(ctx))]
 #[poise::command(
     prefix_command,
     slash_command,
@@ -137,6 +141,7 @@ const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song
 ///
 /// The bot will show what's now on BigRig, even if it isn't Dolly Parton.
 #[allow(dead_code)]
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
     #[derive(Debug, serde::Deserialize)]
@@ -187,6 +192,7 @@ pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
 ///
 /// It requests the Invidious API to get the video Id to avoid the need of a Google API Key.
 /// The link posted is Youtube though.
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, category = "General")]
 pub async fn yt(
     ctx: Context<'_>,

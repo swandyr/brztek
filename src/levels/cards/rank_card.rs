@@ -3,7 +3,7 @@ use piet_common::{
     Device, Image, ImageFormat, InterpolationMode, LinearGradient, PietText, RenderContext, Text,
     TextLayout, TextLayoutBuilder, UnitPoint,
 };
-use tracing::info;
+use tracing::{info, instrument};
 
 use crate::levels::{
     cards::FONT,
@@ -16,8 +16,7 @@ const CARD_HEIGHT: usize = 128;
 const CARD_WIDTH: usize = 440;
 const MARGIN: f64 = 16.0;
 
-// Move in cards.rs when all is migrated to piet
-
+#[instrument]
 pub fn gen_user_card(
     user_info: UserInfoCard,
     profile_picture: (usize, usize, &[u8]),

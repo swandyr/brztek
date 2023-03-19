@@ -1,6 +1,6 @@
 use poise::serenity_prelude::{self as serenity, CacheHttp};
 use std::time::Instant;
-use tracing::{debug, info};
+use tracing::{debug, info, instrument};
 
 use crate::levels::cards::{rank_card, top_card, UserInfoCard, DEFAULT_PP_TESSELATION_VIOLET};
 use crate::Data;
@@ -18,6 +18,7 @@ fn clean_url(mut url: String) -> String {
 }
 
 /// Show your rank
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn rank(
     ctx: Context<'_>,
@@ -98,6 +99,7 @@ pub async fn rank(
 /// Show the top users of the server
 ///
 /// Default is 10.
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn top(
     ctx: Context<'_>,
