@@ -37,7 +37,7 @@ pub async fn clear_url(url: &str) -> Result<String, Error> {
     process_url(url, &json)
 }
 
-#[instrument(level = "debug")]
+#[instrument(level = "debug", skip(json))]
 fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
     let mut url = url.to_owned();
 
@@ -124,6 +124,10 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
             // Check regular rules and referral marketing rules
             let pairs = parsed_url.query_pairs();
 
+            // Each parameters in the input is compared to the rules.
+            // The `params` Vec contains the parameters to keep in the cleaned url.
+            // If the checked parameter does not match any rule, it is pushed into `params`,
+            // else, the loop proceed to the next pair without further processing.
             'pair: for (key, value) in pairs {
                 debug!("KEY: {}", &key);
                 for re in &rules {
@@ -155,6 +159,7 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
                         Regex::new(&rule_str).unwrap()
                     })
                     .collect::<Vec<Regex>>();
+                debug!("RAW RULES: {:#?}", rules);
 
                 for rule in rules {
                     if rule.is_match(&url) {
@@ -168,14 +173,16 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
         }
     }
 
-    url = url.trim_end_matches('?').trim_end_matches('/').into();
-    info!("Cleaned URL: {}", url);
+    url = url.trim_end_matches('?').into();
 
+    info!("Cleaned URL: {}", url);
     Ok(url)
 }
 
 #[cfg(test)]
 mod tests {
+    use tracing::Level;
+
     use super::*;
 
     #[tokio::test]
@@ -213,6 +220,23 @@ mod tests {
 
         match clear_url(url).await {
             Ok(val) => assert_eq!(val, cleared),
+            Err(e) => println!("Error: {e}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn nothing_to_clean() {
+        tracing_subscriber::fmt()
+            .with_max_level(Level::DEBUG)
+            .pretty()
+            .init();
+
+        let url = "https://store.steampowered.com/app/1359650/The_Last_of_Waifus/";
+
+        std::env::set_current_dir("../").unwrap();
+
+        match clear_url(url).await {
+            Ok(val) => assert_eq!(val, url),
             Err(e) => println!("Error: {e}"),
         }
     }
