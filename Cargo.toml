@@ -17,7 +17,7 @@ serde_json = "1.0.92"
 sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "sqlite"] }
 tokio = { version = "1.25.0", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.37"
-tracing-subscriber = "0.3.16"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 time = "0.3.19"
 piet-common = { version = "0.6.2", features = ["png"] }
 clearurl = { path = "./clearurl" }

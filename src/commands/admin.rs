@@ -1,5 +1,5 @@
 use poise::serenity_prelude as serenity;
-use tracing::info;
+use tracing::{info, instrument};
 
 use crate::levels::user_level::UserLevel;
 use crate::levels::xp;
@@ -39,6 +39,7 @@ async fn autocomplete_channel<'a>(
 }
 
 /// Set a channel public
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 async fn set_pub(
     ctx: Context<'_>,
@@ -68,6 +69,7 @@ async fn set_pub(
 }
 
 /// Set the user's xp points
+#[instrument(skip(ctx))]
 #[poise::command(
     prefix_command,
     slash_command,
@@ -109,6 +111,7 @@ async fn set_user(
 /// Specifie the spam delay
 ///
 /// A user will not gain xp if his last message was sent earlier than the spam delay
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 async fn spam_delay(
     ctx: Context<'_>,
@@ -136,6 +139,7 @@ async fn spam_delay(
 }
 
 /// Set the minimum xp gain per message
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 async fn min_xp_gain(
     ctx: Context<'_>,
@@ -165,6 +169,7 @@ async fn min_xp_gain(
 }
 
 /// Set the maximum xp gain per message
+#[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Admin")]
 async fn max_xp_gain(
     ctx: Context<'_>,
@@ -193,6 +198,7 @@ async fn max_xp_gain(
 }
 
 /// Import users levels from Mee6 leaderboard
+#[instrument(skip(ctx))]
 #[poise::command(
     slash_command,
     required_permissions = "ADMINISTRATOR",

@@ -4,12 +4,13 @@ pub mod xp;
 
 use poise::serenity_prelude as serenity;
 use std::time::Instant;
-use tracing::{debug, info};
+use tracing::{debug, info, instrument};
 
 use crate::utils::config::XpSettings;
 use crate::utils::db::Db;
 use crate::Data;
 
+#[instrument(skip(ctx))]
 pub async fn handle_message_xp(
     ctx: &serenity::Context,
     user_data: &Data,
@@ -49,6 +50,7 @@ pub async fn handle_message_xp(
     Ok(())
 }
 
+#[instrument]
 async fn update_users_ranks(db: &Db, guild_id: u64) -> anyhow::Result<()> {
     let t_0 = Instant::now();
 

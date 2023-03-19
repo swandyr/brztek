@@ -1,7 +1,7 @@
 use serenity::prelude::TypeMapKey;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::levels::user_level::UserLevel;
 
@@ -24,6 +24,7 @@ impl Db {
         Self { pool }
     }
 
+    #[instrument]
     pub async fn run_migrations(&self) -> anyhow::Result<()> {
         sqlx::migrate!("./migrations").run(&self.pool).await?;
         Ok(())
@@ -33,6 +34,7 @@ impl Db {
     ///
     /// Clear all users entries corresponding to the guild_id first,
     /// and insert all new entries in hte `uers: Vec<UserLevel>
+    #[instrument]
     pub async fn import_from_mee6(
         &self,
         users: Vec<UserLevel>,
@@ -65,6 +67,7 @@ impl Db {
     ///
     /// If no user is found, create a new entry with `user_id` and returns
     /// new `UserLevel`.
+    #[instrument]
     pub async fn get_user(&self, user_id: u64, guild_id: u64) -> anyhow::Result<UserLevel> {
         // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user_id);
@@ -101,6 +104,7 @@ impl Db {
     }
 
     /// Update user's entry in the database with new values.
+    #[instrument]
     pub async fn update_user(&self, user: &UserLevel, guild_id: u64) -> anyhow::Result<()> {
         // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
         let user_id = to_i64(user.user_id);
@@ -122,7 +126,8 @@ impl Db {
         Ok(())
     }
 
-    // Update user rank in the database
+    /// Update user rank in the database
+    #[instrument]
     pub async fn update_ranks(&self, users: Vec<UserLevel>, guild_id: u64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 
@@ -145,6 +150,7 @@ impl Db {
     }
 
     /// Get all entries in the dabase and returns a `Vec<UserLevel>`
+    #[instrument]
     pub async fn get_all_users(&self, guild_id: u64) -> anyhow::Result<Vec<UserLevel>> {
         let guild_id = to_i64(guild_id);
 
@@ -175,6 +181,7 @@ impl Db {
     }
 
     /// Delete all rows in the table.
+    #[instrument]
     pub async fn delete_table(&self, guild_id: u64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 
@@ -187,6 +194,7 @@ impl Db {
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
+    #[instrument]
     pub async fn set_role_color(
         &self,
         guild_id: u64,
@@ -211,6 +219,7 @@ impl Db {
         Ok(())
     }
 
+    #[instrument]
     pub async fn get_role_color(&self, guild_id: u64, user_id: u64) -> anyhow::Result<Option<u64>> {
         let guild_id = to_i64(guild_id);
         let user_id = to_i64(user_id);
@@ -230,6 +239,7 @@ impl Db {
 
     ///////////////////////////////////////////////////////////////////////////////////////:
 
+    #[instrument]
     pub async fn create_config_entry(&self, guild_id: u64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 
@@ -257,6 +267,7 @@ impl Db {
         Ok((record.spam_delay, record.min_xp_gain, record.max_xp_gain))
     }
 
+    #[instrument]
     pub async fn get_spam_delay(&self, guild_id: u64) -> anyhow::Result<i64> {
         let guild_id = to_i64(guild_id);
 
@@ -271,6 +282,7 @@ impl Db {
         Ok(record.spam_delay)
     }
 
+    #[instrument]
     pub async fn set_spam_delay(&self, guild_id: u64, value: i64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 
@@ -287,6 +299,7 @@ impl Db {
         Ok(())
     }
 
+    #[instrument]
     pub async fn get_min_xp_gain(&self, guild_id: u64) -> anyhow::Result<i64> {
         let guild_id = to_i64(guild_id);
 
@@ -301,6 +314,7 @@ impl Db {
         Ok(record.min_xp_gain)
     }
 
+    #[instrument]
     pub async fn set_min_xp_gain(&self, guild_id: u64, value: i64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 
@@ -317,6 +331,7 @@ impl Db {
         Ok(())
     }
 
+    #[instrument]
     pub async fn get_max_xp_gain(&self, guild_id: u64) -> anyhow::Result<i64> {
         let guild_id = to_i64(guild_id);
 
@@ -331,6 +346,7 @@ impl Db {
         Ok(record.max_xp_gain)
     }
 
+    #[instrument]
     pub async fn set_max_xp_gain(&self, guild_id: u64, value: i64) -> anyhow::Result<()> {
         let guild_id = to_i64(guild_id);
 
@@ -347,6 +363,7 @@ impl Db {
         Ok(())
     }
 
+    #[instrument]
     pub async fn set_pub_channel_id(&self, channel_id: u64, guild_id: u64) -> anyhow::Result<()> {
         let channel_id = to_i64(channel_id);
         let guild_id = to_i64(guild_id);
@@ -364,6 +381,7 @@ impl Db {
         Ok(())
     }
 
+    #[instrument]
     pub async fn get_pub_channel_id(&self, guild_id: u64) -> anyhow::Result<Option<u64>> {
         let guild_id = to_i64(guild_id);
 
@@ -382,6 +400,7 @@ impl Db {
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
+    #[instrument]
     pub async fn get_learned(
         &self,
         command_name: &str,
@@ -406,6 +425,7 @@ impl Db {
         }
     }
 
+    #[instrument]
     pub async fn get_learned_list(&self, guild_id: u64) -> anyhow::Result<Vec<String>> {
         let guild_id = to_i64(guild_id);
 

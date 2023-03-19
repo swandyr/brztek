@@ -6,7 +6,8 @@ use clearurl::clear_url;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use std::{env, time::Instant};
-use tracing::{error, info};
+use tracing::{error, info, instrument, warn};
+use tracing_subscriber::EnvFilter;
 
 use utils::db::Db;
 
@@ -21,8 +22,82 @@ pub struct Data {
     pub db: std::sync::Arc<Db>,
 }
 
+// ----------------------------------------- Main -----------------------------------------
+
+#[instrument]
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    dotenvy::dotenv()?;
+    let filter = EnvFilter::from_default_env();
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .pretty()
+        .init();
+
+    let token = env::var("DISCORD_TOKEN")?;
+    //? Intents are still a mystery to me
+    let intents = serenity::GatewayIntents::non_privileged()
+        | serenity::GatewayIntents::MESSAGE_CONTENT
+        | serenity::GatewayIntents::GUILD_MEMBERS;
+
+    let db_url = env::var("DATABASE_URL")?;
+    let db = Db::new(&db_url).await;
+    db.run_migrations().await?;
+
+    let options = poise::FrameworkOptions {
+        commands: vec![
+            commands::register(),
+            commands::help(),
+            commands::general::ping(),
+            commands::general::learn(),
+            commands::general::learned(),
+            commands::general::bigrig(),
+            commands::general::set_color(),
+            commands::general::yt(),
+            commands::levels::rank(),
+            commands::levels::top(),
+            commands::admin::admin(),
+            commands::admin::import_mee6_levels(),
+        ],
+        event_handler: |ctx, event, framework, user_data| {
+            Box::pin(event_event_handler(ctx, event, framework, user_data))
+        },
+        prefix_options: poise::PrefixFrameworkOptions {
+            prefix: Some(PREFIX.into()),
+            case_insensitive_commands: true,
+            ..Default::default()
+        },
+        pre_command: |ctx| {
+            Box::pin(async move {
+                info!("Executing command {}", ctx.command().qualified_name);
+            })
+        },
+        on_error: |error| Box::pin(on_error(error)),
+        ..Default::default()
+    };
+
+    // The Framework builder will automatically retrieve the bot owner and application ID via the
+    // passed token, so that information need not be passed here
+    poise::Framework::builder()
+        .token(token)
+        .intents(intents)
+        .options(options)
+        .setup(|_ctx, _data_about, _framework| {
+            Box::pin(async move {
+                Ok(Data {
+                    db: std::sync::Arc::new(db),
+                })
+            })
+        })
+        .run()
+        .await?;
+
+    Ok(())
+}
+
 // ------------------------------------- Event handler -----------------------------------------
 
+#[instrument(skip(ctx, _framework, user_data))]
 async fn event_event_handler(
     ctx: &serenity::Context,
     event: &poise::Event<'_>,
@@ -65,7 +140,7 @@ async fn event_event_handler(
                 .collect::<Vec<&str>>();
             for link in links {
                 let cleaned = clear_url(link).await?;
-                if link != &cleaned {
+                if link != cleaned {
                     let mention = new_message.author.mention();
                     let content = format!("Cleaned that shit for you, {mention}\n{cleaned}");
                     channel_id.say(ctx, content).await?;
@@ -125,6 +200,7 @@ async fn event_event_handler(
 
 // -------------------------------------- Error handling ----------------------------------
 
+#[instrument]
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     match error {
         poise::FrameworkError::Setup {
@@ -177,7 +253,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             missing_permissions,
             ctx,
         } => {
-            info!(
+            warn!(
                 "{} used command {} but misses permissions: {}",
                 ctx.author().name,
                 ctx.command().name,
@@ -215,80 +291,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
         }
 
         error => {
-            error!("Unhandled error on command: {error}");
+            warn!("Unhandled error on command: {error}");
         }
     }
-}
-
-// ----------------------------------------- Main -----------------------------------------
-
-#[tokio::main]
-async fn main() -> Result<(), Error> {
-    dotenvy::dotenv().expect("Failed to load .env file");
-    let _subscriber = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
-
-    let token = env::var("DISCORD_TOKEN").expect("token needed");
-    //? Intents are still a mystery to me
-    let intents = serenity::GatewayIntents::non_privileged()
-        | serenity::GatewayIntents::MESSAGE_CONTENT
-        | serenity::GatewayIntents::GUILD_MEMBERS;
-
-    let db_url = env::var("DATABASE_URL").expect("database path not found");
-    let db = Db::new(&db_url).await;
-    db.run_migrations().await.expect("Unable to run migrations");
-
-    let options = poise::FrameworkOptions {
-        commands: vec![
-            commands::register(),
-            commands::help(),
-            commands::general::ping(),
-            commands::general::learn(),
-            commands::general::learned(),
-            commands::general::bigrig(),
-            commands::general::set_color(),
-            commands::general::yt(),
-            commands::levels::rank(),
-            commands::levels::top(),
-            commands::admin::admin(),
-            commands::admin::import_mee6_levels(),
-        ],
-        event_handler: |ctx, event, framework, user_data| {
-            Box::pin(event_event_handler(ctx, event, framework, user_data))
-        },
-        prefix_options: poise::PrefixFrameworkOptions {
-            prefix: Some(PREFIX.into()),
-            case_insensitive_commands: true,
-            ..Default::default()
-        },
-        pre_command: |ctx| {
-            Box::pin(async move {
-                info!("Executing command {}", ctx.command().qualified_name);
-            })
-        },
-        on_error: |error| Box::pin(on_error(error)),
-        ..Default::default()
-    };
-
-    // The Framework builder will automatically retrieve the bot owner and application ID via the
-    // passed token, so that information need not be passed here
-    if let Err(why) = poise::Framework::builder()
-        .token(token)
-        .intents(intents)
-        .options(options)
-        .setup(|_ctx, _data_about, _framework| {
-            Box::pin(async move {
-                Ok(Data {
-                    db: std::sync::Arc::new(db),
-                })
-            })
-        })
-        .run()
-        .await
-    {
-        error!("Client returned with error: {why}");
-    }
-
-    Ok(())
 }
