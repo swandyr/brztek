@@ -114,9 +114,9 @@ pub fn gen_user_card(
         .new_text_layout(format!("#{rank}"))
         .font(font.clone(), 18.)
         .text_color(match rank {
-            0 => colors.gold,
-            1 => colors.silver,
-            2 => colors.bronze,
+            1 => colors.gold,
+            2 => colors.silver,
+            3 => colors.bronze,
             _ => colors.white,
         })
         .build()

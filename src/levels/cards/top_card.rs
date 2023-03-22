@@ -51,10 +51,10 @@ pub async fn gen_top_card(users: &[UserInfoCard], _guild_name: &str) -> anyhow::
             let rank = text
                 .new_text_layout(format!("#{rank}"))
                 .font(font.clone(), 18.)
-                .text_color(match i {
-                    0 => colors.gold,
-                    1 => colors.silver,
-                    2 => colors.bronze,
+                .text_color(match rank {
+                    1 => colors.gold,
+                    2 => colors.silver,
+                    3 => colors.bronze,
                     _ => colors.white,
                 })
                 .build()
