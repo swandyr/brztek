@@ -69,9 +69,16 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
 
     Ok(())
 }
+
 /// Get your own role
 ///
-/// Attribute yourself a role at your name with your banner color
+/// Get a personal role with the color of your choice
+///
+/// Usage: /setcolor <color>
+///
+/// where color is in hexadecimal format (eg: #d917d3)
+///
+/// If no color is given, it will retrieve the profile's banner colour
 #[instrument(skip(ctx))]
 #[poise::command(
     prefix_command,
@@ -81,7 +88,10 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     ephemeral,
     category = "General"
 )]
-pub async fn set_color(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn setcolor(
+    ctx: Context<'_>,
+    #[description = "Colour in hexadecimal format"] hex_colour: Option<String>,
+) -> Result<(), Error> {
     // Request db for an `Option<u64>` if a role is already attributed to the user
     let db = &ctx.data().db;
     let guild = ctx.guild().unwrap();
@@ -94,10 +104,30 @@ pub async fn set_color(ctx: Context<'_>) -> Result<(), Error> {
     let name = member.display_name();
     let role_name = format!("bot_color_{name}");
 
-    // User banner colour will be the colour of the role
-    let Some(colour) = ctx.http().get_user(user_id).await?.accent_colour else {
-        ctx.say("Cannot find banner color").await?;
-        return Ok(());
+    let colour = match hex_colour {
+        Some(hex) => {
+            assert!(hex.len() == 7 && hex.starts_with('#'));
+
+            if !(hex[1..7].chars().all(|c| c.is_ascii_hexdigit())) {
+                ctx.say(format!("{} is not a valid color hex code.", hex))
+                    .await?;
+                return Ok(());
+            }
+
+            let r: u8 = u8::from_str_radix(&hex[1..3], 16)?;
+            let g: u8 = u8::from_str_radix(&hex[3..5], 16)?;
+            let b: u8 = u8::from_str_radix(&hex[5..7], 16)?;
+
+            serenity::Colour::from_rgb(r, g, b)
+        }
+        None => {
+            // User banner colour will be the colour of the role
+            let Some(colour) = ctx.http().get_user(user_id).await?.accent_colour else {
+                ctx.say("Cannot find banner color").await?;
+                return Ok(());
+            };
+            colour
+        }
     };
 
     info!("role_id: {:?}", role_id);
