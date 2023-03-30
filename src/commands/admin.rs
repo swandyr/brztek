@@ -237,7 +237,7 @@ pub async fn tempscalme(
             ctx.say(format!(
                 "{} is already timed out until {}",
                 member.mention(),
-                time.naive_local()
+                to_timestamp.naive_local()
             ))
             .await?;
         }
