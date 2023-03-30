@@ -52,11 +52,12 @@ async fn main() -> Result<(), Error> {
             commands::general::learn(),
             commands::general::learned(),
             commands::general::bigrig(),
-            commands::general::set_color(),
+            commands::general::setcolor(),
             commands::general::yt(),
             commands::levels::rank(),
             commands::levels::top(),
             commands::admin::admin(),
+            commands::admin::tempscalme(),
             commands::admin::import_mee6_levels(),
         ],
         event_handler: |ctx, event, framework, user_data| {
