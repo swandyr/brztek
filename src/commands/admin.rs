@@ -197,6 +197,39 @@ async fn max_xp_gain(
     Ok(())
 }
 
+/// Timeout a member
+///
+/// Usage: /tempscalme <@User> <duration (default 60)>
+#[instrument(skip(ctx))]
+#[poise::command(
+    slash_command,
+    required_permissions = "MODERATE_MEMBERS",
+    guild_only,
+    category = "Admin"
+)]
+pub async fn tempscalme(
+    ctx: Context<'_>,
+    #[description = "User to put in timeout"] mut member: serenity::Member,
+    #[description = "Timeout duration (default: 60s)"] duration: Option<i64>,
+) -> Result<(), Error> {
+    let now = serenity::Timestamp::now().unix_timestamp();
+    let timeout_timestamp = now + duration.unwrap_or(60);
+    let time = serenity::Timestamp::from_unix_timestamp(timeout_timestamp)?;
+
+    member
+        .disable_communication_until_datetime(ctx, time)
+        .await?;
+
+    ctx.say(format!(
+        "{} timed out until {}",
+        member.display_name(),
+        time.naive_local(),
+    ))
+    .await?;
+
+    Ok(())
+}
+
 /// Import users levels from Mee6 leaderboard
 #[instrument(skip(ctx))]
 #[poise::command(
