@@ -22,7 +22,7 @@ Create a `.env` file.
 - `learned` : list of all commands saved using `$learn`
 - `bigrig` : show the current that is playing on BigRig FM
 - `yt <search>` : Send the first Youtube video of the search query
-- `set_color` : Gives your username the same color as your banner
+- `setcolor <color>` : Set a color to your username (via a specific role), use banner color as default
 
 ### Levels
 - `rank` : show user's rank card
@@ -36,6 +36,7 @@ Create a `.env` file.
     - `max_xp_gain <int>` : Maximal xp points gained per message
     - `set_pub <channel>` : Set a channel where the bot will sent welcome messages
     - `set_user <user> <int>` : Set the amount of xp points of a user
+- `tempscalme <user> <int>` : timeout a user (default duration is 60s)
 - `import_mee6_levels` : Automatically import levels from Mee6 (only with slash command)
 
 ### Help
