@@ -44,4 +44,5 @@ Create a `.env` file.
 <!-- TODO: Add logging to file>
 <!-- TODO: Reaction roles>
 <!-- TODO: Round corners of avatar in rank card>
-<!-- TODO: Maybe find something to replace raqote>
+<!-- TODO: Specific public message when a user is kicked: search audit_logs>
+<!-- TODO: Command to timeout a user: EditMember::disable_communication_until>
