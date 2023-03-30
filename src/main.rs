@@ -6,7 +6,7 @@ use clearurl::clear_url;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use std::{env, time::Instant};
-use tracing::{error, info, instrument, warn};
+use tracing::{debug, error, info, instrument, warn};
 use tracing_subscriber::EnvFilter;
 
 use utils::db::Db;
@@ -115,6 +115,11 @@ async fn event_event_handler(
             for guild in guilds {
                 let guild_id = guild.0;
                 db.create_config_entry(guild_id).await?;
+                let permissions = guild
+                    .member(ctx, _framework.bot_id)
+                    .await?
+                    .permissions(ctx)?;
+                debug!("Permissions: \n{:#?}", permissions);
             }
         }
 
@@ -134,6 +139,7 @@ async fn event_event_handler(
             let user_id = new_message.author.id;
             let channel_id = new_message.channel_id;
 
+            // Filter any links contained in the message content
             let content = new_message.content.split(' ');
             let links = content
                 .filter(|f| f.starts_with("https://") || f.starts_with("http://"))
@@ -141,12 +147,22 @@ async fn event_event_handler(
             for link in links {
                 let cleaned = clear_url(link).await?;
                 if link != cleaned {
+                    // Send message with cleaned url
                     let mention = new_message.author.mention();
                     let content = format!("Cleaned that shit for you, {mention}\n{cleaned}");
                     channel_id.say(ctx, content).await?;
+
+                    // Delete embeds in user's message
+                    channel_id
+                        .message(ctx, new_message.id)
+                        .await?
+                        // ctx cache return NotAuthor error, but ctx.http works fine
+                        .suppress_embeds(&ctx.http)
+                        .await?;
                 }
             }
 
+            // User gains xp on message
             levels::handle_message_xp(ctx, user_data, &guild_id, &channel_id, &user_id).await?;
 
             info!("Message processed in: {} µs", t_0.elapsed().as_micros());
