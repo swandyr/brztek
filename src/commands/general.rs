@@ -75,10 +75,9 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
 /// Get a personal role with the color of your choice
 ///
 /// Usage: /setcolor <color>
-///
 /// where color is in hexadecimal format (eg: #d917d3)
 ///
-/// If no color is given, it will retrieve the profile's banner colour
+/// If no color is given, it will retrieve the profile's banner color
 #[instrument(skip(ctx))]
 #[poise::command(
     prefix_command,
@@ -106,7 +105,11 @@ pub async fn setcolor(
 
     let colour = match hex_colour {
         Some(hex) => {
-            assert!(hex.len() == 7 && hex.starts_with('#'));
+            if !(hex.len() == 7 && hex.starts_with('#')) {
+                ctx.say(format!("Color format should be \"#rrggbb\""))
+                    .await?;
+                return Ok(());
+            }
 
             if !(hex[1..7].chars().all(|c| c.is_ascii_hexdigit())) {
                 ctx.say(format!("{} is not a valid color hex code.", hex))
