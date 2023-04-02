@@ -29,13 +29,8 @@ pub async fn rank(
     debug!("user: {user:?}");
     let member = user.unwrap_or(ctx.author_member().await.unwrap().into_owned());
 
-    let user_id = member.user.id.0; // Ensure the command was sent from a guild channel
-    let guild_id = if let Some(id) = ctx.guild_id() {
-        id.0
-    } else {
-        ctx.say("This does not work outside a guild.").await?;
-        return Ok(());
-    };
+    let user_id = member.user.id.0;
+    let guild_id = member.guild_id.0;
 
     // Get user from database
     let user_level = ctx.data().db.get_user(user_id, guild_id).await?;

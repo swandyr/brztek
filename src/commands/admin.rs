@@ -47,17 +47,15 @@ async fn set_pub(
     #[autocomplete = "autocomplete_channel"]
     channel: serenity::GuildChannel,
 ) -> Result<(), Error> {
-    let guild_id = if let Some(id) = ctx.guild_id() {
-        id.0
-    } else {
+    let Some(guild_id) = ctx.guild_id() else {
         ctx.say("Must be in guild").await?;
         return Ok(());
     };
-    let channel_id = channel.id.0;
+    let channel_id = channel.id;
 
     ctx.data()
         .db
-        .set_pub_channel_id(channel_id, guild_id)
+        .set_pub_channel_id(channel_id.0, guild_id.0)
         .await?;
 
     info!("Channel {channel_id} set to pub for guild {guild_id}");
@@ -79,30 +77,27 @@ async fn set_pub(
 )]
 async fn set_user(
     ctx: Context<'_>,
-    #[description = "User to modify"] user: serenity::UserId,
+    #[description = "User to modify"] user: serenity::User,
     #[description = "Amount of Xp"]
     #[min = 0]
     xp: u32,
 ) -> Result<(), Error> {
-    let guild_id = if let Some(id) = ctx.guild_id() {
-        id.0
-    } else {
+    let Some(guild_id) = ctx.guild_id() else {
         ctx.say("Must be in guild").await?;
         return Ok(());
     };
-    let user_id = user.0;
+    let user_id = user.id;
 
     let level = xp::calculate_level_from_xp(xp as i64);
 
-    let mut user_level = ctx.data().db.get_user(user_id, guild_id).await?;
+    let mut user_level = ctx.data().db.get_user(user_id.0, guild_id.0).await?;
     user_level.xp = xp as i64;
     user_level.level = level;
-    ctx.data().db.update_user(&user_level, guild_id).await?;
+    ctx.data().db.update_user(&user_level, guild_id.0).await?;
 
     info!("Admin updated user {user_id} in guild {guild_id}: {xp} - {level}");
 
-    let username = user.to_user(ctx).await?;
-    ctx.say(format!("{} is now level {}", username, user_level.level))
+    ctx.say(format!("{} is now level {}", user.name, user_level.level))
         .await?;
 
     Ok(())
@@ -120,18 +115,19 @@ async fn spam_delay(
     value: Option<u32>,
 ) -> Result<(), Error> {
     println!("SPAMDELAY: {value:?}");
-    let guild_id = if let Some(id) = ctx.guild_id() {
-        id.0
-    } else {
+    let Some(guild_id) = ctx.guild_id() else {
         ctx.say("Must be in guild").await?;
         return Ok(());
     };
 
     if let Some(value) = value {
-        ctx.data().db.set_spam_delay(guild_id, value as i64).await?;
+        ctx.data()
+            .db
+            .set_spam_delay(guild_id.0, value as i64)
+            .await?;
     }
 
-    let value = ctx.data().db.get_spam_delay(guild_id).await?;
+    let value = ctx.data().db.get_spam_delay(guild_id.0).await?;
     ctx.say(format!("Spam delay is set to {value} seconds."))
         .await?;
 
@@ -147,9 +143,7 @@ async fn min_xp_gain(
     #[min = 0]
     value: Option<u32>,
 ) -> Result<(), Error> {
-    let guild_id = if let Some(id) = ctx.guild_id() {
-        id.0
-    } else {
+    let Some(guild_id) = ctx.guild_id() else {
         ctx.say("Must be in guild").await?;
         return Ok(());
     };
@@ -157,11 +151,11 @@ async fn min_xp_gain(
     if let Some(value) = value {
         ctx.data()
             .db
-            .set_min_xp_gain(guild_id, value as i64)
+            .set_min_xp_gain(guild_id.0, value as i64)
             .await?;
     }
 
-    let value = ctx.data().db.get_min_xp_gain(guild_id).await?;
+    let value = ctx.data().db.get_min_xp_gain(guild_id.0).await?;
     ctx.say(format!("Min Xp gain is set to {value} points."))
         .await?;
 
@@ -177,9 +171,7 @@ async fn max_xp_gain(
     #[min = 0]
     value: Option<u32>,
 ) -> Result<(), Error> {
-    let guild_id = if let Some(id) = ctx.guild_id() {
-        id.0
-    } else {
+    let Some(guild_id) = ctx.guild_id() else {
         ctx.say("Must be in guild").await?;
         return Ok(());
     };
@@ -187,10 +179,10 @@ async fn max_xp_gain(
     if let Some(value) = value {
         ctx.data()
             .db
-            .set_max_xp_gain(guild_id, value as i64)
+            .set_max_xp_gain(guild_id.0, value as i64)
             .await?;
     }
-    let value = ctx.data().db.get_max_xp_gain(guild_id).await?;
+    let value = ctx.data().db.get_max_xp_gain(guild_id.0).await?;
     ctx.say(format!("Max Xp gain is set to {value} points."))
         .await?;
 

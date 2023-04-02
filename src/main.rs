@@ -3,7 +3,11 @@ mod levels;
 mod utils;
 
 use clearurl::clear_url;
-use poise::serenity_prelude::{self as serenity, Mentionable};
+use poise::serenity_prelude::{
+    self as serenity,
+    audit_log::{Action, MemberAction},
+    Mentionable,
+};
 use rand::{prelude::thread_rng, Rng};
 use std::{env, time::Instant};
 use tracing::{debug, error, info, instrument, warn};
@@ -35,7 +39,7 @@ async fn main() -> Result<(), Error> {
         .init();
 
     let token = env::var("DISCORD_TOKEN")?;
-    //? Intents are still a mystery to me
+
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
         | serenity::GatewayIntents::GUILD_MEMBERS;
@@ -196,10 +200,33 @@ async fn event_event_handler(
             member_data_if_available: _,
         } => {
             let username = format!("{}{}", user.name, user.discriminator);
-            let content = format!("RIP **{username}**, you'll be missed maybe");
-            let guild_id = guild_id.0;
+            let mut content = format!("RIP **{username}**, you'll be missed");
 
-            let channel_id = user_data.db.get_pub_channel_id(guild_id).await?;
+            let channel_id = user_data.db.get_pub_channel_id(guild_id.0).await?;
+
+            // if bot can read audit logs
+            if guild_id
+                .to_guild_cached(&ctx.cache)
+                .unwrap()
+                .role_by_name("brztek")
+                .unwrap()
+                .has_permission(serenity::Permissions::VIEW_AUDIT_LOG)
+            {
+                let audit_logs = guild_id
+                    .audit_logs(&ctx.http, None, None, None, Some(1))
+                    .await
+                    .unwrap();
+                let last_log = audit_logs.entries.first().unwrap();
+
+                // if last action is the kick of the user, change message content accordingly
+                if let Action::Member(MemberAction::Kick) = last_log.action {
+                    if let Some(target_id) = last_log.target_id {
+                        if target_id == user.id.0 {
+                            content = format!("**{username}** has got his ass out of here!");
+                        }
+                    }
+                }
+            }
 
             if let Some(id) = channel_id {
                 ctx.cache
@@ -255,12 +282,12 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 .expect("Query learned_command returned with error");
             if let Some(link) = queried {
                 msg.channel_id
-                    .send_message(&ctx.http, |m| m.content(link))
+                    .send_message(&ctx, |m| m.content(link))
                     .await
                     .expect("Error sending learned command link");
             } else {
                 msg.channel_id
-                    .send_message(&ctx.http, |m| m.content("https://tenor.com/view/kaamelott-perceval-cest-pas-faux-not-false-gif-17161490"))
+                    .send_message(&ctx, |m| m.content("https://tenor.com/view/kaamelott-perceval-cest-pas-faux-not-false-gif-17161490"))
                     .await
                     .unwrap();
             }
@@ -276,14 +303,11 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 ctx.command().name,
                 missing_permissions.unwrap()
             );
-            ctx.channel_id()
-                .send_message(&ctx, |m| {
-                    m.content(
-                "https://tenor.com/view/jurrasic-park-samuel-l-jackson-magic-word-you-didnt-say-the-magic-work-gif-3556977",
-            )
-                })
-                .await
-                .unwrap();
+            ctx.send(|f| {
+                f.content("https://tenor.com/view/jurrasic-park-samuel-l-jackson-magic-word-you-didnt-say-the-magic-work-gif-3556977")
+            })
+            .await
+            .unwrap();
         }
 
         poise::FrameworkError::MissingBotPermissions {
@@ -295,6 +319,16 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 missing_permissions,
                 ctx.command().name
             );
+
+            ctx.send(|f| {
+                f.content(format!(
+                    "Bot needs the {} permission to perform this command.",
+                    missing_permissions
+                ))
+                .ephemeral(true)
+            })
+            .await
+            .unwrap();
         }
 
         poise::FrameworkError::GuildOnly { ctx } => {
