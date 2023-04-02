@@ -1,6 +1,6 @@
 use poise::serenity_prelude as serenity;
-use poise::serenity_prelude::{CacheHttp, RoleId};
-use tracing::{info, instrument};
+use poise::serenity_prelude::{CacheHttp, Mentionable, RoleId};
+use tracing::{debug, info, instrument};
 
 use crate::Data;
 
@@ -177,7 +177,7 @@ pub async fn setcolor(
     //required_permissions = "MODERATE_MEMBERS",
     required_bot_permissions = "MODERATE_MEMBERS",
     guild_only,
-    category = "Admin"
+    category = "General"
 )]
 pub async fn tempscalme(
     ctx: Context<'_>,
@@ -230,6 +230,19 @@ pub async fn tempscalme(
         }
     }
 
+    Ok(())
+}
+
+/// Put a random member in timeout for 60s
+#[instrument(skip(ctx))]
+#[poise::command(
+    slash_command,
+    prefix_command,
+    guild_only,
+    required_bot_permissions = "MODERATE_MEMBERS",
+    category = "General"
+)]
+pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
