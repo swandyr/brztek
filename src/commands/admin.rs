@@ -1,5 +1,5 @@
-use poise::serenity_prelude::{self as serenity, Mentionable};
-use tracing::{debug, info, instrument};
+use poise::serenity_prelude as serenity;
+use tracing::{info, instrument};
 
 use crate::levels::user_level::UserLevel;
 use crate::levels::xp;

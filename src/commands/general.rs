@@ -1,5 +1,6 @@
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{CacheHttp, Mentionable, RoleId};
+use rand::{prelude::thread_rng, Rng};
 use tracing::{debug, info, instrument};
 
 use crate::Data;
@@ -212,9 +213,7 @@ pub async fn tempscalme(
             .await?;
         }
         _ => {
-            member
-                .disable_communication_until_datetime(ctx, time)
-                .await?;
+            timeout_member(ctx, &mut member, time).await?;
 
             ctx.say(format!(
                 "{} timed out until {}",
@@ -233,7 +232,7 @@ pub async fn tempscalme(
     Ok(())
 }
 
-/// Put a random member in timeout for 60s
+/// A random member is in timeout for 60s
 #[instrument(skip(ctx))]
 #[poise::command(
     slash_command,
@@ -243,6 +242,39 @@ pub async fn tempscalme(
     category = "General"
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
+    let http = &ctx.serenity_context().http;
+    let typing = ctx.channel_id().start_typing(http)?;
+
+    let guild = ctx.guild().unwrap();
+    let members = guild.members(ctx, None, None).await?;
+
+    let index = thread_rng().gen_range(0..members.len());
+    let mut member = members.get(index).unwrap().clone();
+
+    let now = serenity::Timestamp::now().unix_timestamp();
+    let timeout_timestamp = now + 60;
+    let time = serenity::Timestamp::from_unix_timestamp(timeout_timestamp)?;
+
+    timeout_member(ctx, &mut member, time).await?;
+
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    let _ = typing.stop();
+
+    ctx.say(format!("The roulette has chosen, {}", member.mention(),))
+        .await?;
+
+    Ok(())
+}
+
+async fn timeout_member(
+    ctx: Context<'_>,
+    member: &mut serenity::Member,
+    time: serenity::Timestamp,
+) -> Result<(), Error> {
+    member
+        .disable_communication_until_datetime(ctx, time)
+        .await?;
+
     Ok(())
 }
 
