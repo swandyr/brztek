@@ -242,30 +242,40 @@ pub async fn tempscalme(
     category = "General"
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
-    let http = &ctx.serenity_context().http;
-    let typing = ctx.channel_id().start_typing(http)?;
+    // let http = &ctx.serenity_context().http;
+    // let typing = ctx.channel_id().start_typing(http)?;
 
     let guild = ctx.guild().unwrap();
-    let members = guild.members(ctx, None, None).await?;
+    let members = guild
+        .members(ctx, None, None)
+        .await?
+        .into_iter()
+        .filter(|m| !m.user.bot)
+        .collect::<Vec<_>>();
 
     let index = thread_rng().gen_range(0..members.len());
     let mut member = members.get(index).unwrap().clone();
+    debug!("Randomly selected member: {:?}", member);
 
     let now = serenity::Timestamp::now().unix_timestamp();
     let timeout_timestamp = now + 60;
     let time = serenity::Timestamp::from_unix_timestamp(timeout_timestamp)?;
 
-    timeout_member(ctx, &mut member, time).await?;
+    // tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    // let _ = typing.stop();
 
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    let _ = typing.stop();
-
-    ctx.say(format!("The roulette has chosen, {}", member.mention(),))
-        .await?;
+    if timeout_member(ctx, &mut member, time).await.is_ok() {
+        ctx.say(format!("The roulette has chosen, {}", member.mention()))
+            .await?;
+    } else {
+        ctx.say(format!("The roulette has chosen, {}, but I can't mute you, would you kindly shut up for the next 60 seconds ?", member.mention()))
+            .await?;
+    }
 
     Ok(())
 }
 
+#[instrument(skip(ctx))]
 async fn timeout_member(
     ctx: Context<'_>,
     member: &mut serenity::Member,

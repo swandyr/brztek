@@ -59,6 +59,7 @@ async fn main() -> Result<(), Error> {
             commands::general::setcolor(),
             commands::general::yt(),
             commands::general::tempscalme(),
+            commands::general::roulette(),
             commands::levels::rank(),
             commands::levels::top(),
             commands::admin::admin(),
