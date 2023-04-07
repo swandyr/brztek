@@ -200,7 +200,8 @@ async fn event_event_handler(
             member_data_if_available: _,
         } => {
             let username = format!("{}{}", user.name, user.discriminator);
-            let mut content = format!("RIP **{username}**, you'll be missed");
+            //let mut content = format!("RIP **{username}**, you'll be missed");
+            let mut content = format!("✝️ RIP en paix **{username}** , un 👼 parti trop tôt 🕯️");
 
             let channel_id = user_data.db.get_pub_channel_id(guild_id.0).await?;
 
