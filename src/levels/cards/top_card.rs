@@ -39,8 +39,7 @@ pub async fn gen_top_card(users: &[UserInfoCard], _guild_name: &str) -> anyhow::
     // Creates users layouts
     let user_layouts = users
         .iter()
-        .enumerate()
-        .map(|(i, user)| {
+        .map(|user| {
             let (name, rank, level, current_xp, color) = user.tuple();
             // Xp values
             let xp_for_actual_level = total_xp_required_for_level(level);
