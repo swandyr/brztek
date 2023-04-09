@@ -1,4 +1,5 @@
 mod commands;
+mod draw;
 mod levels;
 mod utils;
 

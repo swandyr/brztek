@@ -2,7 +2,7 @@ use poise::serenity_prelude::{self as serenity, CacheHttp};
 use std::time::Instant;
 use tracing::{debug, info, instrument};
 
-use crate::levels::cards::{rank_card, top_card, UserInfoCard, DEFAULT_PP_TESSELATION_VIOLET};
+use crate::draw::{rank_card, top_card, UserInfoCard, DEFAULT_PP_TESSELATION_VIOLET};
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;

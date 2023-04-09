@@ -6,9 +6,9 @@ use piet_common::{
 use tracing::{info, instrument};
 
 use super::UserInfoCard;
-use crate::levels::{
-    cards::{to_png_buffer, Colors, FONT},
-    xp::{total_xp_required_for_level, xp_needed_to_level_up},
+use crate::{
+    draw::{to_png_buffer, Colors, FONT},
+    levels::xp::{total_xp_required_for_level, xp_needed_to_level_up},
 };
 
 const TITLE_HEIGHT: usize = 60;
