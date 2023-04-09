@@ -6,6 +6,7 @@ target/
 database.sqlite*
 card.png
 rank.png
+kf.png
 top_ten.png
 assets/fonts/*.ttf
 mee6-scraper/

@@ -5,9 +5,9 @@ use piet_common::{
 };
 use tracing::{info, instrument};
 
-use crate::levels::{
-    cards::FONT,
-    xp::{total_xp_required_for_level, xp_needed_to_level_up},
+use crate::{
+    draw::CARD_FONT,
+    levels::xp::{total_xp_required_for_level, xp_needed_to_level_up},
 };
 
 use super::{to_png_buffer, Colors, UserInfoCard};
@@ -89,7 +89,7 @@ pub fn gen_user_card(
     // Load font
     let mut text = PietText::new();
     let font = text
-        .font_family(FONT)
+        .font_family(CARD_FONT)
         .expect("Cannot load font Akira Expanded");
     info!("Font loaded.");
 
@@ -190,7 +190,7 @@ pub fn gen_user_card(
 
 #[test]
 fn test_gen_card_with_default_pp() {
-    use crate::levels::cards::DEFAULT_PP_TESSELATION_VIOLET;
+    use crate::draw::DEFAULT_PP_TESSELATION_VIOLET;
 
     let username = String::from("Username");
     let colour = (255, 255, 0);

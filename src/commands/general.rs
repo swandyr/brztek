@@ -3,7 +3,7 @@ use poise::serenity_prelude::{CacheHttp, Mentionable, RoleId};
 use rand::{prelude::thread_rng, Rng};
 use tracing::{debug, info, instrument};
 
-use crate::Data;
+use crate::{draw::roulette_killfeed::gen_killfeed, Data};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -245,6 +245,8 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     // let http = &ctx.serenity_context().http;
     // let typing = ctx.channel_id().start_typing(http)?;
 
+    // Retrieves the list of members of the guild
+    // let channel = ctx.channel_id().to_channel(ctx).await?.guild().unwrap();
     let guild = ctx.guild().unwrap();
     let members = guild
         .members(ctx, None, None)
@@ -264,10 +266,24 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     // tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     // let _ = typing.stop();
 
-    if timeout_member(ctx, &mut member, time).await.is_ok() {
-        ctx.say(format!("The roulette has chosen, {}", member.mention()))
-            .await?;
-    } else {
+    let timeout_result = timeout_member(ctx, &mut member, time).await;
+
+    let user_1 = ctx.author_member().await.unwrap();
+    let user_1 = user_1
+        .display_name()
+        .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
+    let user_2 = member
+        .display_name()
+        .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
+    let image = gen_killfeed(&user_1, &user_2)?;
+
+    ctx.send(|m| {
+        let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
+        m.attachment(file)
+    })
+    .await?;
+
+    if timeout_result.is_err() {
         ctx.say(format!("The roulette has chosen, {}, but I can't mute you, would you kindly shut up for the next 60 seconds ?", member.mention()))
             .await?;
     }

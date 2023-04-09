@@ -1,11 +1,13 @@
 pub mod rank_card;
+pub mod roulette_killfeed;
 pub mod top_card;
 
 use image::{ImageEncoder, ImageError, RgbaImage};
 use piet_common::Color;
 use tracing::instrument;
 
-const FONT: &str = "Akira Expanded"; // Font needs to be installed on the system (https://www.dafont.com/akira-expanded.font)
+const CARD_FONT: &str = "Akira Expanded"; // Font needs to be installed on the system (https://www.dafont.com/akira-expanded.font)
+const KILLFEED_FONT: &str = "Coolvetica";
 pub const DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tessellation-Violet.png";
 
 struct Colors {
@@ -13,11 +15,12 @@ struct Colors {
     dark_gray: Color,
     mid_gray: Color,
     light_gray: Color,
-    _yellow: Color,
     opacity_mask: Color,
     gold: Color,
     silver: Color,
     bronze: Color,
+    // kf_orange: Color,
+    // kf_blue: Color,
 }
 
 impl Default for Colors {
@@ -27,11 +30,12 @@ impl Default for Colors {
             dark_gray: Color::rgba8(0x23, 0x23, 0x23, 0xff),
             mid_gray: Color::rgba8(0x57, 0x57, 0x57, 0xff),
             light_gray: Color::rgba8(0xb2, 0xb2, 0xb2, 0xff),
-            _yellow: Color::rgba8(0xff, 0xcc, 0x00, 0xff),
             opacity_mask: Color::rgba8(0x00, 0x00, 0x00, 0x44),
             gold: Color::rgba8(0xc9, 0xb0, 0x37, 0xff),
             silver: Color::rgba8(0xb4, 0xb4, 0xb4, 0xff),
             bronze: Color::rgba8(0xad, 0x8a, 0x56, 0xff),
+            // kf_orange: Color::rgba8(0xf3, 0x73, 0x20, 0xff),
+            // kf_blue: Color::rgba8(0x1b, 0x91, 0xf0, 0xff),
         }
     }
 }

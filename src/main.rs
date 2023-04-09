@@ -1,4 +1,5 @@
 mod commands;
+mod draw;
 mod levels;
 mod utils;
 
@@ -42,7 +43,8 @@ async fn main() -> Result<(), Error> {
 
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
-        | serenity::GatewayIntents::GUILD_MEMBERS;
+        | serenity::GatewayIntents::GUILD_MEMBERS
+        | serenity::GatewayIntents::GUILD_PRESENCES;
 
     let db_url = env::var("DATABASE_URL")?;
     let db = Db::new(&db_url).await;
@@ -154,8 +156,7 @@ async fn event_event_handler(
                 let cleaned = clear_url(link).await?;
                 if link != cleaned {
                     // Send message with cleaned url
-                    let mention = new_message.author.mention();
-                    let content = format!("Cleaned that shit for you, {mention}\n{cleaned}");
+                    let content = format!("Cleaned that shit for you\n{cleaned}");
                     channel_id.say(ctx, content).await?;
 
                     // Delete embeds in user's message
