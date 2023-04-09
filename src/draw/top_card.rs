@@ -7,7 +7,7 @@ use tracing::{info, instrument};
 
 use super::UserInfoCard;
 use crate::{
-    draw::{to_png_buffer, Colors, FONT},
+    draw::{to_png_buffer, Colors, CARD_FONT},
     levels::xp::{total_xp_required_for_level, xp_needed_to_level_up},
 };
 
@@ -31,7 +31,9 @@ pub async fn gen_top_card(users: &[UserInfoCard], _guild_name: &str) -> anyhow::
 
     // Load font
     let mut text = PietText::new();
-    let font = text.font_family(FONT).expect("Cannot load font family");
+    let font = text
+        .font_family(CARD_FONT)
+        .expect("Cannot load font family");
     info!("Font loaded");
 
     let xp_gauge_width = 180_usize;

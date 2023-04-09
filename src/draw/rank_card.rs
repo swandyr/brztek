@@ -6,7 +6,7 @@ use piet_common::{
 use tracing::{info, instrument};
 
 use crate::{
-    draw::FONT,
+    draw::CARD_FONT,
     levels::xp::{total_xp_required_for_level, xp_needed_to_level_up},
 };
 
@@ -89,7 +89,7 @@ pub fn gen_user_card(
     // Load font
     let mut text = PietText::new();
     let font = text
-        .font_family(FONT)
+        .font_family(CARD_FONT)
         .expect("Cannot load font Akira Expanded");
     info!("Font loaded.");
 

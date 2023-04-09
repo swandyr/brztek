@@ -43,7 +43,8 @@ async fn main() -> Result<(), Error> {
 
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
-        | serenity::GatewayIntents::GUILD_MEMBERS;
+        | serenity::GatewayIntents::GUILD_MEMBERS
+        | serenity::GatewayIntents::GUILD_PRESENCES;
 
     let db_url = env::var("DATABASE_URL")?;
     let db = Db::new(&db_url).await;
