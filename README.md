@@ -23,6 +23,8 @@ Create a `.env` file.
 - `bigrig` : show the current that is playing on BigRig FM
 - `yt <search>` : Send the first Youtube video of the search query
 - `setcolor <color>` : Set a color to your username (via a specific role), use banner color as default
+- `tempscalme <user> <int>` : timeout a user (default duration is 60s)
+- `roulette` : target a random member with a 60s timeout
 
 ### Levels
 - `rank` : show user's rank card
@@ -36,7 +38,6 @@ Create a `.env` file.
     - `max_xp_gain <int>` : Maximal xp points gained per message
     - `set_pub <channel>` : Set a channel where the bot will sent welcome messages
     - `set_user <user> <int>` : Set the amount of xp points of a user
-- `tempscalme <user> <int>` : timeout a user (default duration is 60s)
 - `import_mee6_levels` : Automatically import levels from Mee6 (only with slash command)
 
 ### Help
@@ -45,5 +46,3 @@ Create a `.env` file.
 <!-- TODO: Add logging to file>
 <!-- TODO: Reaction roles>
 <!-- TODO: Round corners of avatar in rank card>
-<!-- TODO: Specific public message when a user is kicked: search audit_logs>
-<!-- TODO: Command to timeout a user: EditMember::disable_communication_until>
