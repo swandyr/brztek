@@ -10,6 +10,7 @@ const CARD_FONT: &str = "Akira Expanded"; // Font needs to be installed on the s
 const KILLFEED_FONT: &str = "Coolvetica";
 pub const DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tessellation-Violet.png";
 
+#[derive(Debug, Clone, Copy)]
 struct Colors {
     white: Color,
     dark_gray: Color,

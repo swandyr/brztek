@@ -1,7 +1,7 @@
 use piet_common::{
     kurbo::{Point, Rect, Size},
-    Device, Image, ImageFormat, InterpolationMode, PietText, RenderContext, Text, TextLayout,
-    TextLayoutBuilder,
+    CairoText, CairoTextLayout, Color, Device, FontFamily, Image, ImageFormat, InterpolationMode,
+    PietText, RenderContext, Text, TextLayout, TextLayoutBuilder,
 };
 use tracing::{debug, info, instrument};
 
@@ -48,12 +48,13 @@ pub fn gen_killfeed(user_1: &str, user_2: &str) -> anyhow::Result<Vec<u8>> {
     let colors = Colors::default();
     let baseline = HEIGHT as f64 - 6.5;
 
-    let user_1_layout = text
-        .new_text_layout(user_1.to_owned())
-        .font(font.clone(), 25.)
-        .text_color(colors.white)
-        .build()
-        .unwrap();
+    let user_1_layout = text_layout_with_max_size(
+        &mut text,
+        font.clone(),
+        colors.white,
+        user_1,
+        (COLOR_RECT_WIDTH - 4) as f64,
+    );
     let pos = {
         let text_size = user_1_layout.image_bounds();
         let x = (COLOR_RECT_WIDTH as f64 / 2.) - (text_size.width() / 2.);
@@ -63,12 +64,13 @@ pub fn gen_killfeed(user_1: &str, user_2: &str) -> anyhow::Result<Vec<u8>> {
     println!("point: {pos:?}");
     rc.draw_text(&user_1_layout, pos);
 
-    let user_2_layout = text
-        .new_text_layout(user_2.to_owned())
-        .font(font, 25.)
-        .text_color(colors.white)
-        .build()
-        .unwrap();
+    let user_2_layout = text_layout_with_max_size(
+        &mut text,
+        font.clone(),
+        colors.white,
+        user_2,
+        (COLOR_RECT_WIDTH - 4) as f64,
+    );
     let pos = {
         let text_size = user_2_layout.image_bounds();
         let x = (WIDTH as f64 - (COLOR_RECT_WIDTH as f64 / 2.)) - (text_size.width() / 2.);
@@ -83,15 +85,52 @@ pub fn gen_killfeed(user_1: &str, user_2: &str) -> anyhow::Result<Vec<u8>> {
         .expect("Unable to get image buffer");
     let buf = to_png_buffer(kf_buf.raw_pixels(), WIDTH as u32, HEIGHT as u32)?;
 
-    // bitmap.save_to_file("kf.png").unwrap();
+    bitmap.save_to_file("kf.png").unwrap();
 
     Ok(buf)
+}
+
+#[instrument]
+fn text_layout_with_max_size(
+    text: &mut CairoText,
+    font: FontFamily,
+    color: Color,
+    string: &str,
+    max_size: f64,
+) -> CairoTextLayout {
+    let mut font_height = 25.0;
+
+    let text_layout = loop {
+        let layout = text
+            .new_text_layout(string.to_owned())
+            .font(font.clone(), font_height)
+            .text_color(color)
+            .build()
+            .unwrap();
+
+        if layout.image_bounds().width() > max_size && font_height > 10.0 {
+            font_height -= 0.5;
+            continue;
+        }
+
+        break layout;
+    };
+
+    text_layout
 }
 
 #[test]
 fn test_gen_kf() {
     let user_1 = "Swich";
     let user_2 = "ek0z";
+
+    assert!(gen_killfeed(&user_1, &user_2).is_ok());
+}
+
+#[test]
+fn test_gen_kf_with_long_name() {
+    let user_1 = "a pretty long username, but very long long";
+    let user_2 = "@K_limero91 ou @ChaK_lim";
 
     assert!(gen_killfeed(&user_1, &user_2).is_ok());
 }
