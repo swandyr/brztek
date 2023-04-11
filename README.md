@@ -25,6 +25,7 @@ Create a `.env` file.
 - `setcolor <color>` : Set a color to your username (via a specific role), use banner color as default
 - `tempscalme <user> <int>` : timeout a user (default duration is 60s)
 - `roulette` : target a random member with a 60s timeout
+- `toproulette` : top 10 roulette users/targets
 
 ### Levels
 - `rank` : show user's rank card
