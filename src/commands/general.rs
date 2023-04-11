@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::string;
+
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{CacheHttp, Mentionable, RoleId};
 use rand::{prelude::thread_rng, Rng};
@@ -305,6 +308,69 @@ async fn timeout_member(
     member
         .disable_communication_until_datetime(ctx, time)
         .await?;
+
+    Ok(())
+}
+
+#[instrument(skip(ctx))]
+#[poise::command(slash_command, prefix_command, guild_only, category = "General")]
+pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
+    let db = &ctx.data().db;
+    let guild_id = ctx.guild_id().unwrap().0;
+    let scores = db.get_roulette_scores(guild_id).await?;
+    info!("Got roulette scores");
+
+    let mut callers_map = HashMap::new();
+    let mut targets_map = HashMap::new();
+
+    scores.iter().for_each(|(caller, target)| {
+        callers_map
+            .entry(caller)
+            .and_modify(|x| *x += 1)
+            .or_insert(1);
+        targets_map
+            .entry(target)
+            .and_modify(|x| *x += 1)
+            .or_insert(1);
+    });
+
+    // Process callers
+    let mut callers = callers_map
+        .iter()
+        .map(|(k, v)| (**k, *v))
+        .collect::<Vec<(u64, i32)>>();
+    callers.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let mut callers_field = String::new();
+    for caller in callers.iter().take(10) {
+        let member = ctx.http().get_member(guild_id, caller.0).await?;
+        let line = format!("{} - {}\n", member.display_name(), caller.1);
+        callers_field.push_str(&line);
+    }
+
+    // Process targets
+    let mut targets = targets_map
+        .iter()
+        .map(|(k, v)| (**k, *v))
+        .collect::<Vec<(u64, i32)>>();
+    targets.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let mut target_field = String::new();
+    for target in targets.iter().take(10) {
+        let member = ctx.http().get_member(guild_id, target.0).await?;
+        let line = format!("{} - {}", member.display_name(), target.1);
+        target_field.push_str(&line);
+    }
+
+    // Send embedded top 10 leaderboard
+    ctx.send(|b| {
+        b.embed(|f| {
+            f.title("Roulette Leaderboard")
+                .field("Callers", &callers_field, true)
+                .field("Targets", &target_field, true)
+        })
+    })
+    .await?;
 
     Ok(())
 }

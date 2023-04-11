@@ -1,6 +1,6 @@
 use serenity::prelude::TypeMapKey;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tracing::{debug, instrument};
 
 use crate::levels::user_level::UserLevel;
@@ -484,6 +484,27 @@ impl Db {
         .await?;
 
         Ok(())
+    }
+
+    #[instrument]
+    pub async fn get_roulette_scores(&self, guild_id: u64) -> anyhow::Result<Vec<(u64, u64)>> {
+        let guild_id = to_i64(guild_id);
+
+        let records = sqlx::query!(
+            "SELECT caller_id, target_id FROM roulette_count WHERE guild_id = ?",
+            guild_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(records
+            .iter()
+            .map(|record| {
+                let caller = from_i64(record.caller_id);
+                let target = from_i64(record.target_id);
+                (caller, target)
+            })
+            .collect())
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////
