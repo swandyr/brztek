@@ -1,6 +1,6 @@
 use serenity::prelude::TypeMapKey;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use tracing::{debug, instrument};
 
 use crate::levels::user_level::UserLevel;

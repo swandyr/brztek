@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::string;
 
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{CacheHttp, Mentionable, RoleId};
@@ -293,6 +292,11 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
     if timeout_result.is_err() {
         ctx.say(format!("The roulette has chosen, {}, but I can't mute you, would you kindly shut up for the next 60 seconds ?", member.mention()))
+            .await?;
+    }
+
+    if user_1_name == user_2_name {
+        ctx.say("https://tenor.com/view/damn-punch-punching-oops-missed-punch-gif-12199143")
             .await?;
     }
 
