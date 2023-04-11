@@ -242,9 +242,6 @@ pub async fn tempscalme(
     category = "General"
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
-    // let http = &ctx.serenity_context().http;
-    // let typing = ctx.channel_id().start_typing(http)?;
-
     // Retrieves the list of members of the guild
     // let channel = ctx.channel_id().to_channel(ctx).await?.guild().unwrap();
     let guild = ctx.guild().unwrap();
@@ -263,19 +260,27 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     let timeout_timestamp = now + 60;
     let time = serenity::Timestamp::from_unix_timestamp(timeout_timestamp)?;
 
-    // tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    // let _ = typing.stop();
-
     let timeout_result = timeout_member(ctx, &mut member, time).await;
 
     let user_1 = ctx.author_member().await.unwrap();
-    let user_1 = user_1
+
+    // Store result in db
+    let db = &ctx.data().db;
+    let guild_id = guild.id.0;
+    let user_1_id = user_1.user.id.0;
+    let user_2_id = member.user.id.0;
+
+    db.add_roulette_result(guild_id, now, user_1_id, user_2_id)
+        .await?;
+
+    // Reply on the channel
+    let user_1_name = user_1
         .display_name()
         .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
-    let user_2 = member
+    let user_2_name = member
         .display_name()
         .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
-    let image = gen_killfeed(&user_1, &user_2)?;
+    let image = gen_killfeed(&user_1_name, &user_2_name)?;
 
     ctx.send(|m| {
         let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
