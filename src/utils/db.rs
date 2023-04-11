@@ -460,7 +460,54 @@ impl Db {
         Ok(())
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////:
+    ///////////////////////////////////////////////////////////////////////////////////////
+    pub async fn add_roulette_result(
+        &self,
+        guild_id: u64,
+        time_stamp: i64,
+        caller_id: u64,
+        target_id: u64,
+    ) -> anyhow::Result<()> {
+        let guild_id = to_i64(guild_id);
+        let caller_id = to_i64(caller_id);
+        let target_id = to_i64(target_id);
+
+        sqlx::query!(
+            "INSERT INTO roulette_count (guild_id, time_stamp, caller_id, target_id)
+            values (?, ?, ?, ?)",
+            guild_id,
+            time_stamp,
+            caller_id,
+            target_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    #[instrument]
+    pub async fn get_roulette_scores(&self, guild_id: u64) -> anyhow::Result<Vec<(u64, u64)>> {
+        let guild_id = to_i64(guild_id);
+
+        let records = sqlx::query!(
+            "SELECT caller_id, target_id FROM roulette_count WHERE guild_id = ?",
+            guild_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(records
+            .iter()
+            .map(|record| {
+                let caller = from_i64(record.caller_id);
+                let target = from_i64(record.target_id);
+                (caller, target)
+            })
+            .collect())
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////
 
     // #[allow(dead_code)]
     // pub async fn get_user_as(&self, user_id: u64) -> anyhow::Result<Option<UserLevel>> {

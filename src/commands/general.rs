@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{CacheHttp, Mentionable, RoleId};
 use rand::{prelude::thread_rng, Rng};
@@ -242,9 +244,6 @@ pub async fn tempscalme(
     category = "General"
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
-    // let http = &ctx.serenity_context().http;
-    // let typing = ctx.channel_id().start_typing(http)?;
-
     // Retrieves the list of members of the guild
     // let channel = ctx.channel_id().to_channel(ctx).await?.guild().unwrap();
     let guild = ctx.guild().unwrap();
@@ -263,19 +262,27 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     let timeout_timestamp = now + 60;
     let time = serenity::Timestamp::from_unix_timestamp(timeout_timestamp)?;
 
-    // tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    // let _ = typing.stop();
-
     let timeout_result = timeout_member(ctx, &mut member, time).await;
 
     let user_1 = ctx.author_member().await.unwrap();
-    let user_1 = user_1
+
+    // Store result in db
+    let db = &ctx.data().db;
+    let guild_id = guild.id.0;
+    let user_1_id = user_1.user.id.0;
+    let user_2_id = member.user.id.0;
+
+    db.add_roulette_result(guild_id, now, user_1_id, user_2_id)
+        .await?;
+
+    // Reply on the channel
+    let user_1_name = user_1
         .display_name()
         .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
-    let user_2 = member
+    let user_2_name = member
         .display_name()
         .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
-    let image = gen_killfeed(&user_1, &user_2)?;
+    let image = gen_killfeed(&user_1_name, &user_2_name)?;
 
     ctx.send(|m| {
         let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
@@ -285,6 +292,11 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
     if timeout_result.is_err() {
         ctx.say(format!("The roulette has chosen, {}, but I can't mute you, would you kindly shut up for the next 60 seconds ?", member.mention()))
+            .await?;
+    }
+
+    if user_1_name == user_2_name {
+        ctx.say("https://tenor.com/view/damn-punch-punching-oops-missed-punch-gif-12199143")
             .await?;
     }
 
@@ -300,6 +312,69 @@ async fn timeout_member(
     member
         .disable_communication_until_datetime(ctx, time)
         .await?;
+
+    Ok(())
+}
+
+#[instrument(skip(ctx))]
+#[poise::command(slash_command, prefix_command, guild_only, category = "General")]
+pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
+    let db = &ctx.data().db;
+    let guild_id = ctx.guild_id().unwrap().0;
+    let scores = db.get_roulette_scores(guild_id).await?;
+    info!("Got roulette scores");
+
+    let mut callers_map = HashMap::new();
+    let mut targets_map = HashMap::new();
+
+    scores.iter().for_each(|(caller, target)| {
+        callers_map
+            .entry(caller)
+            .and_modify(|x| *x += 1)
+            .or_insert(1);
+        targets_map
+            .entry(target)
+            .and_modify(|x| *x += 1)
+            .or_insert(1);
+    });
+
+    // Process callers
+    let mut callers = callers_map
+        .iter()
+        .map(|(k, v)| (**k, *v))
+        .collect::<Vec<(u64, i32)>>();
+    callers.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let mut callers_field = String::new();
+    for caller in callers.iter().take(10) {
+        let member = ctx.http().get_member(guild_id, caller.0).await?;
+        let line = format!("{} - {}\n", member.display_name(), caller.1);
+        callers_field.push_str(&line);
+    }
+
+    // Process targets
+    let mut targets = targets_map
+        .iter()
+        .map(|(k, v)| (**k, *v))
+        .collect::<Vec<(u64, i32)>>();
+    targets.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let mut target_field = String::new();
+    for target in targets.iter().take(10) {
+        let member = ctx.http().get_member(guild_id, target.0).await?;
+        let line = format!("{} - {}", member.display_name(), target.1);
+        target_field.push_str(&line);
+    }
+
+    // Send embedded top 10 leaderboard
+    ctx.send(|b| {
+        b.embed(|f| {
+            f.title("Roulette Leaderboard")
+                .field("Callers", &callers_field, true)
+                .field("Targets", &target_field, true)
+        })
+    })
+    .await?;
 
     Ok(())
 }

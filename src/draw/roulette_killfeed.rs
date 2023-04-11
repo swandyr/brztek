@@ -46,7 +46,7 @@ pub fn gen_killfeed(user_1: &str, user_2: &str) -> anyhow::Result<Vec<u8>> {
     debug!("Font loaded");
 
     let colors = Colors::default();
-    let baseline = HEIGHT as f64 - 6.5;
+    let baseline = HEIGHT as f64 - 8.0;
 
     let user_1_layout = text_layout_with_max_size(
         &mut text,
@@ -58,10 +58,10 @@ pub fn gen_killfeed(user_1: &str, user_2: &str) -> anyhow::Result<Vec<u8>> {
     let pos = {
         let text_size = user_1_layout.image_bounds();
         let x = (COLOR_RECT_WIDTH as f64 / 2.) - (text_size.width() / 2.);
-        let y = baseline - text_size.max_y();
+        let metrics = user_1_layout.line_metric(0).unwrap_or_default();
+        let y = baseline - metrics.baseline;
         Point::new(x, y)
     };
-    println!("point: {pos:?}");
     rc.draw_text(&user_1_layout, pos);
 
     let user_2_layout = text_layout_with_max_size(
@@ -74,10 +74,10 @@ pub fn gen_killfeed(user_1: &str, user_2: &str) -> anyhow::Result<Vec<u8>> {
     let pos = {
         let text_size = user_2_layout.image_bounds();
         let x = (WIDTH as f64 - (COLOR_RECT_WIDTH as f64 / 2.)) - (text_size.width() / 2.);
-        let y = baseline - text_size.max_y();
+        let metrics = user_2_layout.line_metric(0).unwrap_or_default();
+        let y = baseline - metrics.baseline;
         Point::new(x, y)
     };
-    println!("point: {pos:?}");
     rc.draw_text(&user_2_layout, pos);
 
     let kf_buf = bitmap
@@ -85,7 +85,7 @@ pub fn gen_killfeed(user_1: &str, user_2: &str) -> anyhow::Result<Vec<u8>> {
         .expect("Unable to get image buffer");
     let buf = to_png_buffer(kf_buf.raw_pixels(), WIDTH as u32, HEIGHT as u32)?;
 
-    // bitmap.save_to_file("kf.png").unwrap();
+    bitmap.save_to_file("kf.png").unwrap();
 
     Ok(buf)
 }
@@ -120,9 +120,9 @@ fn text_layout_with_max_size(
 }
 
 #[test]
-fn test_gen_kf() {
+fn test_gen_kf_short() {
     let user_1 = "Swich";
-    let user_2 = "ek0z";
+    let user_2 = "Night";
 
     assert!(gen_killfeed(&user_1, &user_2).is_ok());
 }
@@ -130,6 +130,7 @@ fn test_gen_kf() {
 #[test]
 fn test_gen_kf_with_long_name() {
     let user_1 = "a pretty long username, but very long long";
+    let _user_1 = "Swich";
     let user_2 = "@K_limero91 ou @ChaK_lim";
 
     assert!(gen_killfeed(&user_1, &user_2).is_ok());
