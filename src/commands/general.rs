@@ -362,7 +362,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
     let mut target_field = String::new();
     for target in targets.iter().take(10) {
         let member = ctx.http().get_member(guild_id, target.0).await?;
-        let line = format!("{} - {}", member.display_name(), target.1);
+        let line = format!("{} - {}\n", member.display_name(), target.1);
         target_field.push_str(&line);
     }
 
