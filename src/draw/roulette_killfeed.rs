@@ -85,7 +85,7 @@ pub fn gen_killfeed(user_1: &str, user_2: &str) -> anyhow::Result<Vec<u8>> {
         .expect("Unable to get image buffer");
     let buf = to_png_buffer(kf_buf.raw_pixels(), WIDTH as u32, HEIGHT as u32)?;
 
-    bitmap.save_to_file("kf.png").unwrap();
+    // bitmap.save_to_file("kf.png").unwrap();
 
     Ok(buf)
 }
