@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, Member};
 use poise::serenity_prelude::{CacheHttp, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use tracing::{debug, info, instrument};
@@ -20,7 +20,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
     //required_permissions = "MODERATE_MEMBERS",
     required_bot_permissions = "MODERATE_MEMBERS",
     guild_only,
-    category = "General"
+    category = "Timeouts"
 )]
 pub async fn tempscalme(
     ctx: Context<'_>,
@@ -81,7 +81,7 @@ pub async fn tempscalme(
     prefix_command,
     guild_only,
     required_bot_permissions = "MODERATE_MEMBERS",
-    category = "General"
+    category = "Timeouts"
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     // Retrieves the list of members of the guild
@@ -157,10 +157,41 @@ async fn timeout_member(
 }
 
 #[instrument(skip(ctx))]
-#[poise::command(slash_command, prefix_command, guild_only, category = "General")]
-pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
-    let db = &ctx.data().db;
+#[poise::command(slash_command, prefix_command, guild_only, category = "Timeouts")]
+pub async fn toproulette(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
+
+    if let Some(member) = member {
+        let user_id = member.user.id.0;
+        let targets_fields = member_top_victims(&ctx, guild_id, user_id).await?;
+        let title = format!("Top {}'s victims", member.display_name());
+
+        // Send embedded top 10 targets of the user
+        ctx.send(|b| b.embed(|f| f.title(title).field("Victims", &targets_fields, true)))
+            .await?;
+    } else {
+        let (callers_field, targets_field) = roulette_leaderboard(&ctx, guild_id).await?;
+
+        // Send embedded top 10 leaderboard
+        ctx.send(|b| {
+            b.embed(|f| {
+                f.title("Roulette Leaderboard")
+                    .field("Callers", &callers_field, true)
+                    .field("Targets", &targets_field, true)
+            })
+        })
+        .await?;
+    }
+
+    Ok(())
+}
+
+#[instrument(skip(ctx))]
+async fn roulette_leaderboard(
+    ctx: &Context<'_>,
+    guild_id: u64,
+) -> anyhow::Result<(String, String)> {
+    let db = &ctx.data().db;
     let scores = db.get_roulette_scores(guild_id).await?;
     info!("Got roulette scores");
 
@@ -178,43 +209,57 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
             .or_insert(1);
     });
 
-    // Process callers
-    let mut callers = callers_map
+    // Process maps
+    let callers_field = process_users_map(ctx, guild_id, callers_map).await?;
+    let targets_field = process_users_map(ctx, guild_id, targets_map).await?;
+
+    Ok((callers_field, targets_field))
+}
+
+#[instrument(skip(ctx))]
+async fn member_top_victims(
+    ctx: &Context<'_>,
+    guild_id: u64,
+    user_id: u64,
+) -> anyhow::Result<String> {
+    let db = &ctx.data().db;
+    let scores = db.get_user_roulette_scores(guild_id, user_id).await?;
+
+    let mut targets_map = HashMap::new();
+    scores.iter().for_each(|target| {
+        targets_map
+            .entry(target)
+            .and_modify(|x| *x += 1)
+            .or_insert(1);
+    });
+
+    let targets_field = process_users_map(ctx, guild_id, targets_map).await?;
+
+    Ok(targets_field)
+}
+
+#[instrument(skip(ctx))]
+async fn process_users_map(
+    ctx: &Context<'_>,
+    guild_id: u64,
+    map: HashMap<&u64, i32>,
+) -> anyhow::Result<String> {
+    let mut sorted = map
         .iter()
         .map(|(k, v)| (**k, *v))
         .collect::<Vec<(u64, i32)>>();
-    callers.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted.sort_by(|a, b| b.1.cmp(&a.1));
 
-    let mut callers_field = String::new();
-    for caller in callers.iter().take(10) {
-        let member = ctx.http().get_member(guild_id, caller.0).await?;
-        let line = format!("{} - {}\n", member.display_name(), caller.1);
-        callers_field.push_str(&line);
+    let now = std::time::Instant::now();
+    let nb_users = 10usize;
+    let mut field = String::new();
+    for user in sorted.iter().take(nb_users) {
+        let member = ctx.http().get_member(guild_id, user.0).await?;
+        let line = format!("{} - {}\n", member.display_name(), user.1);
+        field.push_str(&line);
     }
+    let elapsed = now.elapsed().as_millis();
+    info!("Processed {nb_users} users in {elapsed} ms");
 
-    // Process targets
-    let mut targets = targets_map
-        .iter()
-        .map(|(k, v)| (**k, *v))
-        .collect::<Vec<(u64, i32)>>();
-    targets.sort_by(|a, b| b.1.cmp(&a.1));
-
-    let mut target_field = String::new();
-    for target in targets.iter().take(10) {
-        let member = ctx.http().get_member(guild_id, target.0).await?;
-        let line = format!("{} - {}\n", member.display_name(), target.1);
-        target_field.push_str(&line);
-    }
-
-    // Send embedded top 10 leaderboard
-    ctx.send(|b| {
-        b.embed(|f| {
-            f.title("Roulette Leaderboard")
-                .field("Callers", &callers_field, true)
-                .field("Targets", &target_field, true)
-        })
-    })
-    .await?;
-
-    Ok(())
+    Ok(field)
 }
