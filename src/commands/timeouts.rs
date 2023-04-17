@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 
-use poise::serenity_prelude::{self as serenity, Member};
+use poise::serenity_prelude::{self as serenity, Guild, Member};
 use poise::serenity_prelude::{CacheHttp, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use tracing::{debug, info, instrument};
 
-use crate::{draw::roulette_killfeed::gen_killfeed, Data};
+use crate::utils::db::Db;
+use crate::{
+    draw::roulette_killfeed::{gen_killfeed, ShotKind},
+    Data,
+};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -84,8 +88,49 @@ pub async fn tempscalme(
     category = "Timeouts"
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
-    // Retrieves the list of members of the guild
-    // let channel = ctx.channel_id().to_channel(ctx).await?.guild().unwrap();
+    let mut author = ctx.author_member().await.unwrap().into_owned();
+    let author_id = author.user.id.0;
+
+    let entry = {
+        let read = ctx.data().cooldown_map.read().unwrap();
+        read.get(&author_id).copied()
+    };
+
+    let now = serenity::Timestamp::now().unix_timestamp();
+    let timeout_timestamp = now + 60;
+    let time = serenity::Timestamp::from_unix_timestamp(timeout_timestamp)?;
+
+    let db = &ctx.data().db;
+
+    if let Some((timestamp, duration)) = entry {
+        if now < timestamp + duration {
+            debug!("in cooldown -> self timeouted");
+            let timeout_result = timeout_member(ctx, &mut author, time).await;
+            record_roulette(db, &ctx.guild().unwrap(), &author, &author, now).await?;
+            let image = gen_roulette_image(&author, &author, ShotKind::Reverse).await?;
+
+            ctx.send(|m| {
+                let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
+                m.attachment(file).content(
+                    "**Illegal use of a roulette while under cooldown, please surrender !**",
+                )
+            })
+            .await?;
+
+            if timeout_result.is_err() {
+                ctx.say("As you're an administrator, I have no power, but I know you won't abuse the rules").await?;
+            }
+
+            return Ok(());
+        } else {
+            {
+                let mut write = ctx.data().cooldown_map.write().unwrap();
+                write.remove(&author_id);
+            }
+        }
+    }
+
+    // Get a random member
     let guild = ctx.guild().unwrap();
     let members = guild
         .members(ctx, None, None)
@@ -93,60 +138,93 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         .into_iter()
         .filter(|m| !m.user.bot)
         .collect::<Vec<_>>();
-
     let index = thread_rng().gen_range(0..members.len());
-    let mut member = members.get(index).unwrap().clone();
-    debug!("Randomly selected member: {:?}", member);
+    let mut target = members.get(index).unwrap().clone();
+    debug!("Randomly selected member: {:?}", target);
 
-    let now = serenity::Timestamp::now().unix_timestamp();
-    let timeout_timestamp = now + 60;
-    let time = serenity::Timestamp::from_unix_timestamp(timeout_timestamp)?;
+    let timeout_result = timeout_member(ctx, &mut target, time).await;
+    record_roulette(db, &guild, &author, &target, now).await?;
 
-    let timeout_result = timeout_member(ctx, &mut member, time).await;
+    let is_self_shot = author_id == target.user.id.0;
 
-    let user_1 = ctx.author_member().await.unwrap();
-
-    // Store result in db
-    let db = &ctx.data().db;
-    let guild_id = guild.id.0;
-    let user_1_id = user_1.user.id.0;
-    let user_2_id = member.user.id.0;
-
-    db.add_roulette_result(guild_id, now, user_1_id, user_2_id)
-        .await?;
-
-    // Reply on the channel
-    let user_1_name = user_1
-        .display_name()
-        .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
-    let user_2_name = member
-        .display_name()
-        .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
-    let image = gen_killfeed(&user_1_name, &user_2_name)?;
-
-    ctx.send(|m| {
-        let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
-        m.attachment(file)
-    })
+    let image = gen_roulette_image(
+        &author,
+        &target,
+        if is_self_shot {
+            ShotKind::SelfShot
+        } else {
+            ShotKind::Normal
+        },
+    )
     .await?;
 
-    if timeout_result.is_err() {
-        ctx.say(format!("The roulette has chosen, {}, but I can't mute you, would you kindly shut up for the next 60 seconds ?", member.mention()))
+    // Set the author in cooldown for a random time between 60 and 180 seconds
+    let duration: i64 = thread_rng().gen_range(60..=180);
+    {
+        let mut write = ctx.data().cooldown_map.write().unwrap();
+        write.insert(author_id, (now, duration));
+        debug!("insert cooldown_map: {author_id}, ({now}, {duration})");
+    }
+
+    if is_self_shot {
+        ctx.send(|m| {
+            m.attachment(serenity::AttachmentType::from((image.as_slice(), "kf.png")))
+                .content(
+                    "https://tenor.com/view/damn-punch-punching-oops-missed-punch-gif-12199143",
+                )
+        })
+        .await?;
+    } else {
+        ctx.send(|m| m.attachment(serenity::AttachmentType::from((image.as_slice(), "kf.png"))))
             .await?;
     }
 
-    if user_1_name == user_2_name {
-        ctx.say("https://tenor.com/view/damn-punch-punching-oops-missed-punch-gif-12199143")
+    if timeout_result.is_err() {
+        ctx.say(format!("The roulette has chosen, {}, but I can't mute you, would you kindly shut up for the next 60 seconds ?", target.mention()))
             .await?;
     }
 
     Ok(())
 }
 
+#[instrument]
+async fn record_roulette(
+    db: &Db,
+    guild: &Guild,
+    author: &Member,
+    target: &Member,
+    timestamp: i64,
+) -> Result<(), Error> {
+    let guild_id = guild.id.0;
+    let author_id = author.user.id.0;
+    let target_id = target.user.id.0;
+
+    db.add_roulette_result(guild_id, timestamp, author_id, target_id)
+        .await?;
+
+    Ok(())
+}
+
+#[instrument]
+async fn gen_roulette_image(
+    author: &Member,
+    target: &Member,
+    kind: ShotKind,
+) -> Result<Vec<u8>, anyhow::Error> {
+    let author_name = author
+        .display_name()
+        .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
+    let target_name = target
+        .display_name()
+        .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
+
+    gen_killfeed(&author_name, &target_name, kind)
+}
+
 #[instrument(skip(ctx))]
 async fn timeout_member(
     ctx: Context<'_>,
-    member: &mut serenity::Member,
+    member: &mut Member,
     time: serenity::Timestamp,
 ) -> Result<(), Error> {
     member
