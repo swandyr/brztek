@@ -7,13 +7,22 @@ use tracing::{debug, info, instrument};
 
 use super::{to_png_buffer, Colors, KILLFEED_FONT};
 
-const TEMPLATE_PATH: &str = "assets/images/killfeed.png";
+const TEMPLATE_NORMAL_PATH: &str = "assets/images/killfeed.png";
+const TEMPLATE_REVERSE_PATH: &str = "assets/images/killfeed_reverse.png";
+const TEMPLATE_SELF_PATH: &str = "assets/images/killfeed_self.png";
 const HEIGHT: usize = 32;
 const WIDTH: usize = 395;
 const COLOR_RECT_WIDTH: usize = 156;
 
+#[derive(Debug)]
+pub enum ShotKind {
+    Normal,
+    SelfShot,
+    Reverse,
+}
+
 #[instrument]
-pub fn gen_killfeed(user_1: &str, user_2: &str) -> anyhow::Result<Vec<u8>> {
+pub fn gen_killfeed(user_1: &str, user_2: &str, kind: ShotKind) -> anyhow::Result<Vec<u8>> {
     info!("Draw killfeed {user_1} -> {user_2}");
 
     // Create context
@@ -25,7 +34,11 @@ pub fn gen_killfeed(user_1: &str, user_2: &str) -> anyhow::Result<Vec<u8>> {
     debug!("Render context created");
 
     let template_buf = {
-        let bytes = std::fs::read(&TEMPLATE_PATH)?;
+        let bytes = std::fs::read(match kind {
+            ShotKind::Normal => &TEMPLATE_NORMAL_PATH,
+            ShotKind::SelfShot => &TEMPLATE_SELF_PATH,
+            ShotKind::Reverse => &TEMPLATE_REVERSE_PATH,
+        })?;
         image::load_from_memory(&bytes)?.into_bytes()
     };
     let image = rc
@@ -124,7 +137,7 @@ fn test_gen_kf_short() {
     let user_1 = "Swich";
     let user_2 = "Night";
 
-    assert!(gen_killfeed(&user_1, &user_2).is_ok());
+    assert!(gen_killfeed(&user_1, &user_2, ShotKind::Normal).is_ok());
 }
 
 #[test]
@@ -133,5 +146,5 @@ fn test_gen_kf_with_long_name() {
     let _user_1 = "Swich";
     let user_2 = "@K_limero91 ou @ChaK_lim";
 
-    assert!(gen_killfeed(&user_1, &user_2).is_ok());
+    assert!(gen_killfeed(&user_1, &user_2, ShotKind::Normal).is_ok());
 }

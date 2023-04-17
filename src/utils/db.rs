@@ -507,6 +507,29 @@ impl Db {
             .collect())
     }
 
+    #[instrument]
+    pub async fn get_user_roulette_scores(
+        &self,
+        guild_id: u64,
+        user_id: u64,
+    ) -> anyhow::Result<Vec<u64>> {
+        let guild_id = to_i64(guild_id);
+        let user_id = to_i64(user_id);
+
+        let records = sqlx::query!(
+            "SELECT target_id FROM roulette_count WHERE guild_id = ? AND caller_id = ?",
+            guild_id,
+            user_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(records
+            .iter()
+            .map(|record| from_i64(record.target_id))
+            .collect())
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////
 
     // #[allow(dead_code)]

@@ -10,7 +10,12 @@ use poise::serenity_prelude::{
     Mentionable,
 };
 use rand::{prelude::thread_rng, Rng};
-use std::{env, time::Instant};
+use std::{
+    collections::HashMap,
+    env,
+    sync::{Arc, RwLock},
+    time::Instant,
+};
 use tracing::{debug, error, info, instrument, warn};
 use tracing_subscriber::EnvFilter;
 
@@ -24,7 +29,8 @@ const PREFIX: &str = "$";
 /// Store shared data
 #[derive(Debug)]
 pub struct Data {
-    pub db: std::sync::Arc<Db>,
+    pub db: Arc<Db>,
+    pub cooldown_map: Arc<RwLock<HashMap<u64, (i64, i64)>>>,
 }
 
 // ----------------------------------------- Main -----------------------------------------
@@ -60,9 +66,9 @@ async fn main() -> Result<(), Error> {
             commands::general::bigrig(),
             commands::general::setcolor(),
             commands::general::yt(),
-            commands::general::tempscalme(),
-            commands::general::roulette(),
-            commands::general::toproulette(),
+            commands::timeouts::tempscalme(),
+            commands::timeouts::roulette(),
+            commands::timeouts::toproulette(),
             commands::levels::rank(),
             commands::levels::top(),
             commands::admin::admin(),
@@ -94,7 +100,8 @@ async fn main() -> Result<(), Error> {
         .setup(|_ctx, _data_about, _framework| {
             Box::pin(async move {
                 Ok(Data {
-                    db: std::sync::Arc::new(db),
+                    db: Arc::new(db),
+                    cooldown_map: Arc::new(RwLock::new(HashMap::new())),
                 })
             })
         })
