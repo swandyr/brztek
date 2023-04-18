@@ -329,10 +329,13 @@ async fn process_users_map(
     sorted.sort_by(|a, b| b.1.cmp(&a.1));
 
     let now = std::time::Instant::now();
+
+    let guild_members = ctx.guild().unwrap().members;
     let nb_users = 10usize;
     let mut field = String::new();
     for user in sorted.iter().take(nb_users) {
-        let member = ctx.http().get_member(guild_id, user.0).await?;
+        //let member = ctx.http().get_member(guild_id, user.0).await?;
+        let member = guild_members.get(&user.0.into()).unwrap();
         let line = format!("{} - {}\n", member.display_name(), user.1);
         field.push_str(&line);
     }
