@@ -69,6 +69,8 @@ async fn main() -> Result<(), Error> {
             commands::timeouts::tempscalme(),
             commands::timeouts::roulette(),
             commands::timeouts::toproulette(),
+            commands::timeouts::topvictims(),
+            commands::timeouts::topbullies(),
             commands::levels::rank(),
             commands::levels::top(),
             commands::admin::admin(),
