@@ -307,7 +307,7 @@ pub async fn topvictims(ctx: Context<'_>, member: Member) -> Result<(), Error> {
     Ok(())
 }
 
-/// Top 10 victims
+/// Top 10 bullies
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Timeouts")]
 pub async fn topbullies(ctx: Context<'_>, member: Member) -> Result<(), Error> {
