@@ -157,8 +157,9 @@ async fn event_event_handler(
             let user_id = new_message.author.id;
             let channel_id = new_message.channel_id;
 
-            // Filter any links contained in the message content
-            let content = new_message.content.split(' ');
+            // Split the message content on whitespace and new line char
+            let content = new_message.content.split(&[' ', '\n']);
+            // Filter on any links contained in the message content
             let links = content
                 .filter(|f| f.starts_with("https://") || f.starts_with("http://"))
                 .collect::<Vec<&str>>();
