@@ -30,7 +30,8 @@ const PREFIX: &str = "$";
 #[derive(Debug)]
 pub struct Data {
     pub db: Arc<Db>,
-    pub cooldown_map: Arc<RwLock<HashMap<u64, (i64, i64)>>>,
+    // Hashmap<UserId, (selfshot_perc, timestamp)
+    pub roulette_map: Arc<RwLock<HashMap<u64, (u8, i64)>>>,
 }
 
 // ----------------------------------------- Main -----------------------------------------
@@ -103,7 +104,7 @@ async fn main() -> Result<(), Error> {
             Box::pin(async move {
                 Ok(Data {
                     db: Arc::new(db),
-                    cooldown_map: Arc::new(RwLock::new(HashMap::new())),
+                    roulette_map: Arc::new(RwLock::new(HashMap::new())),
                 })
             })
         })

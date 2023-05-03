@@ -78,23 +78,23 @@ pub async fn tempscalme(
     Ok(())
 }
 
-/// A random member is in timeout for 60s
+const BASE_SELFSHOT_PERC: u8 = 1;
+
+/// Put random member in timeout for 60s
+///
+/// The more you use it, the more you can get caught
 #[instrument(skip(ctx))]
 #[poise::command(
     slash_command,
     prefix_command,
     guild_only,
     required_bot_permissions = "MODERATE_MEMBERS",
-    category = "Timeouts"
+    category = "Timeouts",
+    //subcommands("top", "victims", "bullies")
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     let mut author = ctx.author_member().await.unwrap().into_owned();
     let author_id = author.user.id.0;
-
-    let entry = {
-        let read = ctx.data().cooldown_map.read().unwrap();
-        read.get(&author_id).copied()
-    };
 
     let now = serenity::Timestamp::now().unix_timestamp();
     let timeout_timestamp = now + 60;
@@ -102,86 +102,116 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
     let db = &ctx.data().db;
 
-    if let Some((timestamp, duration)) = entry {
-        if now < timestamp + duration {
-            debug!("in cooldown -> self timeouted");
-            let timeout_result = timeout_member(ctx, &mut author, time).await;
-            record_roulette(db, &ctx.guild().unwrap(), &author, &author, now).await?;
-            let image = gen_roulette_image(&author, &author, ShotKind::Reverse).await?;
+    let selfshot_check = thread_rng().gen_range(1..=100);
 
-            ctx.send(|m| {
-                let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
-                m.attachment(file).content(
-                    "**Illegal use of a roulette while under cooldown, please surrender !**",
-                )
-            })
-            .await?;
+    let mut entry = {
+        let read = ctx.data().roulette_map.read().unwrap();
+        debug!("{read:#?}");
+        read.get(&author_id).copied()
+    };
+    debug!(
+        "Cooldown Map entry of user {}: {:?}",
+        author.display_name(),
+        entry
+    );
+    let (selfshot_perc, _timestamp) = entry.get_or_insert((BASE_SELFSHOT_PERC, now));
 
-            if timeout_result.is_err() {
-                ctx.say("As you're an administrator, I have no power, but I know you won't abuse the rules").await?;
-            }
+    //TODO: reset under a certain period of time ?
 
-            return Ok(());
-        } else {
-            {
-                let mut write = ctx.data().cooldown_map.write().unwrap();
-                write.remove(&author_id);
-            }
-        }
-    }
+    // Author is self timed out if the random selfshot_check number is below the author's selfshot_perc
+    if selfshot_check < *selfshot_perc {
+        info!("Selfshot check not passed for {}", author.display_name());
+        // Returns error if the bot cannot timeout_member, usually because he has administrator status
+        let timeout_result = timeout_member(ctx, &mut author, time).await;
+        // Saves result in db
+        record_roulette(db, &ctx.guild().unwrap(), &author, &author, now).await?;
+        // Generates the image that will be attached to the message
+        let image = gen_roulette_image(&author, &author, ShotKind::Reverse).await?;
 
-    // Get a random member
-    let guild = ctx.guild().unwrap();
-    let members = guild
-        .members(ctx, None, None)
-        .await?
-        .into_iter()
-        .filter(|m| !m.user.bot)
-        .collect::<Vec<_>>();
-    let index = thread_rng().gen_range(0..members.len());
-    let mut target = members.get(index).unwrap().clone();
-    debug!("Randomly selected member: {:?}", target);
-
-    let timeout_result = timeout_member(ctx, &mut target, time).await;
-    record_roulette(db, &guild, &author, &target, now).await?;
-
-    let is_self_shot = author_id == target.user.id.0;
-
-    let image = gen_roulette_image(
-        &author,
-        &target,
-        if is_self_shot {
-            ShotKind::SelfShot
-        } else {
-            ShotKind::Normal
-        },
-    )
-    .await?;
-
-    // Set the author in cooldown for a random time between 60 and 180 seconds
-    let duration: i64 = thread_rng().gen_range(60..=180);
-    {
-        let mut write = ctx.data().cooldown_map.write().unwrap();
-        write.insert(author_id, (now, duration));
-        debug!("insert cooldown_map: {author_id}, ({now}, {duration})");
-    }
-
-    if is_self_shot {
         ctx.send(|m| {
-            m.attachment(serenity::AttachmentType::from((image.as_slice(), "kf.png")))
-                .content(
-                    "https://tenor.com/view/damn-punch-punching-oops-missed-punch-gif-12199143",
-                )
+            let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
+            m.attachment(file)
+                .content("**You're under arrest by the roulette police, please surrender !**")
         })
         .await?;
-    } else {
-        ctx.send(|m| m.attachment(serenity::AttachmentType::from((image.as_slice(), "kf.png"))))
-            .await?;
-    }
 
-    if timeout_result.is_err() {
-        ctx.say(format!("The roulette has chosen, {}, but I can't mute you, would you kindly shut up for the next 60 seconds ?", target.mention()))
+        // if timeout_member returned Err, it assumes it is because of administrator priviledges, then notify the member
+        if timeout_result.is_err() {
+            ctx.say(
+                "As you're an administrator, I have no power, but I know you won't abuse the rules",
+            )
             .await?;
+        }
+
+        // Reset the author's selfshot_perc
+        {
+            let mut write = ctx.data().roulette_map.write().unwrap();
+            write.entry(author_id).and_modify(|(perc, tstamp)| {
+                *perc = 5;
+                *tstamp = now;
+            });
+        }
+    } else {
+        // Get a random member
+        let guild = ctx.guild().unwrap();
+        let members = guild
+            .members(ctx, None, None)
+            .await?
+            .into_iter()
+            .filter(|m| !m.user.bot)
+            .collect::<Vec<_>>();
+        let index = thread_rng().gen_range(0..members.len());
+        let mut target = members.get(index).unwrap().clone();
+        debug!("Randomly selected member: {:?}", target);
+
+        let timeout_result = timeout_member(ctx, &mut target, time).await;
+        record_roulette(db, &guild, &author, &target, now).await?;
+
+        let is_self_shot = author_id == target.user.id.0;
+
+        let image = gen_roulette_image(
+            &author,
+            &target,
+            if is_self_shot {
+                ShotKind::SelfShot
+            } else {
+                ShotKind::Normal
+            },
+        )
+        .await?;
+
+        // Send a message according to a self shot or not
+        if is_self_shot {
+            ctx.send(|m| {
+                m.attachment(serenity::AttachmentType::from((image.as_slice(), "kf.png")))
+                    .content(
+                        "https://tenor.com/view/damn-punch-punching-oops-missed-punch-gif-12199143",
+                    )
+            })
+            .await?;
+        } else {
+            ctx.send(|m| {
+                m.attachment(serenity::AttachmentType::from((image.as_slice(), "kf.png")))
+            })
+            .await?;
+        }
+
+        if timeout_result.is_err() {
+            ctx.say(format!("The roulette has chosen, {}, but I can't mute you, would you kindly shut up for the next 60 seconds ?", target.mention()))
+            .await?;
+        }
+
+        // Increase author's selfshot_perc
+        {
+            let mut write = ctx.data().roulette_map.write().unwrap();
+            write
+                .entry(author_id)
+                .and_modify(|(perc, tstamp)| {
+                    *perc += 5;
+                    *tstamp = now;
+                })
+                .or_insert((BASE_SELFSHOT_PERC + 5, now));
+        }
     }
 
     Ok(())
@@ -239,7 +269,7 @@ async fn timeout_member(
 /// Alone, it will show the top 10 users and top 10 targets
 /// Specify a @user to show his top 10 targets
 #[instrument(skip(ctx))]
-#[poise::command(slash_command, prefix_command, guild_only, category = "Timeouts")]
+#[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
 
@@ -279,7 +309,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
 
 /// Top 10 victims
 #[instrument(skip(ctx))]
-#[poise::command(slash_command, prefix_command, guild_only, category = "Timeouts")]
+#[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn topvictims(ctx: Context<'_>, member: Member) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
     let member_id = member.user.id.0;
@@ -309,7 +339,7 @@ pub async fn topvictims(ctx: Context<'_>, member: Member) -> Result<(), Error> {
 
 /// Top 10 bullies
 #[instrument(skip(ctx))]
-#[poise::command(slash_command, prefix_command, guild_only, category = "Timeouts")]
+#[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn topbullies(ctx: Context<'_>, member: Member) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
     let member_id = member.user.id.0;
