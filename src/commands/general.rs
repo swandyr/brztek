@@ -175,7 +175,7 @@ const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song
 /// The bot will show what's now on BigRig, even if it isn't Dolly Parton.
 #[allow(dead_code)]
 #[instrument(skip(ctx))]
-#[poise::command(prefix_command, slash_command, category = "General")]
+#[poise::command(prefix_command, slash_command, category = "General", rename = "br")]
 pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
     #[derive(Debug, serde::Deserialize)]
     struct SongData {
