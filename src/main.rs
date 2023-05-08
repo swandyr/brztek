@@ -7,7 +7,7 @@ use clearurl::clear_url;
 use poise::serenity_prelude::{
     self as serenity,
     audit_log::{Action, MemberAction},
-    Mentionable,
+    Mentionable, UserId,
 };
 use rand::{prelude::thread_rng, Rng};
 use std::{
@@ -31,7 +31,7 @@ const PREFIX: &str = "$";
 pub struct Data {
     pub db: Arc<Db>,
     // Hashmap<UserId, (selfshot_perc, timestamp)
-    pub roulette_map: Arc<RwLock<HashMap<u64, (u8, i64)>>>,
+    pub roulette_map: Arc<RwLock<HashMap<UserId, (u8, i64)>>>,
 }
 
 // ----------------------------------------- Main -----------------------------------------

@@ -94,7 +94,7 @@ const BASE_SELFSHOT_PERC: u8 = 1;
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     let mut author = ctx.author_member().await.unwrap().into_owned();
-    let author_id = author.user.id.0;
+    let author_id = author.user.id;
 
     let now = serenity::Timestamp::now().unix_timestamp();
     let timeout_timestamp = now + 60;
@@ -130,8 +130,8 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
         ctx.send(|m| {
             let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
-            m.attachment(file)
-                .content("**You're under arrest by the roulette police, please surrender !**")
+            let content = format!("**RFF activated at {}%, you're out.**", selfshot_perc);
+            m.attachment(file).content(content)
         })
         .await?;
 
@@ -185,7 +185,8 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             ctx.send(|m| {
                 m.attachment(serenity::AttachmentType::from((image.as_slice(), "kf.png")))
                     .content(
-                        "https://tenor.com/view/damn-punch-punching-oops-missed-punch-gif-12199143",
+                        //"https://tenor.com/view/damn-punch-punching-oops-missed-punch-gif-12199143",
+                        "Ouch, looks like it hurts.",
                     )
             })
             .await?;
@@ -207,7 +208,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             write
                 .entry(author_id)
                 .and_modify(|(perc, tstamp)| {
-                    *perc += 5;
+                    *perc += thread_rng().gen_range(2..7);
                     *tstamp = now;
                 })
                 .or_insert((BASE_SELFSHOT_PERC + 5, now));
@@ -226,11 +227,16 @@ async fn record_roulette(
     timestamp: i64,
 ) -> Result<(), Error> {
     let guild_id = guild.id.0;
-    let author_id = author.user.id.0;
-    let target_id = target.user.id.0;
+    let author_id = author.user.id;
+    let target_id = target.user.id;
 
-    db.add_roulette_result(guild_id, timestamp, author_id, target_id)
-        .await?;
+    db.add_roulette_result(
+        guild_id,
+        timestamp,
+        *author_id.as_u64(),
+        *target_id.as_u64(),
+    )
+    .await?;
 
     Ok(())
 }
@@ -307,11 +313,46 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+#[instrument(skip(ctx))]
+#[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
+pub async fn rlstats(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
+    let guild_id = ctx.guild_id().unwrap().0;
+    let member = member.unwrap_or(ctx.author_member().await.unwrap().into_owned());
+    let member_id = member.user.id;
+
+    let db = &ctx.data().db;
+    let scores = db.get_roulette_scores(guild_id).await?;
+
+    let member_scores = scores
+        .into_iter()
+        .filter(|score| score.0 == member_id.0)
+        .collect::<Vec<(u64, u64)>>();
+    let total_member_shots = member_scores.len();
+    let total_member_selfshots = member_scores
+        .iter()
+        .filter(|score| score.1 == member_id.0)
+        .count();
+    let member_reverse_perc = {
+        let map = ctx.data().roulette_map.read().unwrap();
+        map.get(&member_id).unwrap().0
+    };
+
+    let content = format!(
+        "Total roulettes: {}\nTotal selfshots: {}\nReverse chance: {}",
+        total_member_shots, total_member_selfshots, member_reverse_perc
+    );
+    ctx.send(|b| b.embed(|f| f.title(member.display_name()).field("Stats", content, true)))
+        .await?;
+
+    Ok(())
+}
+
 /// Top 10 victims
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
-pub async fn topvictims(ctx: Context<'_>, member: Member) -> Result<(), Error> {
+pub async fn topvictims(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
+    let member = member.unwrap_or(ctx.author_member().await.unwrap().into_owned());
     let member_id = member.user.id.0;
 
     let db = &ctx.data().db;
@@ -340,8 +381,9 @@ pub async fn topvictims(ctx: Context<'_>, member: Member) -> Result<(), Error> {
 /// Top 10 bullies
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
-pub async fn topbullies(ctx: Context<'_>, member: Member) -> Result<(), Error> {
+pub async fn topbullies(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
+    let member = member.unwrap_or(ctx.author_member().await.unwrap().into_owned());
     let member_id = member.user.id.0;
 
     let db = &ctx.data().db;
