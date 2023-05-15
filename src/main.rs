@@ -7,7 +7,7 @@ use clearurl::clear_url;
 use poise::serenity_prelude::{
     self as serenity,
     audit_log::{Action, MemberAction},
-    Mentionable,
+    Mentionable, UserId,
 };
 use rand::{prelude::thread_rng, Rng};
 use std::{
@@ -30,7 +30,9 @@ const PREFIX: &str = "$";
 #[derive(Debug)]
 pub struct Data {
     pub db: Arc<Db>,
-    pub cooldown_map: Arc<RwLock<HashMap<u64, (i64, i64)>>>,
+    // Hashmap<UserId, (selfshot_perc, timestamp)
+    pub roulette_map: Arc<RwLock<HashMap<UserId, (u8, i64)>>>,
+    pub rff_star: Arc<RwLock<Option<(UserId, u8)>>>,
 }
 
 // ----------------------------------------- Main -----------------------------------------
@@ -68,6 +70,8 @@ async fn main() -> Result<(), Error> {
             commands::general::yt(),
             commands::timeouts::tempscalme(),
             commands::timeouts::roulette(),
+            commands::timeouts::statroulette(),
+            commands::timeouts::rffstar(),
             commands::timeouts::toproulette(),
             commands::timeouts::topvictims(),
             commands::timeouts::topbullies(),
@@ -103,7 +107,8 @@ async fn main() -> Result<(), Error> {
             Box::pin(async move {
                 Ok(Data {
                     db: Arc::new(db),
-                    cooldown_map: Arc::new(RwLock::new(HashMap::new())),
+                    roulette_map: Arc::new(RwLock::new(HashMap::new())),
+                    rff_star: Arc::new(RwLock::new(None)),
                 })
             })
         })
@@ -115,11 +120,11 @@ async fn main() -> Result<(), Error> {
 
 // ------------------------------------- Event handler -----------------------------------------
 
-#[instrument(skip(ctx, _framework, user_data))]
+#[instrument(skip(ctx, framework, user_data))]
 async fn event_event_handler(
     ctx: &serenity::Context,
     event: &poise::Event<'_>,
-    _framework: poise::FrameworkContext<'_, Data, Error>,
+    framework: poise::FrameworkContext<'_, Data, Error>,
     user_data: &Data,
 ) -> Result<(), Error> {
     match event {
@@ -134,7 +139,7 @@ async fn event_event_handler(
                 let guild_id = guild.0;
                 db.create_config_entry(guild_id).await?;
                 let permissions = guild
-                    .member(ctx, _framework.bot_id)
+                    .member(ctx, framework.bot_id)
                     .await?
                     .permissions(ctx)?;
                 debug!("Permissions: \n{:#?}", permissions);
@@ -157,8 +162,9 @@ async fn event_event_handler(
             let user_id = new_message.author.id;
             let channel_id = new_message.channel_id;
 
-            // Filter any links contained in the message content
-            let content = new_message.content.split(' ');
+            // Split the message content on whitespace and new line char
+            let content = new_message.content.split(&[' ', '\n']);
+            // Filter on any links contained in the message content
             let links = content
                 .filter(|f| f.starts_with("https://") || f.starts_with("http://"))
                 .collect::<Vec<&str>>();
@@ -335,8 +341,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 
             ctx.send(|f| {
                 f.content(format!(
-                    "Bot needs the {} permission to perform this command.",
-                    missing_permissions
+                    "Bot needs the {missing_permissions} permission to perform this command."
                 ))
                 .ephemeral(true)
             })

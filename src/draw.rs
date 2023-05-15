@@ -51,7 +51,7 @@ fn to_png_buffer(card_buf: &[u8], width: u32, height: u32) -> Result<Vec<u8>, Im
     Ok(buf)
 }
 
-/// This struct contains informations that are printed on the top_card
+/// This struct contains informations that are printed on the `top_card`
 #[derive(Debug)]
 pub struct UserInfoCard {
     name: String,

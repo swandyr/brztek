@@ -103,34 +103,31 @@ pub async fn setcolor(
     let name = member.display_name();
     let role_name = format!("bot_color_{name}");
 
-    let colour = match hex_colour {
-        Some(hex) => {
-            if !(hex.len() == 7 && hex.starts_with('#')) {
-                ctx.say(format!("Color format should be \"#rrggbb\""))
-                    .await?;
-                return Ok(());
-            }
-
-            if !(hex[1..7].chars().all(|c| c.is_ascii_hexdigit())) {
-                ctx.say(format!("{} is not a valid color hex code.", hex))
-                    .await?;
-                return Ok(());
-            }
-
-            let r: u8 = u8::from_str_radix(&hex[1..3], 16)?;
-            let g: u8 = u8::from_str_radix(&hex[3..5], 16)?;
-            let b: u8 = u8::from_str_radix(&hex[5..7], 16)?;
-
-            serenity::Colour::from_rgb(r, g, b)
+    let colour = if let Some(hex) = hex_colour {
+        if !(hex.len() == 7 && hex.starts_with('#')) {
+            ctx.say("Color format should be \"#rrggbb\"".to_string())
+                .await?;
+            return Ok(());
         }
-        None => {
-            // User banner colour will be the colour of the role
-            let Some(colour) = ctx.http().get_user(user_id).await?.accent_colour else {
+
+        if !(hex[1..7].chars().all(|c| c.is_ascii_hexdigit())) {
+            ctx.say(format!("{hex} is not a valid color hex code."))
+                .await?;
+            return Ok(());
+        }
+
+        let r: u8 = u8::from_str_radix(&hex[1..3], 16)?;
+        let g: u8 = u8::from_str_radix(&hex[3..5], 16)?;
+        let b: u8 = u8::from_str_radix(&hex[5..7], 16)?;
+
+        serenity::Colour::from_rgb(r, g, b)
+    } else {
+        // User banner colour will be the colour of the role
+        let Some(colour) = ctx.http().get_user(user_id).await?.accent_colour else {
                 ctx.say("Cannot find banner color").await?;
                 return Ok(());
             };
-            colour
-        }
+        colour
     };
 
     info!("role_id: {:?}", role_id);
@@ -149,7 +146,7 @@ pub async fn setcolor(
                 role.name(role_name)
                     .colour(colour.0 as u64)
                     .permissions(serenity::Permissions::empty())
-                    .position(bot_role_position as u8 - 1)
+                    .position(u8::try_from(bot_role_position).unwrap() - 1)
             })
             .await?;
         info!("role_color created: {}", role.id.0);
@@ -175,7 +172,7 @@ const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song
 /// The bot will show what's now on BigRig, even if it isn't Dolly Parton.
 #[allow(dead_code)]
 #[instrument(skip(ctx))]
-#[poise::command(prefix_command, slash_command, category = "General")]
+#[poise::command(prefix_command, slash_command, category = "General", rename = "br")]
 pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
     #[derive(Debug, serde::Deserialize)]
     struct SongData {
