@@ -32,6 +32,7 @@ pub struct Data {
     pub db: Arc<Db>,
     // Hashmap<UserId, (selfshot_perc, timestamp)
     pub roulette_map: Arc<RwLock<HashMap<UserId, (u8, i64)>>>,
+    pub rff_star: Arc<RwLock<Option<(UserId, u8)>>>,
 }
 
 // ----------------------------------------- Main -----------------------------------------
@@ -70,6 +71,7 @@ async fn main() -> Result<(), Error> {
             commands::timeouts::tempscalme(),
             commands::timeouts::roulette(),
             commands::timeouts::statroulette(),
+            commands::timeouts::rffstar(),
             commands::timeouts::toproulette(),
             commands::timeouts::topvictims(),
             commands::timeouts::topbullies(),
@@ -106,6 +108,7 @@ async fn main() -> Result<(), Error> {
                 Ok(Data {
                     db: Arc::new(db),
                     roulette_map: Arc::new(RwLock::new(HashMap::new())),
+                    rff_star: Arc::new(RwLock::new(None)),
                 })
             })
         })

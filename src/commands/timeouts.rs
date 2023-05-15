@@ -151,6 +151,13 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
                 *tstamp = now;
             });
         }
+
+        //Check if is the new rff high score
+        let (_, highscore) = ctx.data().rff_star.read().unwrap().unwrap_or_default();
+        if *selfshot_perc > highscore {
+            let mut new_star = ctx.data().rff_star.write().unwrap();
+            *new_star = Some((author_id, *selfshot_perc));
+        }
     } else {
         // Get a random member
         let guild = ctx.guild().unwrap();
@@ -313,6 +320,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+/// Shows some statistics about the use of roulettes
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
@@ -343,6 +351,24 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
     );
     ctx.send(|b| b.embed(|f| f.title(member.display_name()).field("Stats", content, true)))
         .await?;
+
+    Ok(())
+}
+
+/// Who goes the highest before trigerring RFF ?
+#[instrument(skip(ctx))]
+#[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
+pub async fn rffstar(ctx: Context<'_>) -> Result<(), Error> {
+    let entry = *ctx.data().rff_star.read().unwrap();
+    if let Some((user_id, score)) = entry {
+        let mention = ctx.guild().unwrap().member(ctx, user_id).await?.mention();
+        ctx.say(format!(
+            ":muscle: :military_medal: {mention} is the RFF Star with {score}%."
+        ))
+        .await?;
+    } else {
+        ctx.say("Nobody has triggered the RFF yet.").await?;
+    }
 
     Ok(())
 }
