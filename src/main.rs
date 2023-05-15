@@ -69,6 +69,7 @@ async fn main() -> Result<(), Error> {
             commands::general::yt(),
             commands::timeouts::tempscalme(),
             commands::timeouts::roulette(),
+            commands::timeouts::statroulette(),
             commands::timeouts::toproulette(),
             commands::timeouts::topvictims(),
             commands::timeouts::topbullies(),
@@ -116,11 +117,11 @@ async fn main() -> Result<(), Error> {
 
 // ------------------------------------- Event handler -----------------------------------------
 
-#[instrument(skip(ctx, _framework, user_data))]
+#[instrument(skip(ctx, framework, user_data))]
 async fn event_event_handler(
     ctx: &serenity::Context,
     event: &poise::Event<'_>,
-    _framework: poise::FrameworkContext<'_, Data, Error>,
+    framework: poise::FrameworkContext<'_, Data, Error>,
     user_data: &Data,
 ) -> Result<(), Error> {
     match event {
@@ -135,7 +136,7 @@ async fn event_event_handler(
                 let guild_id = guild.0;
                 db.create_config_entry(guild_id).await?;
                 let permissions = guild
-                    .member(ctx, _framework.bot_id)
+                    .member(ctx, framework.bot_id)
                     .await?
                     .permissions(ctx)?;
                 debug!("Permissions: \n{:#?}", permissions);
@@ -337,8 +338,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 
             ctx.send(|f| {
                 f.content(format!(
-                    "Bot needs the {} permission to perform this command.",
-                    missing_permissions
+                    "Bot needs the {missing_permissions} permission to perform this command."
                 ))
                 .ephemeral(true)
             })

@@ -78,7 +78,7 @@ pub async fn tempscalme(
     Ok(())
 }
 
-const BASE_SELFSHOT_PERC: u8 = 1;
+const BASE_SELFSHOT_PERC: u8 = 5;
 
 /// Put random member in timeout for 60s
 ///
@@ -130,7 +130,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
         ctx.send(|m| {
             let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
-            let content = format!("**RFF activated at {}%, you're out.**", selfshot_perc);
+            let content = format!("**:man_police_officer: RFF activated at {selfshot_perc}%, you're out. :woman_police_officer:**");
             m.attachment(file).content(content)
         })
         .await?;
@@ -186,7 +186,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
                 m.attachment(serenity::AttachmentType::from((image.as_slice(), "kf.png")))
                     .content(
                         //"https://tenor.com/view/damn-punch-punching-oops-missed-punch-gif-12199143",
-                        "Ouch, looks like it hurts.",
+                        "Ouch, looks like it hurts. :sweat_smile:",
                     )
             })
             .await?;
@@ -204,14 +204,15 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
         // Increase author's selfshot_perc
         {
+            let inc = thread_rng().gen_range(2..11);
             let mut write = ctx.data().roulette_map.write().unwrap();
             write
                 .entry(author_id)
                 .and_modify(|(perc, tstamp)| {
-                    *perc += thread_rng().gen_range(2..7);
+                    *perc += inc;
                     *tstamp = now;
                 })
-                .or_insert((BASE_SELFSHOT_PERC + 5, now));
+                .or_insert((BASE_SELFSHOT_PERC + inc, now));
         }
     }
 
@@ -272,8 +273,7 @@ async fn timeout_member(
 
 /// Roulette Leaderboard
 ///
-/// Alone, it will show the top 10 users and top 10 targets
-/// Specify a @user to show his top 10 targets
+/// Shows the top 10 users and top 10 targets of the server
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
@@ -285,7 +285,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
     let mut callers_map = HashMap::new();
     let mut targets_map = HashMap::new();
 
-    scores.iter().for_each(|(caller, target)| {
+    for (caller, target) in scores.iter() {
         callers_map
             .entry(*caller)
             .and_modify(|x| *x += 1)
@@ -294,7 +294,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
             .entry(*target)
             .and_modify(|x| *x += 1)
             .or_insert(1);
-    });
+    }
 
     // Process maps
     let callers_field = process_users_map(&ctx, guild_id, callers_map).await?;
@@ -315,7 +315,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
 
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
-pub async fn rlstats(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
+pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
     let member = member.unwrap_or(ctx.author_member().await.unwrap().into_owned());
     let member_id = member.user.id;
@@ -334,11 +334,11 @@ pub async fn rlstats(ctx: Context<'_>, member: Option<Member>) -> Result<(), Err
         .count();
     let member_reverse_perc = {
         let map = ctx.data().roulette_map.read().unwrap();
-        map.get(&member_id).unwrap().0
+        map.get(&member_id).unwrap_or(&(BASE_SELFSHOT_PERC, 0)).0
     };
 
     let content = format!(
-        "Total roulettes: {}\nTotal selfshots: {}\nReverse chance: {}",
+        "{} roulettes\n{} selfshots\n{}% chance of RFF",
         total_member_shots, total_member_selfshots, member_reverse_perc
     );
     ctx.send(|b| b.embed(|f| f.title(member.display_name()).field("Stats", content, true)))
@@ -348,6 +348,8 @@ pub async fn rlstats(ctx: Context<'_>, member: Option<Member>) -> Result<(), Err
 }
 
 /// Top 10 victims
+///
+/// Set @member if you want to see the stats of another member
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn topvictims(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
@@ -379,6 +381,8 @@ pub async fn topvictims(ctx: Context<'_>, member: Option<Member>) -> Result<(), 
 }
 
 /// Top 10 bullies
+///
+/// Set @member if you want to see the stats of another member
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn topbullies(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {

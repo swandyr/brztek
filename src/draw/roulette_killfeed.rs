@@ -79,7 +79,7 @@ pub fn gen_killfeed(user_1: &str, user_2: &str, kind: ShotKind) -> anyhow::Resul
 
     let user_2_layout = text_layout_with_max_size(
         &mut text,
-        font.clone(),
+        font,
         colors.white,
         user_2,
         (COLOR_RECT_WIDTH - 4) as f64,
@@ -113,7 +113,7 @@ fn text_layout_with_max_size(
 ) -> CairoTextLayout {
     let mut font_height = 25.0;
 
-    let text_layout = loop {
+    loop {
         let layout = text
             .new_text_layout(string.to_owned())
             .font(font.clone(), font_height)
@@ -127,9 +127,7 @@ fn text_layout_with_max_size(
         }
 
         break layout;
-    };
-
-    text_layout
+    }
 }
 
 #[test]
