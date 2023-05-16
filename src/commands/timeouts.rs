@@ -78,7 +78,7 @@ pub async fn tempscalme(
     Ok(())
 }
 
-const BASE_SELFSHOT_PERC: u8 = 5;
+const BASE_RFF_PERC: u8 = 5;
 
 /// Put random member in timeout for 60s
 ///
@@ -89,7 +89,7 @@ const BASE_SELFSHOT_PERC: u8 = 5;
     prefix_command,
     guild_only,
     required_bot_permissions = "MODERATE_MEMBERS",
-    category = "Timeouts",
+    category = "Roulette",
     //subcommands("top", "victims", "bullies")
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
@@ -102,7 +102,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
     let db = &ctx.data().db;
 
-    let selfshot_check = thread_rng().gen_range(1..=100);
+    let rff_check = thread_rng().gen_range(1..=100);
 
     let mut entry = {
         let read = ctx.data().roulette_map.read().unwrap();
@@ -114,12 +114,12 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         author.display_name(),
         entry
     );
-    let (selfshot_perc, _timestamp) = entry.get_or_insert((BASE_SELFSHOT_PERC, now));
+    let (rff_user_chance, _timestamp) = entry.get_or_insert((BASE_RFF_PERC, now));
 
     //TODO: reset under a certain period of time ?
 
-    // Author is self timed out if the random selfshot_check number is below the author's selfshot_perc
-    if selfshot_check < *selfshot_perc {
+    // Author is self timed out if the random rff_check number is below the author's rff_user_chance
+    if rff_check < *rff_user_chance {
         info!("Selfshot check not passed for {}", author.display_name());
         // Returns error if the bot cannot timeout_member, usually because he has administrator status
         let timeout_result = timeout_member(ctx, &mut author, time).await;
@@ -130,7 +130,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
         ctx.send(|m| {
             let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
-            let content = format!("**:man_police_officer: RFF activated at {selfshot_perc}%, you're out. :woman_police_officer:**");
+            let content = format!("**:man_police_officer: RFF activated at {rff_user_chance}%, you're out. :woman_police_officer:**");
             m.attachment(file).content(content)
         })
         .await?;
@@ -147,16 +147,16 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         {
             let mut write = ctx.data().roulette_map.write().unwrap();
             write.entry(author_id).and_modify(|(perc, tstamp)| {
-                *perc = 5;
+                *perc = BASE_RFF_PERC;
                 *tstamp = now;
             });
         }
 
         //Check if is the new rff high score
-        let (_, highscore) = ctx.data().rff_star.read().unwrap().unwrap_or_default();
-        if *selfshot_perc > highscore {
-            let mut new_star = ctx.data().rff_star.write().unwrap();
-            *new_star = Some((author_id, *selfshot_perc));
+        let (_, max_rff_registered) = ctx.data().rff_star.read().unwrap().unwrap_or_default();
+        if *rff_user_chance > max_rff_registered {
+            let mut rff_star = ctx.data().rff_star.write().unwrap();
+            *rff_star = Some((author_id, *rff_user_chance));
         }
     } else {
         // Get a random member
@@ -209,17 +209,17 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             .await?;
         }
 
-        // Increase author's selfshot_perc
+        // Increase author's rff_user_chance
         {
             let inc = thread_rng().gen_range(2..11);
             let mut write = ctx.data().roulette_map.write().unwrap();
             write
                 .entry(author_id)
-                .and_modify(|(perc, tstamp)| {
-                    *perc += inc;
+                .and_modify(|(rff_perc, tstamp)| {
+                    *rff_perc += inc;
                     *tstamp = now;
                 })
-                .or_insert((BASE_SELFSHOT_PERC + inc, now));
+                .or_insert((BASE_RFF_PERC + inc, now));
         }
     }
 
@@ -340,14 +340,14 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
         .iter()
         .filter(|score| score.1 == member_id.0)
         .count();
-    let member_reverse_perc = {
+    let member_rff_perc = {
         let map = ctx.data().roulette_map.read().unwrap();
-        map.get(&member_id).unwrap_or(&(BASE_SELFSHOT_PERC, 0)).0
+        map.get(&member_id).unwrap_or(&(BASE_RFF_PERC, 0)).0
     };
 
     let content = format!(
         "{} roulettes\n{} selfshots\n{}% chance of RFF",
-        total_member_shots, total_member_selfshots, member_reverse_perc
+        total_member_shots, total_member_selfshots, member_rff_perc
     );
     ctx.send(|b| b.embed(|f| f.title(member.display_name()).field("Stats", content, true)))
         .await?;
