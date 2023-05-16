@@ -32,7 +32,7 @@ pub async fn tempscalme(
     #[description = "Timeout duration (default: 60s)"] duration: Option<i64>,
 ) -> Result<(), Error> {
     // Cancel timeout
-    if let Some(0) = duration {
+    if duration == Some(0) {
         member.enable_communication(ctx).await?;
 
         ctx.say(format!("{} timeout cancelled!", member.mention()))

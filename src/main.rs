@@ -238,7 +238,7 @@ async fn event_event_handler(
                 let last_log = audit_logs.entries.first().unwrap();
 
                 // if last action is the kick of the user, change message content accordingly
-                if let Action::Member(MemberAction::Kick) = last_log.action {
+                if matches!(last_log.action, Action::Member(MemberAction::Kick)) {
                     if let Some(target_id) = last_log.target_id {
                         if target_id == user.id.0 {
                             content = format!("**{username}** has got his ass out of here!");
