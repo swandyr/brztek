@@ -1,7 +1,9 @@
-use super::xp::{rand_xp_points, total_xp_required_for_level};
 use time::OffsetDateTime;
 
-use crate::utils::config::XpSettings;
+use super::{
+    xp_func::{rand_xp_points, total_xp_required_for_level},
+    DELAY_ANTI_SPAM, MAX_XP_GAIN, MIN_XP_GAIN,
+};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct UserLevel {
@@ -23,14 +25,14 @@ impl UserLevel {
         }
     }
 
-    pub fn gain_xp_if_not_spam(&mut self, xp_settings: XpSettings) -> bool {
+    pub fn gain_xp_if_not_spam(&mut self) -> bool {
         // Check the time between last and new message.
         // Return true if below anti_spam setting,
         // else false without adding xp
         let now: i64 = OffsetDateTime::now_utc().unix_timestamp();
-        if now - self.last_message > xp_settings.delay_anti_spam {
+        if now - self.last_message > DELAY_ANTI_SPAM {
             self.last_message = now;
-            self.xp += rand_xp_points(xp_settings.min_xp_gain, xp_settings.max_xp_gain);
+            self.xp += rand_xp_points(MIN_XP_GAIN, MAX_XP_GAIN);
             true
         } else {
             false

@@ -2,7 +2,11 @@ use poise::serenity_prelude::{self as serenity, CacheHttp};
 use std::time::Instant;
 use tracing::{debug, info, instrument};
 
-use crate::draw::{rank_card, top_card, UserInfoCard, DEFAULT_PP_TESSELATION_VIOLET};
+use super::{
+    draw::{self, UserInfoCard},
+    queries, DEFAULT_PP_TESSELATION_VIOLET,
+};
+
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -33,7 +37,8 @@ pub async fn rank(
     let guild_id = member.guild_id.0;
 
     // Get user from database
-    let user_level = ctx.data().db.get_user(user_id, guild_id).await?;
+    let db = &ctx.data().db;
+    let user_level = queries::get_user(db, user_id, guild_id).await?;
 
     // Get user info to display on the card
     //let username = format!("{}#{}", ctx.author().name, ctx.author().discriminator);
@@ -48,11 +53,10 @@ pub async fn rank(
         let url = clean_url(url);
         debug!("avatar url: {url}");
         let bytes = reqwest::get(&url).await?.bytes().await?;
-        info!("Received avater from {url}");
+        info!("Received avatar from {url}");
         image::load_from_memory(&bytes)?
     } else {
-        let default_file = DEFAULT_PP_TESSELATION_VIOLET;
-        let bytes = std::fs::read(default_file)?;
+        let bytes = std::fs::read(DEFAULT_PP_TESSELATION_VIOLET)?;
         info!("Loaded defaut avatar");
         image::load_from_memory(&bytes)?
     };
@@ -75,7 +79,7 @@ pub async fn rank(
 
     // Generate the card
     let t_1 = Instant::now();
-    let image = rank_card::gen_user_card(user_info, (image_width, image_height, &image_buf))?;
+    let image = draw::gen_user_card(user_info, (image_width, image_height, &image_buf))?;
     info!("Rank card generated in {} µs", t_1.elapsed().as_micros());
 
     let t_1 = Instant::now();
@@ -114,7 +118,8 @@ pub async fn top(
     };
 
     // Get a vec of all users in database
-    let mut all_users = ctx.data().db.get_all_users(guild_id).await?;
+    let db = &ctx.data().db;
+    let mut all_users = queries::get_all_users(db, guild_id).await?;
 
     // Sort all users by rank
     all_users.sort_by(|a, b| a.rank.cmp(&b.rank));
@@ -140,7 +145,7 @@ pub async fn top(
     }
 
     // Generate card
-    let image = top_card::gen_top_card(&top_users, &guild_name).await?;
+    let image = draw::gen_top_card(&top_users, &guild_name).await?;
 
     // Send generated file
     ctx.send(|b| {

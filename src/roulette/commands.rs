@@ -5,80 +5,18 @@ use poise::serenity_prelude::{Guild, Member, Mentionable};
 use rand::{prelude::thread_rng, Rng};
 use tracing::{debug, info, instrument};
 
-use crate::utils::db::Db;
-use crate::{
-    draw::roulette_killfeed::{gen_killfeed, ShotKind},
-    Data,
-};
+use super::{draw, queries, BASE_RFF_PERC};
+use crate::{Data, Db};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
-/// Timeout a member
-///
-/// Usage: /tempscalme <@User> <duration (default 60)>
-/// duration = 0 to disable timeout
-#[instrument(skip(ctx))]
-#[poise::command(
-    slash_command,
-    //required_permissions = "MODERATE_MEMBERS",
-    required_bot_permissions = "MODERATE_MEMBERS",
-    guild_only,
-    category = "Timeouts"
-)]
-pub async fn tempscalme(
-    ctx: Context<'_>,
-    #[description = "User to put in timeout"] mut member: serenity::Member,
-    #[description = "Timeout duration (default: 60s)"] duration: Option<i64>,
-) -> Result<(), Error> {
-    // Cancel timeout
-    if let Some(0) = duration {
-        member.enable_communication(ctx).await?;
-
-        ctx.say(format!("{} timeout cancelled!", member.mention()))
-            .await?;
-        info!("timeout cancel");
-
-        return Ok(());
-    }
-
-    let now = serenity::Timestamp::now().unix_timestamp();
-    let timeout_timestamp = now + duration.unwrap_or(60);
-    let time = serenity::Timestamp::from_unix_timestamp(timeout_timestamp)?;
-
-    match member.communication_disabled_until {
-        // If to_timestamp > 0, member is already timed out
-        Some(to_timestamp) if to_timestamp.unix_timestamp() > now => {
-            debug!("to: {} - now: {}", to_timestamp.unix_timestamp(), now);
-            info!("already timed out until {}", to_timestamp.naive_local());
-            ctx.say(format!(
-                "{} is already timed out until {}",
-                member.mention(),
-                to_timestamp.naive_local()
-            ))
-            .await?;
-        }
-        _ => {
-            timeout_member(ctx, &mut member, time).await?;
-
-            ctx.say(format!(
-                "{} timed out until {}",
-                member.mention(),
-                time.naive_local(),
-            ))
-            .await?;
-            info!(
-                "{} timed out until {}",
-                member.display_name(),
-                time.naive_local()
-            );
-        }
-    }
-
-    Ok(())
+#[derive(Debug)]
+pub enum ShotKind {
+    Normal,
+    SelfShot,
+    Reverse,
 }
-
-const BASE_SELFSHOT_PERC: u8 = 5;
 
 /// Put random member in timeout for 60s
 ///
@@ -89,8 +27,7 @@ const BASE_SELFSHOT_PERC: u8 = 5;
     prefix_command,
     guild_only,
     required_bot_permissions = "MODERATE_MEMBERS",
-    category = "Timeouts",
-    //subcommands("top", "victims", "bullies")
+    category = "Roulette"
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     let mut author = ctx.author_member().await.unwrap().into_owned();
@@ -102,7 +39,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
     let db = &ctx.data().db;
 
-    let selfshot_check = thread_rng().gen_range(1..=100);
+    let rff_check = thread_rng().gen_range(1..=100);
 
     let mut entry = {
         let read = ctx.data().roulette_map.read().unwrap();
@@ -114,12 +51,12 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         author.display_name(),
         entry
     );
-    let (selfshot_perc, _timestamp) = entry.get_or_insert((BASE_SELFSHOT_PERC, now));
+    let (rff_user_chance, _timestamp) = entry.get_or_insert((BASE_RFF_PERC, now));
 
     //TODO: reset under a certain period of time ?
 
-    // Author is self timed out if the random selfshot_check number is below the author's selfshot_perc
-    if selfshot_check < *selfshot_perc {
+    // Author is self timed out if the random rff_check number is below the author's rff_user_chance
+    if rff_check < *rff_user_chance {
         info!("Selfshot check not passed for {}", author.display_name());
         // Returns error if the bot cannot timeout_member, usually because he has administrator status
         let timeout_result = timeout_member(ctx, &mut author, time).await;
@@ -130,7 +67,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
         ctx.send(|m| {
             let file = serenity::AttachmentType::from((image.as_slice(), "kf.png"));
-            let content = format!("**:man_police_officer: RFF activated at {selfshot_perc}%, you're out. :woman_police_officer:**");
+            let content = format!("**:man_police_officer: RFF activated at {rff_user_chance}%, you're out. :woman_police_officer:**");
             m.attachment(file).content(content)
         })
         .await?;
@@ -147,16 +84,16 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         {
             let mut write = ctx.data().roulette_map.write().unwrap();
             write.entry(author_id).and_modify(|(perc, tstamp)| {
-                *perc = 5;
+                *perc = BASE_RFF_PERC;
                 *tstamp = now;
             });
         }
 
         //Check if is the new rff high score
-        let (_, highscore) = ctx.data().rff_star.read().unwrap().unwrap_or_default();
-        if *selfshot_perc > highscore {
+        let (_, max_rff_registered) = ctx.data().rff_star.read().unwrap().unwrap_or_default();
+        if *rff_user_chance > max_rff_registered {
             let mut new_star = ctx.data().rff_star.write().unwrap();
-            *new_star = Some((author_id, *selfshot_perc));
+            *new_star = Some((author_id, *rff_user_chance));
         }
     } else {
         // Get a random member
@@ -209,17 +146,17 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             .await?;
         }
 
-        // Increase author's selfshot_perc
+        // Increase author's rff_user_chance
         {
             let inc = thread_rng().gen_range(2..11);
             let mut write = ctx.data().roulette_map.write().unwrap();
             write
                 .entry(author_id)
-                .and_modify(|(perc, tstamp)| {
-                    *perc += inc;
+                .and_modify(|(rff_perc, tstamp)| {
+                    *rff_perc += inc;
                     *tstamp = now;
                 })
-                .or_insert((BASE_SELFSHOT_PERC + inc, now));
+                .or_insert((BASE_RFF_PERC + inc, now));
         }
     }
 
@@ -238,7 +175,8 @@ async fn record_roulette(
     let author_id = author.user.id;
     let target_id = target.user.id;
 
-    db.add_roulette_result(
+    queries::add_roulette_result(
+        db,
         guild_id,
         timestamp,
         *author_id.as_u64(),
@@ -262,7 +200,7 @@ async fn gen_roulette_image(
         .display_name()
         .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
 
-    gen_killfeed(&author_name, &target_name, kind)
+    draw::gen_killfeed(&author_name, &target_name, kind)
 }
 
 #[instrument(skip(ctx))]
@@ -287,7 +225,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
 
     let db = &ctx.data().db;
-    let scores = db.get_roulette_scores(guild_id).await?;
+    let scores = queries::get_roulette_scores(db, guild_id).await?;
 
     let mut callers_map = HashMap::new();
     let mut targets_map = HashMap::new();
@@ -329,7 +267,7 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
     let member_id = member.user.id;
 
     let db = &ctx.data().db;
-    let scores = db.get_roulette_scores(guild_id).await?;
+    let scores = queries::get_roulette_scores(db, guild_id).await?;
 
     let member_scores = scores
         .into_iter()
@@ -340,14 +278,14 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
         .iter()
         .filter(|score| score.1 == member_id.0)
         .count();
-    let member_reverse_perc = {
+    let member_rff_perc = {
         let map = ctx.data().roulette_map.read().unwrap();
-        map.get(&member_id).unwrap_or(&(BASE_SELFSHOT_PERC, 0)).0
+        map.get(&member_id).unwrap_or(&(BASE_RFF_PERC, 0)).0
     };
 
     let content = format!(
         "{} roulettes\n{} selfshots\n{}% chance of RFF",
-        total_member_shots, total_member_selfshots, member_reverse_perc
+        total_member_shots, total_member_selfshots, member_rff_perc
     );
     ctx.send(|b| b.embed(|f| f.title(member.display_name()).field("Stats", content, true)))
         .await?;
@@ -384,7 +322,7 @@ pub async fn topvictims(ctx: Context<'_>, member: Option<Member>) -> Result<(), 
     let member_id = member.user.id.0;
 
     let db = &ctx.data().db;
-    let scores = db.get_roulette_scores(guild_id).await?;
+    let scores = queries::get_roulette_scores(db, guild_id).await?;
 
     let mut targets_map = HashMap::new();
     scores
@@ -417,7 +355,7 @@ pub async fn topbullies(ctx: Context<'_>, member: Option<Member>) -> Result<(), 
     let member_id = member.user.id.0;
 
     let db = &ctx.data().db;
-    let scores = db.get_roulette_scores(guild_id).await?;
+    let scores = queries::get_roulette_scores(db, guild_id).await?;
 
     let mut bullies_map = HashMap::new();
     scores
