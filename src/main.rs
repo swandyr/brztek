@@ -1,7 +1,9 @@
-mod commands;
-mod draw;
+mod admin;
+mod builtins;
+mod db;
 mod levels;
-mod utils;
+mod misc;
+mod roulette;
 
 use clearurl::clear_url;
 use poise::serenity_prelude::{
@@ -19,7 +21,7 @@ use std::{
 use tracing::{debug, error, info, instrument, warn};
 use tracing_subscriber::EnvFilter;
 
-use utils::db::Db;
+use db::Db;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 // type Context<'a> = poise::Context<'a, Data, Error>;
@@ -60,25 +62,24 @@ async fn main() -> Result<(), Error> {
 
     let options = poise::FrameworkOptions {
         commands: vec![
-            commands::register(),
-            commands::help(),
-            commands::general::ping(),
-            commands::general::learn(),
-            commands::general::learned(),
-            commands::general::bigrig(),
-            commands::general::setcolor(),
-            commands::general::yt(),
-            commands::timeouts::tempscalme(),
-            commands::timeouts::roulette(),
-            commands::timeouts::statroulette(),
-            commands::timeouts::rffstar(),
-            commands::timeouts::toproulette(),
-            commands::timeouts::topvictims(),
-            commands::timeouts::topbullies(),
-            commands::levels::rank(),
-            commands::levels::top(),
-            commands::admin::admin(),
-            commands::admin::import_mee6_levels(),
+            admin::commands::admin(),
+            admin::commands::import_mee6_levels(),
+            builtins::help(),
+            builtins::register(),
+            levels::commands::rank(),
+            levels::commands::top(),
+            misc::commands::bigrig(),
+            misc::commands::learn(),
+            misc::commands::learned(),
+            misc::commands::ping(),
+            misc::commands::setcolor(),
+            misc::commands::yt(),
+            roulette::commands::rffstar(),
+            roulette::commands::roulette(),
+            roulette::commands::statroulette(),
+            roulette::commands::toproulette(),
+            roulette::commands::topvictims(),
+            roulette::commands::topbullies(),
         ],
         event_handler: |ctx, event, framework, user_data| {
             Box::pin(event_event_handler(ctx, event, framework, user_data))
@@ -186,7 +187,8 @@ async fn event_event_handler(
             }
 
             // User gains xp on message
-            levels::handle_message_xp(ctx, user_data, &guild_id, &channel_id, &user_id).await?;
+            levels::handle_message::add_xp(ctx, user_data, &guild_id, &channel_id, &user_id)
+                .await?;
 
             info!("Message processed in: {} µs", t_0.elapsed().as_micros());
         }
@@ -200,16 +202,16 @@ async fn event_event_handler(
                 .get(index)
                 .unwrap_or(&"Welcome $user")
                 .replace("$user", &format!("{mention}"));
-            let guild_id = new_member.guild_id.0;
 
-            let channel_id = user_data.db.get_pub_channel_id(guild_id).await?;
-            if let Some(id) = channel_id {
-                ctx.cache
-                    .guild_channel(id)
-                    .unwrap()
-                    .send_message(&ctx.http, |m| m.content(content))
-                    .await?;
-            }
+            let system_channel_id = new_member
+                .guild_id
+                .to_guild_cached(&ctx)
+                .unwrap()
+                .system_channel_id
+                .unwrap();
+            system_channel_id
+                .send_message(&ctx.http, |m| m.content(content))
+                .await?;
         }
 
         poise::Event::GuildMemberRemoval {
@@ -221,11 +223,15 @@ async fn event_event_handler(
             //let mut content = format!("RIP **{username}**, you'll be missed");
             let mut content = format!("✝️ RIP en paix **{username}** , un 👼 parti trop tôt 🕯️");
 
-            let channel_id = user_data.db.get_pub_channel_id(guild_id.0).await?;
+            let system_channel_id = guild_id
+                .to_guild_cached(&ctx)
+                .unwrap()
+                .system_channel_id
+                .unwrap();
 
             // if bot can read audit logs
             if guild_id
-                .to_guild_cached(&ctx.cache)
+                .to_guild_cached(&ctx)
                 .unwrap()
                 .role_by_name("brztek")
                 .unwrap()
@@ -238,7 +244,7 @@ async fn event_event_handler(
                 let last_log = audit_logs.entries.first().unwrap();
 
                 // if last action is the kick of the user, change message content accordingly
-                if let Action::Member(MemberAction::Kick) = last_log.action {
+                if matches!(last_log.action, Action::Member(MemberAction::Kick)) {
                     if let Some(target_id) = last_log.target_id {
                         if target_id == user.id.0 {
                             content = format!("**{username}** has got his ass out of here!");
@@ -247,13 +253,9 @@ async fn event_event_handler(
                 }
             }
 
-            if let Some(id) = channel_id {
-                ctx.cache
-                    .guild_channel(id)
-                    .unwrap()
-                    .send_message(&ctx.http, |m| m.content(content))
-                    .await?;
-            }
+            system_channel_id
+                .send_message(&ctx.http, |m| m.content(content))
+                .await?;
         }
         _ => {}
     }
@@ -291,12 +293,12 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             framework,
             ..
         } => {
-            // Check in database if it's a learned command
+            // On unknown command, it will firt queries the database to check for correspondant
+            // entry in the learned table for a user's registered command
             let db = &framework.user_data.db;
             let guild_id = msg.guild_id.unwrap().0;
 
-            let queried = db
-                .get_learned(msg_content, guild_id)
+            let queried = misc::queries::get_learned(db, msg_content, guild_id)
                 .await
                 .expect("Query learned_command returned with error");
             if let Some(link) = queried {

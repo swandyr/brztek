@@ -1,3 +1,4 @@
+use image::{ImageEncoder, ImageError, RgbaImage};
 use piet_common::{
     kurbo::{Point, Rect, Size},
     CairoText, CairoTextLayout, Color, Device, FontFamily, Image, ImageFormat, InterpolationMode,
@@ -5,7 +6,38 @@ use piet_common::{
 };
 use tracing::{debug, info, instrument};
 
-use super::{to_png_buffer, Colors, KILLFEED_FONT};
+use super::commands::ShotKind;
+
+const KILLFEED_FONT: &str = "Coolvetica"; // Font needs to be installed on the system (https://www.dafont.com/akira-expanded.font)
+
+#[derive(Debug, Clone, Copy)]
+struct Colors {
+    white: Color,
+    // kf_orange: Color,
+    // kf_blue: Color,
+}
+
+impl Default for Colors {
+    fn default() -> Self {
+        Self {
+            white: Color::rgba8(0xdc, 0xdc, 0xdc, 0xff),
+            // kf_orange: Color::rgba8(0xf3, 0x73, 0x20, 0xff),
+            // kf_blue: Color::rgba8(0x1b, 0x91, 0xf0, 0xff),
+        }
+    }
+}
+
+#[instrument]
+fn to_png_buffer(card_buf: &[u8], width: u32, height: u32) -> Result<Vec<u8>, ImageError> {
+    let img = RgbaImage::from_vec(width, height, card_buf.to_vec()).unwrap();
+    let mut buf = Vec::new();
+    let encoder = image::codecs::png::PngEncoder::new(&mut buf);
+    encoder.write_image(&img, width, height, image::ColorType::Rgba8)?;
+
+    Ok(buf)
+}
+
+////////////////////////////////////////////////////////////////////////////
 
 const TEMPLATE_NORMAL_PATH: &str = "assets/images/killfeed.png";
 const TEMPLATE_REVERSE_PATH: &str = "assets/images/killfeed_reverse.png";
@@ -13,13 +45,6 @@ const TEMPLATE_SELF_PATH: &str = "assets/images/killfeed_self.png";
 const HEIGHT: usize = 32;
 const WIDTH: usize = 395;
 const COLOR_RECT_WIDTH: usize = 156;
-
-#[derive(Debug)]
-pub enum ShotKind {
-    Normal,
-    SelfShot,
-    Reverse,
-}
 
 #[instrument]
 pub fn gen_killfeed(user_1: &str, user_2: &str, kind: ShotKind) -> anyhow::Result<Vec<u8>> {

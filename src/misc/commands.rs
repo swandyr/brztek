@@ -2,6 +2,7 @@ use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{CacheHttp, RoleId};
 use tracing::{info, instrument};
 
+use super::{queries, BIGRIG_CURRENT_URL};
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -13,7 +14,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 ///
 /// He'll pong you back.
 #[instrument(skip(ctx))]
-#[poise::command(prefix_command, slash_command, category = "General")]
+#[poise::command(prefix_command, slash_command, category = "Misc")]
 pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("Pong!").await?;
     Ok(())
@@ -24,15 +25,16 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
 /// Save a named command with a link the bot will post when responding
 /// to the command.
 #[instrument(skip(ctx))]
-#[poise::command(prefix_command, slash_command, guild_only, category = "General")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Misc")]
 pub async fn learn(
     ctx: Context<'_>,
     #[description = "Name"] name: String,
     #[description = "Link"] link: String,
 ) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
+    let db = &ctx.data().db;
 
-    ctx.data().db.set_learned(&name, &link, guild_id).await?;
+    queries::set_learned(db, &name, &link, guild_id).await?;
 
     ctx.say(format!("I know {name}")).await?;
 
@@ -43,11 +45,12 @@ pub async fn learn(
 ///
 /// List all learned command names.
 #[instrument(skip(ctx))]
-#[poise::command(prefix_command, slash_command, guild_only, category = "General")]
+#[poise::command(prefix_command, slash_command, guild_only, category = "Misc")]
 pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
+    let db = &ctx.data().db;
 
-    let commands = ctx.data().db.get_learned_list(guild_id).await?;
+    let commands = queries::get_learned_list(db, guild_id).await?;
 
     let mut content = String::from(">>> List of learned commands: \n");
     let mut content_len = content.len();
@@ -55,7 +58,7 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
         let line = format!("  - {command}\n");
         content_len += line.len();
 
-        if content_len <= 2000 {
+        if content_len <= serenity::constants::MESSAGE_CODE_LIMIT {
             // Limit of character accepted in a discord message
             content.push_str(&line);
         } else {
@@ -85,7 +88,7 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     guild_only,
     required_bot_permissions = "MANAGE_ROLES",
     ephemeral,
-    category = "General"
+    category = "Misc"
 )]
 pub async fn setcolor(
     ctx: Context<'_>,
@@ -97,7 +100,7 @@ pub async fn setcolor(
     let guild_id = guild.id.0;
     let mut member = ctx.author_member().await.unwrap();
     let user_id = member.user.id.0;
-    let role_id = db.get_role_color(guild_id, user_id).await?;
+    let role_id = queries::get_role_color(db, guild_id, user_id).await?;
 
     // Member display name will be the name of the role
     let name = member.display_name();
@@ -156,7 +159,7 @@ pub async fn setcolor(
         info!("role added to user");
 
         let role_id = role.id.0;
-        db.set_role_color(guild_id, user_id, role_id).await?;
+        queries::set_role_color(db, guild_id, user_id, role_id).await?;
     }
 
     ctx.send(|b| b.reply(true).content("Done!")).await?;
@@ -164,15 +167,12 @@ pub async fn setcolor(
     Ok(())
 }
 
-const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song/current";
-//const BIGRIG_RECENT_URL: &str = https://brfm.radiocloud.pro/api/public/v1/song/recent
-
 /// Check if Jolene is playing on BigRig FM
 ///
 /// The bot will show what's now on BigRig, even if it isn't Dolly Parton.
 #[allow(dead_code)]
 #[instrument(skip(ctx))]
-#[poise::command(prefix_command, slash_command, category = "General", rename = "br")]
+#[poise::command(prefix_command, slash_command, category = "Misc", rename = "br")]
 pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
     #[derive(Debug, serde::Deserialize)]
     struct SongData {
@@ -223,7 +223,7 @@ pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
 /// It requests the Invidious API to get the video Id to avoid the need of a Google API Key.
 /// The link posted is Youtube though.
 #[instrument(skip(ctx))]
-#[poise::command(prefix_command, slash_command, category = "General")]
+#[poise::command(prefix_command, slash_command, category = "Misc")]
 pub async fn yt(
     ctx: Context<'_>,
     #[rest]
