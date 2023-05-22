@@ -56,7 +56,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     //TODO: reset under a certain period of time ?
 
     // Author is self timed out if the random rff_check number is below the author's rff_user_chance
-    if rff_check < *rff_user_chance {
+    if rff_check <= *rff_user_chance {
         info!("Selfshot check not passed for {}", author.display_name());
         // Returns error if the bot cannot timeout_member, usually because he has administrator status
         let timeout_result = timeout_member(ctx, &mut author, time).await;
@@ -153,7 +153,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             write
                 .entry(author_id)
                 .and_modify(|(rff_perc, tstamp)| {
-                    *rff_perc += inc;
+                    *rff_perc.clamp(&mut 0, &mut 100) += inc;
                     *tstamp = now;
                 })
                 .or_insert((BASE_RFF_PERC + inc, now));
