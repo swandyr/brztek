@@ -1,5 +1,5 @@
 use poise::serenity_prelude::{self as serenity, CacheHttp};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tracing::{debug, info, instrument};
 
 use super::{
