@@ -1,5 +1,5 @@
 use poise::serenity_prelude::{self as serenity, CacheHttp};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tracing::{debug, info, instrument};
 
 use super::{
@@ -107,6 +107,8 @@ pub async fn top(
     #[max = 30]
     number: Option<usize>,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
+
     let number = number.unwrap_or(10);
 
     // Ensure the message was sent from a guild
