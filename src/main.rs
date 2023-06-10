@@ -172,7 +172,7 @@ async fn event_event_handler(
             for link in links {
                 if let Some(cleaned) = clear_url(link).await? {
                     // Send message with cleaned url
-                    let content = format!("Cleaned tha shit for you\n{cleaned}");
+                    let content = format!("Cleaned that shit for you\n{cleaned}");
                     channel_id.say(ctx, content).await?;
 
                     // Delete embeds in original message
