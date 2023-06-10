@@ -230,7 +230,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
     let mut callers_map = HashMap::new();
     let mut targets_map = HashMap::new();
 
-    for (caller, target) in scores.iter() {
+    for (caller, target) in &scores {
         callers_map
             .entry(*caller)
             .and_modify(|x| *x += 1)

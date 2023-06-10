@@ -204,7 +204,7 @@ async fn event_event_handler(
 
             let system_channel_id = new_member
                 .guild_id
-                .to_guild_cached(&ctx)
+                .to_guild_cached(ctx)
                 .unwrap()
                 .system_channel_id
                 .unwrap();
@@ -223,14 +223,14 @@ async fn event_event_handler(
             let mut content = format!("✝️ RIP en paix **{username}** , un 👼 parti trop tôt 🕯️");
 
             let system_channel_id = guild_id
-                .to_guild_cached(&ctx)
+                .to_guild_cached(ctx)
                 .unwrap()
                 .system_channel_id
                 .unwrap();
 
             // if bot can read audit logs
             if guild_id
-                .to_guild_cached(&ctx)
+                .to_guild_cached(ctx)
                 .unwrap()
                 .role_by_name("brztek")
                 .unwrap()

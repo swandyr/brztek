@@ -15,7 +15,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 // Change .webp extension to .png and remove parameters from URL
 fn clean_url(mut url: String) -> String {
     if let Some(index) = url.find("webp") {
-        let _ = url.split_off(index);
+        let _: String = url.split_off(index);
         url.push_str("png?size=96"); // Ensure the size of the image to be at max 96x96
     }
     url
