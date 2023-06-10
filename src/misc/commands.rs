@@ -55,7 +55,7 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
     let mut content = String::from(">>> List of learned commands: \n");
     let mut content_len = content.len();
     for command in commands {
-        let line = format!("  - {command}\n");
+        let line = format!("- {command}\n");
         content_len += line.len();
 
         if content_len <= serenity::constants::MESSAGE_CODE_LIMIT {
