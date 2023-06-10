@@ -14,7 +14,7 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 /// Remove tracking elements from url using the ClearURLs rules, which can be found
 /// on the [github repo](https://github.com/ClearURLs/Addon)
 #[instrument(level = "debug")]
-pub async fn clear_url(url: &str) -> Result<String, Error> {
+pub async fn clear_url(url: &str) -> Result<Option<String>, Error> {
     let providers_path = PathBuf::from(PROVIDERS_FILE);
 
     // Download json file if not exists on disk or of last modified time is more
@@ -38,8 +38,9 @@ pub async fn clear_url(url: &str) -> Result<String, Error> {
 }
 
 #[instrument(level = "debug", skip(json))]
-fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
+fn process_url(url: &str, json: &serde_json::Value) -> Result<Option<String>, Error> {
     let mut url = url.to_owned();
+    let mut matched = false;
 
     let providers = json["providers"].as_object().unwrap();
 
@@ -65,7 +66,7 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
             //If you want to specify rules, exceptions, and/or redirections, the value of completeProvider must be false.
             if let Some(complete) = data.get("completeProvider") {
                 if complete.as_bool().unwrap() {
-                    return Ok(String::new());
+                    return Ok(Some(String::new()));
                 }
             }
 
@@ -91,7 +92,7 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
                     if let Some(cap) = re.captures(&url) {
                         let redir_to = cap.get(1).unwrap().as_str();
                         info!("found redirect to: {redir_to}");
-                        url = process_url(redir_to, json)?;
+                        url = process_url(redir_to, json)?.unwrap();
                     }
                 }
             }
@@ -133,6 +134,7 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
                 for re in &rules {
                     if re.is_match(&key.to_ascii_lowercase()) {
                         info!("match rule '{}' on '{}'", re.as_str(), &*key);
+                        matched = true;
                         continue 'pair;
                     }
                 }
@@ -164,6 +166,7 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
                 for rule in rules {
                     if rule.is_match(&url) {
                         info!("raw rule match: {}", rule.as_str());
+                        matched = true;
                     }
                     url = rule.replace(&url, "").to_string();
                 }
@@ -176,7 +179,11 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<String, Error> {
     url = url.trim_end_matches('?').into();
 
     info!("Cleaned URL: {}", url);
-    Ok(url)
+    if matched {
+        Ok(Some(url))
+    } else {
+        Ok(None)
+    }
 }
 
 #[cfg(test)]

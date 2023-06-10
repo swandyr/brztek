@@ -170,13 +170,12 @@ async fn event_event_handler(
                 .filter(|f| f.starts_with("https://") || f.starts_with("http://"))
                 .collect::<Vec<&str>>();
             for link in links {
-                let cleaned = clear_url(link).await?;
-                if link != cleaned {
+                if let Some(cleaned) = clear_url(link).await? {
                     // Send message with cleaned url
-                    let content = format!("Cleaned that shit for you\n{cleaned}");
+                    let content = format!("Cleaned tha shit for you\n{cleaned}");
                     channel_id.say(ctx, content).await?;
 
-                    // Delete embeds in user's message
+                    // Delete embeds in original message
                     channel_id
                         .message(ctx, new_message.id)
                         .await?
