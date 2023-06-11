@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use poise::serenity_prelude as serenity;
-use poise::serenity_prelude::{Guild, Member, Mentionable};
+use poise::serenity_prelude::{self as serenity, Guild, Member, Mentionable, UserId};
 use rand::{prelude::thread_rng, Rng};
 use tracing::{debug, info, instrument};
 
@@ -16,6 +15,15 @@ pub enum ShotKind {
     Normal,
     SelfShot,
     Reverse,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Roulette {
+    pub timestamp: i64,
+    pub caller_id: UserId,
+    pub target_id: UserId,
+    // Is Some if the record has triggered rff, is None if it processed normally
+    pub rff_triggered: Option<u8>,
 }
 
 /// Put random member in timeout for 60s
@@ -61,7 +69,13 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         // Returns error if the bot cannot timeout_member, usually because he has administrator status
         let timeout_result = timeout_member(ctx, &mut author, time).await;
         // Saves result in db
-        record_roulette(db, &ctx.guild().unwrap(), &author, &author, now).await?;
+        let roulette = Roulette {
+            timestamp: now,
+            caller_id: author_id,
+            target_id: author_id,
+            rff_triggered: Some(*rff_user_chance),
+        };
+        record_roulette(db, &ctx.guild().unwrap(), roulette).await?;
         // Generates the image that will be attached to the message
         let image = gen_roulette_image(&author, &author, ShotKind::Reverse).await?;
 
@@ -88,13 +102,6 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
                 *tstamp = now;
             });
         }
-
-        //Check if is the new rff high score
-        let (_, max_rff_registered) = ctx.data().rff_star.read().unwrap().unwrap_or_default();
-        if *rff_user_chance > max_rff_registered {
-            let mut new_star = ctx.data().rff_star.write().unwrap();
-            *new_star = Some((author_id, *rff_user_chance));
-        }
     } else {
         // Get a random member
         let guild = ctx.guild().unwrap();
@@ -109,7 +116,13 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         debug!("Randomly selected member: {:?}", target);
 
         let timeout_result = timeout_member(ctx, &mut target, time).await;
-        record_roulette(db, &guild, &author, &target, now).await?;
+        let roulette = Roulette {
+            timestamp: now,
+            caller_id: author_id,
+            target_id: target.user.id,
+            rff_triggered: None,
+        };
+        record_roulette(db, &guild, roulette).await?;
 
         let is_self_shot = author_id == target.user.id.0;
 
@@ -164,25 +177,12 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 #[instrument]
-async fn record_roulette(
-    db: &Db,
-    guild: &Guild,
-    author: &Member,
-    target: &Member,
-    timestamp: i64,
-) -> Result<(), Error> {
+async fn record_roulette(db: &Db, guild: &Guild, roulette: Roulette) -> Result<(), Error> {
     let guild_id = guild.id.0;
-    let author_id = author.user.id;
-    let target_id = target.user.id;
 
-    queries::add_roulette_result(
-        db,
-        guild_id,
-        timestamp,
-        *author_id.as_u64(),
-        *target_id.as_u64(),
-    )
-    .await?;
+    debug!("RECORD ROULETTE");
+
+    queries::add_roulette_result(db, guild_id, roulette).await?;
 
     Ok(())
 }
@@ -229,21 +229,33 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
 
     let mut callers_map = HashMap::new();
     let mut targets_map = HashMap::new();
+    let mut rff_map = HashMap::new();
 
-    for (caller, target) in &scores {
+    for score in &scores {
         callers_map
-            .entry(*caller)
+            .entry(score.caller_id)
             .and_modify(|x| *x += 1)
             .or_insert(1);
         targets_map
-            .entry(*target)
+            .entry(score.target_id)
             .and_modify(|x| *x += 1)
             .or_insert(1);
+        if let Some(rff) = score.rff_triggered {
+            rff_map
+                .entry(score.caller_id)
+                .and_modify(|x| {
+                    if *x < rff.into() {
+                        *x = rff.into()
+                    }
+                })
+                .or_insert(rff.into());
+        }
     }
 
     // Process maps
     let callers_field = process_users_map(&ctx, guild_id, callers_map).await?;
     let targets_field = process_users_map(&ctx, guild_id, targets_map).await?;
+    let rff_fields = process_users_map(&ctx, guild_id, rff_map).await?;
 
     // Send embedded top 10 leaderboard
     ctx.send(|b| {
@@ -251,6 +263,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
             f.title("Roulette Leaderboard")
                 .field("Callers", &callers_field, true)
                 .field("Targets", &targets_field, true)
+                .field("max RFF%", &rff_fields, true)
         })
     })
     .await?;
@@ -269,26 +282,86 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
     let db = &ctx.data().db;
     let scores = queries::get_roulette_scores(db, guild_id).await?;
 
+    // Stats
     let member_scores = scores
-        .into_iter()
-        .filter(|score| score.0 == member_id.0)
-        .collect::<Vec<(u64, u64)>>();
+        .iter()
+        .filter(|score| score.caller_id == member_id.0)
+        .collect::<Vec<&Roulette>>();
     let total_member_shots = member_scores.len();
     let total_member_selfshots = member_scores
         .iter()
-        .filter(|score| score.1 == member_id.0)
+        .filter(|score| score.target_id == member_id.0 && score.rff_triggered.is_none())
+        .count();
+    let total_member_rff_triggered = member_scores
+        .iter()
+        .filter(|score| score.target_id == member_id.0 && score.rff_triggered.is_some())
         .count();
     let member_rff_perc = {
         let map = ctx.data().roulette_map.read().unwrap();
         map.get(&member_id).unwrap_or(&(BASE_RFF_PERC, 0)).0
     };
+    let max_member_rff_perc = member_scores
+        .iter()
+        .filter(|score| score.target_id == member_id.0)
+        .filter_map(|score| score.rff_triggered)
+        .max();
+    let min_member_rff_triggered = member_scores
+        .iter()
+        .filter(|score| score.target_id == member_id.0)
+        .filter_map(|score| score.rff_triggered)
+        .min();
 
-    let content = format!(
-        "{} roulettes\n{} selfshots\n{}% chance of RFF",
-        total_member_shots, total_member_selfshots, member_rff_perc
+    let stats_field = format!(
+        r#"{} roulettes
+{} selfshots
+{} RFF triggered
+{}% chance of RFF
+{}% max RFF triggered
+{}% min RFF triggered"#,
+        total_member_shots,
+        total_member_selfshots,
+        total_member_rff_triggered,
+        member_rff_perc,
+        max_member_rff_perc.unwrap_or(0),
+        min_member_rff_triggered.unwrap_or(0),
     );
-    ctx.send(|b| b.embed(|f| f.title(member.display_name()).field("Stats", content, true)))
-        .await?;
+
+    // Top victims
+    let mut targets_map = HashMap::new();
+    scores
+        .iter()
+        .filter(|record| record.caller_id == member_id && record.rff_triggered.is_none())
+        .for_each(|record| {
+            targets_map
+                .entry(record.target_id)
+                .and_modify(|x| *x += 1)
+                .or_insert(1);
+        });
+
+    let targets_field = process_users_map(&ctx, guild_id, targets_map).await?;
+
+    // Top bullies
+    let mut bullies_map = HashMap::new();
+    scores
+        .iter()
+        .filter(|record| record.target_id == member_id && record.rff_triggered.is_none())
+        .for_each(|record| {
+            bullies_map
+                .entry(record.caller_id)
+                .and_modify(|x| *x += 1)
+                .or_insert(1);
+        });
+    let bullies_field = process_users_map(&ctx, guild_id, bullies_map).await?;
+
+    ctx.send(|b| {
+        b.embed(|f| {
+            f.title(member.display_name())
+                .field("Stats", stats_field, true)
+                .field("Victims", targets_field, true)
+                .field("Bullies", bullies_field, true)
+        })
+    })
+    .await?;
 
     Ok(())
 }
@@ -297,82 +370,30 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn rffstar(ctx: Context<'_>) -> Result<(), Error> {
-    let entry = *ctx.data().rff_star.read().unwrap();
-    if let Some((user_id, score)) = entry {
-        let mention = ctx.guild().unwrap().member(ctx, user_id).await?.mention();
-        ctx.say(format!(
-            ":muscle: :military_medal: {mention} is the RFF Star with {score}%."
-        ))
-        .await?;
-    } else {
-        ctx.say("Nobody has triggered the RFF yet.").await?;
+    let guild_id = ctx.guild_id().unwrap().0;
+
+    let db = &ctx.data().db;
+    let scores = queries::get_roulette_scores(db, guild_id).await?;
+    let rff_score = scores.iter().max_by_key(|record| record.rff_triggered);
+
+    if let Some(record) = rff_score {
+        if let Some(score) = record.rff_triggered {
+            let mention = ctx
+                .guild()
+                .unwrap()
+                .member(ctx, record.caller_id)
+                .await?
+                .mention();
+            ctx.say(format!(
+                ":muscle: :military_medal: {mention} is the RFF Star with {score}%."
+            ))
+            .await?;
+
+            return Ok(());
+        }
     }
 
-    Ok(())
-}
-
-/// Top 10 victims
-///
-/// Set @member if you want to see the stats of another member
-#[instrument(skip(ctx))]
-#[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
-pub async fn topvictims(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap().0;
-    let member = member.unwrap_or(ctx.author_member().await.unwrap().into_owned());
-    let member_id = member.user.id.0;
-
-    let db = &ctx.data().db;
-    let scores = queries::get_roulette_scores(db, guild_id).await?;
-
-    let mut targets_map = HashMap::new();
-    scores
-        .iter()
-        .filter(|(id, _)| *id == member_id)
-        .for_each(|(_, target)| {
-            targets_map
-                .entry(*target)
-                .and_modify(|x| *x += 1)
-                .or_insert(1);
-        });
-
-    let targets_field = process_users_map(&ctx, guild_id, targets_map).await?;
-    let title = format!("Top {}'s victims", member.display_name());
-
-    ctx.send(|b| b.embed(|f| f.title(title).field("Victims", &targets_field, true)))
-        .await?;
-
-    Ok(())
-}
-
-/// Top 10 bullies
-///
-/// Set @member if you want to see the stats of another member
-#[instrument(skip(ctx))]
-#[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
-pub async fn topbullies(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap().0;
-    let member = member.unwrap_or(ctx.author_member().await.unwrap().into_owned());
-    let member_id = member.user.id.0;
-
-    let db = &ctx.data().db;
-    let scores = queries::get_roulette_scores(db, guild_id).await?;
-
-    let mut bullies_map = HashMap::new();
-    scores
-        .iter()
-        .filter(|(_, id)| *id == member_id)
-        .for_each(|(bully, _)| {
-            bullies_map
-                .entry(*bully)
-                .and_modify(|x| *x += 1)
-                .or_insert(1);
-        });
-
-    let targets_field = process_users_map(&ctx, guild_id, bullies_map).await?;
-    let title = format!("Top {}'s bullies", member.display_name());
-
-    ctx.send(|b| b.embed(|f| f.title(title).field("Bullies", &targets_field, true)))
-        .await?;
+    ctx.say("Nobody has triggered the RFF yet.").await?;
 
     Ok(())
 }
@@ -381,18 +402,18 @@ pub async fn topbullies(ctx: Context<'_>, member: Option<Member>) -> Result<(), 
 async fn process_users_map(
     ctx: &Context<'_>,
     guild_id: u64,
-    map: HashMap<u64, i32>,
+    map: HashMap<UserId, i32>,
 ) -> anyhow::Result<String> {
     let mut sorted = map
         .iter()
         .map(|(k, v)| (*k, *v))
-        .collect::<Vec<(u64, i32)>>();
+        .collect::<Vec<(UserId, i32)>>();
     sorted.sort_by(|a, b| b.1.cmp(&a.1));
 
     let now = std::time::Instant::now();
 
     let guild_members = ctx.guild().unwrap().members;
-    let nb_users = 10usize;
+    let nb_users = 5usize;
     let mut field = String::new();
     for user in sorted.iter().take(nb_users) {
         //let member = ctx.http().get_member(guild_id, user.0).await?;

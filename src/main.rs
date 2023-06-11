@@ -34,7 +34,6 @@ pub struct Data {
     pub db: Arc<Db>,
     // Hashmap<UserId, (selfshot_perc, timestamp)
     pub roulette_map: Arc<RwLock<HashMap<UserId, (u8, i64)>>>,
-    pub rff_star: Arc<RwLock<Option<(UserId, u8)>>>,
 }
 
 // ----------------------------------------- Main -----------------------------------------
@@ -78,8 +77,6 @@ async fn main() -> Result<(), Error> {
             roulette::commands::roulette(),
             roulette::commands::statroulette(),
             roulette::commands::toproulette(),
-            roulette::commands::topvictims(),
-            roulette::commands::topbullies(),
         ],
         event_handler: |ctx, event, framework, user_data| {
             Box::pin(event_event_handler(ctx, event, framework, user_data))
@@ -109,7 +106,6 @@ async fn main() -> Result<(), Error> {
                 Ok(Data {
                     db: Arc::new(db),
                     roulette_map: Arc::new(RwLock::new(HashMap::new())),
-                    rff_star: Arc::new(RwLock::new(None)),
                 })
             })
         })
@@ -138,7 +134,7 @@ async fn event_event_handler(
 
             for guild in guilds {
                 let guild_id = guild.0;
-                db.create_config_entry(guild_id).await?;
+                db::add_guild(db, guild_id).await?;
                 let permissions = guild
                     .member(ctx, framework.bot_id)
                     .await?
@@ -186,6 +182,8 @@ async fn event_event_handler(
             }
 
             // User gains xp on message
+            let db = &user_data.db;
+            db::add_user(db, user_id.0).await?;
             levels::handle_message::add_xp(ctx, user_data, &guild_id, &channel_id, &user_id)
                 .await?;
 

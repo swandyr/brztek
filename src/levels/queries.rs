@@ -3,6 +3,29 @@ use tracing::instrument;
 use super::user_level::UserLevel;
 use crate::db::{from_i64, to_i64, Db};
 
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy)]
+struct UserSql {
+    user_id: i64,
+    guild_id: i64,
+    xp: i64,
+    level: i64,
+    rank: i64,
+    last_message: i64,
+}
+
+impl From<UserSql> for UserLevel {
+    fn from(value: UserSql) -> Self {
+        Self {
+            user_id: from_i64(value.user_id),
+            xp: value.xp,
+            level: value.level,
+            rank: value.rank,
+            last_message: value.last_message,
+        }
+    }
+}
+
 /// Return `UserLevel` corresponding to `user_id` in the database.
 ///
 /// If no user is found, create a new entry with `user_id` and returns
@@ -13,24 +36,17 @@ pub async fn get_user(db: &Db, user_id: u64, guild_id: u64) -> anyhow::Result<Us
     let user_id = to_i64(user_id);
     let guild_id = to_i64(guild_id);
 
-    let response = sqlx::query!(
-        "SELECT user_id, xp, level, rank, last_message FROM levels 
-            WHERE user_id = ? AND guild_id = ?",
+    let response = sqlx::query_as!(
+        UserSql,
+        "SELECT * FROM levels WHERE user_id = ? AND guild_id = ?",
         user_id,
-        guild_id,
+        guild_id
     )
     .fetch_optional(&db.pool)
     .await?;
 
     if let Some(record) = response {
-        let user = (
-            from_i64(record.user_id),
-            record.xp.unwrap_or_default(),
-            record.level.unwrap_or_default(),
-            record.rank.unwrap_or_default(),
-            record.last_message.unwrap_or_default(),
-        );
-        Ok(UserLevel::from(user))
+        Ok(UserLevel::from(record))
     } else {
         sqlx::query!(
             "INSERT INTO levels (user_id, guild_id) VALUES (?, ?)",
@@ -94,27 +110,13 @@ pub async fn update_ranks(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> anyh
 pub async fn get_all_users(db: &Db, guild_id: u64) -> anyhow::Result<Vec<UserLevel>> {
     let guild_id = to_i64(guild_id);
 
-    let response = sqlx::query!(
-        "SELECT user_id, xp, level, rank, last_message FROM levels
-            WHERE guild_id = ?",
-        guild_id
-    )
-    .fetch_all(&db.pool)
-    .await?;
+    let response = sqlx::query_as!(UserSql, "SELECT * FROM levels WHERE guild_id = ?", guild_id)
+        .fetch_all(&db.pool)
+        .await?;
 
     let all_users = response
         .iter()
-        .map(|record| {
-            let params = (
-                from_i64(record.user_id),
-                record.xp.unwrap_or_default(),
-                record.level.unwrap_or_default(),
-                record.rank.unwrap_or_default(),
-                record.last_message.unwrap_or_default(),
-            );
-
-            UserLevel::from(params)
-        })
+        .map(|record| UserLevel::from(*record))
         .collect();
 
     Ok(all_users)
@@ -150,18 +152,3 @@ pub async fn import_from_mee6(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> 
 
     Ok(())
 }
-
-// #[allow(dead_code)]
-// pub async fn get_user_as(&self, user_id: u64) -> anyhow::Result<Option<UserLevel>> {
-//     let user_id = to_i64(user_id);
-
-//     let user = sqlx::query_as!(
-//         UserLevel,
-//         "SELECT * FROM (select (1) as user_id, (2) as xp, (3) as level) edn_ranks WHERE user_id = ?",
-//         user_id,
-//     )
-//     .fetch_optional(&self.pool)
-//     .await?;
-
-//     Ok(user)
-// }
