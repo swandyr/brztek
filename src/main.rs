@@ -1,17 +1,12 @@
 mod admin;
 mod builtins;
 mod db;
+mod handlers;
 mod levels;
 mod misc;
 mod roulette;
 
-use clearurl::clear_url;
-use poise::serenity_prelude::{
-    self as serenity,
-    audit_log::{Action, MemberAction},
-    Mentionable, UserId,
-};
-use rand::{prelude::thread_rng, Rng};
+use poise::serenity_prelude::{self as serenity, UserId};
 use std::{
     collections::HashMap,
     env,
@@ -45,7 +40,7 @@ async fn main() -> Result<(), Error> {
     let filter = EnvFilter::from_default_env();
     tracing_subscriber::fmt()
         .with_env_filter(filter)
-        .pretty()
+        .compact()
         .init();
 
     let token = env::var("DISCORD_TOKEN")?;
@@ -117,7 +112,7 @@ async fn main() -> Result<(), Error> {
 
 // ------------------------------------- Event handler -----------------------------------------
 
-#[instrument(skip(ctx, framework, user_data))]
+#[instrument(skip_all, fields(event_type=event.name()))]
 async fn event_event_handler(
     ctx: &serenity::Context,
     event: &poise::Event<'_>,
@@ -139,7 +134,8 @@ async fn event_event_handler(
                     .member(ctx, framework.bot_id)
                     .await?
                     .permissions(ctx)?;
-                debug!("Permissions: \n{:#?}", permissions);
+                info!("Guild: {:?} - id: {}", guild.name(ctx), guild);
+                info!("Permissions: {:#?}", permissions);
             }
         }
 
@@ -152,63 +148,18 @@ async fn event_event_handler(
             }
 
             // Ensure the command was sent from a guild channel
-            let Some(guild_id) = new_message.guild_id else {
+            if new_message.guild_id.is_none() {
                 return Ok(());
             };
 
-            let user_id = new_message.author.id;
-            let channel_id = new_message.channel_id;
+            handlers::message_handler(new_message, ctx, user_data).await?;
 
-            // Split the message content on whitespace and new line char
-            let content = new_message.content.split(&[' ', '\n']);
-            // Filter on any links contained in the message content
-            let links = content
-                .filter(|f| f.starts_with("https://") || f.starts_with("http://"))
-                .collect::<Vec<&str>>();
-            for link in links {
-                if let Some(cleaned) = clear_url(link).await? {
-                    // Send message with cleaned url
-                    let content = format!("Cleaned that shit for you\n{cleaned}");
-                    channel_id.say(ctx, content).await?;
-
-                    // Delete embeds in original message
-                    channel_id
-                        .message(ctx, new_message.id)
-                        .await?
-                        // ctx cache return NotAuthor error, but ctx.http works fine
-                        .suppress_embeds(&ctx.http)
-                        .await?;
-                }
-            }
-
-            // User gains xp on message
-            let db = &user_data.db;
-            db::add_user(db, user_id.0).await?;
-            levels::handle_message::add_xp(ctx, user_data, &guild_id, &channel_id, &user_id)
-                .await?;
-
-            info!("Message processed in: {} µs", t_0.elapsed().as_micros());
+            debug!("Message processed in: {} µs", t_0.elapsed().as_micros());
         }
 
         //? Discord already do this
         poise::Event::GuildMemberAddition { new_member } => {
-            let join_messages = serenity::constants::JOIN_MESSAGES;
-            let index = thread_rng().gen_range(0..join_messages.len());
-            let mention = new_member.mention();
-            let content = join_messages
-                .get(index)
-                .unwrap_or(&"Welcome $user")
-                .replace("$user", &format!("{mention}"));
-
-            let system_channel_id = new_member
-                .guild_id
-                .to_guild_cached(ctx)
-                .unwrap()
-                .system_channel_id
-                .unwrap();
-            system_channel_id
-                .send_message(&ctx.http, |m| m.content(content))
-                .await?;
+            handlers::member_addition_handler(new_member, ctx).await?;
         }
 
         poise::Event::GuildMemberRemoval {
@@ -216,43 +167,7 @@ async fn event_event_handler(
             user,
             member_data_if_available: _,
         } => {
-            let username = format!("{}{}", user.name, user.discriminator);
-            //let mut content = format!("RIP **{username}**, you'll be missed");
-            let mut content = format!("✝️ RIP en paix **{username}** , un 👼 parti trop tôt 🕯️");
-
-            let system_channel_id = guild_id
-                .to_guild_cached(ctx)
-                .unwrap()
-                .system_channel_id
-                .unwrap();
-
-            // if bot can read audit logs
-            if guild_id
-                .to_guild_cached(ctx)
-                .unwrap()
-                .role_by_name("brztek")
-                .unwrap()
-                .has_permission(serenity::Permissions::VIEW_AUDIT_LOG)
-            {
-                let audit_logs = guild_id
-                    .audit_logs(&ctx.http, None, None, None, Some(1))
-                    .await
-                    .unwrap();
-                let last_log = audit_logs.entries.first().unwrap();
-
-                // if last action is the kick of the user, change message content accordingly
-                if matches!(last_log.action, Action::Member(MemberAction::Kick)) {
-                    if let Some(target_id) = last_log.target_id {
-                        if target_id == user.id.0 {
-                            content = format!("**{username}** has got his ass out of here!");
-                        }
-                    }
-                }
-            }
-
-            system_channel_id
-                .send_message(&ctx.http, |m| m.content(content))
-                .await?;
+            handlers::member_removal_handler(guild_id, user, ctx).await?;
         }
         _ => {}
     }

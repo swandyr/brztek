@@ -113,7 +113,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             .collect::<Vec<_>>();
         let index = thread_rng().gen_range(0..members.len());
         let mut target = members.get(index).unwrap().clone();
-        debug!("Randomly selected member: {:?}", target);
+        info!("Randomly selected member: {:?}", target.display_name());
 
         let timeout_result = timeout_member(ctx, &mut target, time).await;
         let roulette = Roulette {
@@ -176,18 +176,16 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[instrument]
+#[instrument(skip_all)]
 async fn record_roulette(db: &Db, guild: &Guild, roulette: Roulette) -> Result<(), Error> {
     let guild_id = guild.id.0;
-
-    debug!("RECORD ROULETTE");
 
     queries::add_roulette_result(db, guild_id, roulette).await?;
 
     Ok(())
 }
 
-#[instrument]
+#[instrument(skip_all)]
 async fn gen_roulette_image(
     author: &Member,
     target: &Member,
@@ -253,9 +251,9 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
     }
 
     // Process maps
-    let callers_field = process_users_map(&ctx, guild_id, callers_map).await?;
-    let targets_field = process_users_map(&ctx, guild_id, targets_map).await?;
-    let rff_fields = process_users_map(&ctx, guild_id, rff_map).await?;
+    let callers_field = process_users_map(&ctx, callers_map).await?;
+    let targets_field = process_users_map(&ctx, targets_map).await?;
+    let rff_fields = process_users_map(&ctx, rff_map).await?;
 
     // Send embedded top 10 leaderboard
     ctx.send(|b| {
@@ -272,7 +270,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 /// Shows some statistics about the use of roulettes
-#[instrument(skip(ctx))]
+#[instrument(skip(ctx, member))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap().0;
@@ -338,7 +336,7 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
                 .or_insert(1);
         });
 
-    let targets_field = process_users_map(&ctx, guild_id, targets_map).await?;
+    let targets_field = process_users_map(&ctx, targets_map).await?;
 
     // Top bullies
     let mut bullies_map = HashMap::new();
@@ -351,7 +349,7 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
                 .and_modify(|x| *x += 1)
                 .or_insert(1);
         });
-    let bullies_field = process_users_map(&ctx, guild_id, bullies_map).await?;
+    let bullies_field = process_users_map(&ctx, bullies_map).await?;
 
     ctx.send(|b| {
         b.embed(|f| {
@@ -398,12 +396,8 @@ pub async fn rffstar(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[instrument(skip(ctx))]
-async fn process_users_map(
-    ctx: &Context<'_>,
-    guild_id: u64,
-    map: HashMap<UserId, i32>,
-) -> anyhow::Result<String> {
+#[instrument(skip(ctx, map))]
+async fn process_users_map(ctx: &Context<'_>, map: HashMap<UserId, i32>) -> anyhow::Result<String> {
     let mut sorted = map
         .iter()
         .map(|(k, v)| (*k, *v))

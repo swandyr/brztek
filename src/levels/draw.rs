@@ -88,7 +88,7 @@ const CARD_HEIGHT: usize = 128;
 const CARD_WIDTH: usize = 440;
 const MARGIN: f64 = 16.0;
 
-#[instrument]
+#[instrument(skip_all)]
 pub fn gen_user_card(
     user_info: UserInfoCard,
     profile_picture: (usize, usize, &[u8]),
@@ -285,7 +285,7 @@ struct UserLayout {
     level: CairoTextLayout,
 }
 
-#[instrument]
+#[instrument(skip_all)]
 pub async fn gen_top_card(users: &[UserInfoCard], _guild_name: &str) -> anyhow::Result<Vec<u8>> {
     info!("get top_card for users:\n{users:#?}");
 

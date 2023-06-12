@@ -35,6 +35,7 @@ pub const fn from_i64(signed: i64) -> u64 {
     u64::from_be_bytes(bit_cast)
 }
 
+#[instrument]
 pub async fn add_guild(db: &Db, guild_id: u64) -> anyhow::Result<()> {
     let guild_id = to_i64(guild_id);
 
@@ -45,6 +46,7 @@ pub async fn add_guild(db: &Db, guild_id: u64) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[instrument]
 pub async fn add_user(db: &Db, user_id: u64) -> anyhow::Result<()> {
     let user_id = to_i64(user_id);
 

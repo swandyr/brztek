@@ -13,6 +13,7 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
 // Change .webp extension to .png and remove parameters from URL
+#[instrument]
 fn clean_url(mut url: String) -> String {
     if let Some(index) = url.find("webp") {
         let _: String = url.split_off(index);
@@ -22,7 +23,7 @@ fn clean_url(mut url: String) -> String {
 }
 
 /// Show your rank
-#[instrument(skip(ctx))]
+#[instrument(skip(ctx, user), fields(guild=ctx.guild().unwrap().name, author=ctx.author().name))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn rank(
     ctx: Context<'_>,
@@ -98,7 +99,7 @@ pub async fn rank(
 /// Show the top users of the server
 ///
 /// Default is 10.
-#[instrument(skip(ctx))]
+#[instrument(skip(ctx), fields(guild=ctx.guild().unwrap().name, author=ctx.author().name))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Levels")]
 pub async fn top(
     ctx: Context<'_>,

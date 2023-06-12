@@ -5,7 +5,7 @@ use tracing::{debug, info, instrument};
 use super::queries;
 use crate::{Data, Db};
 
-#[instrument(skip(ctx))]
+#[instrument(skip_all)]
 pub async fn add_xp(
     ctx: &serenity::Context,
     user_data: &Data,
@@ -43,7 +43,7 @@ pub async fn add_xp(
     Ok(())
 }
 
-#[instrument]
+#[instrument(skip_all)]
 async fn update_users_ranks(db: &Db, guild_id: u64) -> anyhow::Result<()> {
     let t_0 = Instant::now();
 
