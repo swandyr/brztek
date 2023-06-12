@@ -13,7 +13,7 @@ use std::{
     sync::{Arc, RwLock},
     time::Instant,
 };
-use tracing::{debug, error, info, instrument, instrument::WithSubscriber, warn};
+use tracing::{debug, error, info, instrument, warn};
 use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 
 use db::Db;
