@@ -13,8 +13,8 @@ use std::{
     sync::{Arc, RwLock},
     time::Instant,
 };
-use tracing::{debug, error, info, instrument, warn};
-use tracing_subscriber::EnvFilter;
+use tracing::{debug, error, info, instrument, instrument::WithSubscriber, warn};
+use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 
 use db::Db;
 
@@ -38,10 +38,20 @@ pub struct Data {
 async fn main() -> Result<(), Error> {
     dotenvy::dotenv()?;
     let filter = EnvFilter::from_default_env();
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .compact()
-        .init();
+
+    let file_appender = tracing_appender::rolling::daily("./logs", "log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    let subscriber = tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt::Layer::new().pretty().with_writer(std::io::stdout))
+        .with(
+            fmt::Layer::new()
+                .compact()
+                .with_ansi(false)
+                .with_writer(non_blocking),
+        );
+    tracing::subscriber::set_global_default(subscriber)?;
 
     let token = env::var("DISCORD_TOKEN")?;
 
