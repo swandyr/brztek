@@ -5,7 +5,7 @@ use poise::serenity_prelude::{
     GuildId, Member, Mentionable, Message, User,
 };
 use rand::{thread_rng, Rng};
-use tracing::{debug, instrument};
+use tracing::{info, instrument, log::warn, trace};
 
 use super::{db, levels, Data};
 
@@ -17,7 +17,7 @@ pub async fn message_handler(
     ctx: &serenity::Context,
     user_data: &Data,
 ) -> Result<(), Error> {
-    debug!(
+    trace!(
         "Handling new message in guild: {:?}",
         new_message.guild_id.unwrap().name(ctx).unwrap()
     );
@@ -33,7 +33,9 @@ pub async fn message_handler(
         .filter(|f| f.starts_with("https://") || f.starts_with("http://"))
         .collect::<Vec<&str>>();
     for link in links {
+        info!("Cleaning link {}", link);
         if let Some(cleaned) = clear_url(link).await? {
+            info!("Cleaned link -> {}", cleaned);
             // Send message with cleaned url
             let content = format!("Cleaned that shit for you\n{cleaned}");
             channel_id.say(ctx, content).await?;
@@ -106,6 +108,7 @@ pub async fn member_removal_handler(
         .unwrap()
         .has_permission(serenity::Permissions::VIEW_AUDIT_LOG)
     {
+        info!("Checking audit_logs");
         let audit_logs = guild_id
             .audit_logs(&ctx.http, None, None, None, Some(1))
             .await
@@ -120,6 +123,8 @@ pub async fn member_removal_handler(
                 }
             }
         }
+    } else {
+        warn!("Bot is missing permission VIEW_AUDIT_LOG");
     }
 
     system_channel_id

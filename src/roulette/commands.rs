@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use poise::serenity_prelude::{self as serenity, Guild, Member, Mentionable, UserId};
 use rand::{prelude::thread_rng, Rng};
-use tracing::{debug, info, instrument};
+use tracing::{debug, info, instrument, trace, warn};
 
 use super::{draw, queries, BASE_RFF_PERC};
 use crate::{Data, Db};
@@ -48,6 +48,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     let db = &ctx.data().db;
 
     let rff_check = thread_rng().gen_range(1..=100);
+    debug!("Generated RFF Check: {}", rff_check);
 
     let mut entry = {
         let read = ctx.data().roulette_map.read().unwrap();
@@ -55,11 +56,12 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         read.get(&author_id).copied()
     };
     debug!(
-        "Cooldown Map entry of user {}: {:?}",
+        "Roulette Map entry of user {}: {:?}",
         author.display_name(),
         entry
     );
     let (rff_user_chance, _timestamp) = entry.get_or_insert((BASE_RFF_PERC, now));
+    debug!("RFF user chance: {}", rff_user_chance);
 
     //TODO: reset under a certain period of time ?
 
@@ -75,6 +77,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             target_id: author_id,
             rff_triggered: Some(*rff_user_chance),
         };
+        debug!("{:#?}", roulette);
         record_roulette(db, &ctx.guild().unwrap(), roulette).await?;
         // Generates the image that will be attached to the message
         let image = gen_roulette_image(&author, &author, ShotKind::Reverse).await?;
@@ -87,7 +90,8 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         .await?;
 
         // if timeout_member returned Err, it assumes it is because of administrator priviledges, then notify the member
-        if timeout_result.is_err() {
+        if let Err(e) = timeout_result {
+            warn!("Timeout member returned: {}", e);
             ctx.say(
                 "As you're an administrator, I have no power, but I know you won't abuse the rules",
             )
@@ -154,7 +158,8 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             .await?;
         }
 
-        if timeout_result.is_err() {
+        if let Err(e) = timeout_result {
+            warn!("Timeout member returned: {}", e);
             ctx.say(format!("The roulette has chosen, {}, but I can't mute you, would you kindly shut up for the next 60 seconds ?", target.mention()))
             .await?;
         }

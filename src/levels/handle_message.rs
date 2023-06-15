@@ -22,8 +22,10 @@ pub async fn add_xp(
 
     // Update user in database with new xp and level
     if has_gained_xp {
+        info!("User has gained XP");
         // Increment level of the user if enough xp, then send a chat message
         if user.has_level_up() {
+            info!("User has levelled up");
             channel_id
                 .send_message(&ctx.http, |m| {
                     let mention = serenity::Mention::from(*user_id);
@@ -34,10 +36,11 @@ pub async fn add_xp(
         }
 
         queries::update_user(db, &user, guild_id.0).await?;
-        debug!("Update user : {user:#?}");
+        debug!("Updated user : {user:#?}");
 
         // Recalculate ranking of the user in the guild
         update_users_ranks(db, guild_id.0).await?;
+        debug!("Updated ranks");
     }
 
     Ok(())

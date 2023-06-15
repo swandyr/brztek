@@ -13,7 +13,7 @@ use std::{
     sync::{Arc, RwLock},
     time::Instant,
 };
-use tracing::{debug, error, info, instrument, warn};
+use tracing::{debug, error, info, instrument, trace, warn};
 use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 
 use db::Db;
@@ -61,7 +61,9 @@ async fn main() -> Result<(), Error> {
         | serenity::GatewayIntents::GUILD_PRESENCES;
 
     let db_url = env::var("DATABASE_URL")?;
+    info!("Connecting to database: {}", &db_url);
     let db = Db::new(&db_url).await;
+    info!("Connected to database. Running migrations");
     db.run_migrations().await?;
 
     let options = poise::FrameworkOptions {
@@ -102,6 +104,7 @@ async fn main() -> Result<(), Error> {
 
     // The Framework builder will automatically retrieve the bot owner and application ID via the
     // passed token, so that information need not be passed here
+    info!("Starting brztek with intents: {:?}", intents);
     poise::Framework::builder()
         .token(token)
         .intents(intents)
@@ -144,21 +147,24 @@ async fn event_event_handler(
                     .member(ctx, framework.bot_id)
                     .await?
                     .permissions(ctx)?;
-                info!("Guild: {:?} - id: {}", guild.name(ctx), guild);
+                info!("Connected to guild: {:?} (id {})", guild.name(ctx), guild);
                 info!("Permissions: {:#?}", permissions);
             }
         }
 
         poise::Event::Message { new_message } => {
+            trace!("New message received: author: {}", new_message.author.name);
             let t_0 = Instant::now();
 
             // Do not handle message from bot users
             if new_message.author.bot {
+                trace!("Author is a bot, ignored");
                 return Ok(());
             }
 
             // Ensure the command was sent from a guild channel
             if new_message.guild_id.is_none() {
+                trace!("Message is not from a guild, ignored");
                 return Ok(());
             };
 
@@ -169,6 +175,7 @@ async fn event_event_handler(
 
         //? Discord already do this
         poise::Event::GuildMemberAddition { new_member } => {
+            info!("New member added: {}", new_member.user.name);
             handlers::member_addition_handler(new_member, ctx).await?;
         }
 
@@ -177,6 +184,7 @@ async fn event_event_handler(
             user,
             member_data_if_available: _,
         } => {
+            info!("Member removed: {}", user.name);
             handlers::member_removal_handler(guild_id, user, ctx).await?;
         }
         _ => {}
@@ -217,6 +225,10 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
         } => {
             // On unknown command, it will firt queries the database to check for correspondant
             // entry in the learned table for a user's registered command
+            trace!(
+                "Unkown command recerived: {}. Checking for learned commands",
+                msg_content
+            );
             let db = &framework.user_data.db;
             let guild_id = msg.guild_id.unwrap().0;
 
@@ -224,11 +236,13 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 .await
                 .expect("Query learned_command returned with error");
             if let Some(link) = queried {
+                trace!("Learned command found: {}", msg_content);
                 msg.channel_id
                     .send_message(&ctx, |m| m.content(link))
                     .await
                     .expect("Error sending learned command link");
             } else {
+                warn!("Unknown command: {}", msg_content);
                 msg.channel_id
                     .send_message(&ctx, |m| m.content("https://tenor.com/view/kaamelott-perceval-cest-pas-faux-not-false-gif-17161490"))
                     .await
@@ -274,6 +288,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
         }
 
         poise::FrameworkError::GuildOnly { ctx } => {
+            warn!("Guild only command received from outside a guild");
             ctx.say("This does not work outside a guild.")
                 .await
                 .unwrap();
@@ -284,7 +299,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
         }
 
         error => {
-            warn!("Unhandled error on command: {error}");
+            error!("Unhandled error on command: {error}");
         }
     }
 }
