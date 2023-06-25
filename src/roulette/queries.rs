@@ -7,12 +7,10 @@ use crate::db::{from_i64, to_i64, Db};
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 struct RouletteSql {
-    id: i64,
-    guild_id: i64,
     timestamp: i64,
     caller_id: i64,
     target_id: i64,
-    rff_triggered: Option<i64>,
+    rff_triggered: Option<u8>,
 }
 
 impl From<RouletteSql> for Roulette {
@@ -21,7 +19,7 @@ impl From<RouletteSql> for Roulette {
             timestamp: value.timestamp,
             caller_id: UserId::from(from_i64(value.caller_id)),
             target_id: UserId::from(from_i64(value.target_id)),
-            rff_triggered: value.rff_triggered.map(|x| x as u8),
+            rff_triggered: value.rff_triggered,
         }
     }
 }
@@ -55,19 +53,16 @@ pub async fn get_roulette_scores(db: &Db, guild_id: u64) -> anyhow::Result<Vec<R
 
     let records = sqlx::query_as!(
         RouletteSql,
-        "SELECT * FROM roulettes WHERE guild_id = ?",
+        r#"SELECT 
+            timestamp, 
+            caller_id,
+            target_id, 
+            rff_triggered as "rff_triggered: u8"
+        FROM roulettes WHERE guild_id = ?"#,
         guild_id
     )
     .fetch_all(&db.pool)
     .await?;
 
-    Ok(records
-        .iter()
-        .map(|record| Roulette {
-            timestamp: record.timestamp,
-            caller_id: UserId::from(from_i64(record.caller_id)),
-            target_id: UserId::from(from_i64(record.target_id)),
-            rff_triggered: record.rff_triggered.map(|x| x as u8),
-        })
-        .collect())
+    Ok(records.into_iter().map(|r| Roulette::from(r)).collect())
 }

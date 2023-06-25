@@ -1,3 +1,4 @@
+use poise::serenity_prelude::UserId;
 use time::OffsetDateTime;
 
 use super::{
@@ -7,7 +8,7 @@ use super::{
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct UserLevel {
-    pub user_id: u64,      // Discord user id
+    pub user_id: UserId,   // Discord user id
     pub xp: i64,           // User's xp
     pub level: i64,        // User's level
     pub rank: i64,         // User's rank
@@ -15,9 +16,9 @@ pub struct UserLevel {
 }
 
 impl UserLevel {
-    pub const fn new(user_id: u64) -> Self {
+    pub fn new(user_id: u64) -> Self {
         Self {
-            user_id,
+            user_id: UserId::from(user_id),
             xp: 0,
             level: 0,
             rank: 0,
@@ -53,6 +54,7 @@ impl UserLevel {
 impl From<(u64, i64, i64, i64, i64)> for UserLevel {
     fn from(item: (u64, i64, i64, i64, i64)) -> Self {
         let (user_id, xp, level, rank, last_message) = item;
+        let user_id = UserId::from(user_id);
         Self {
             user_id,
             xp,

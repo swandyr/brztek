@@ -1,4 +1,4 @@
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, UserId};
 use tracing::{info, instrument};
 
 use crate::levels::{self, user_level::UserLevel};
@@ -106,6 +106,7 @@ pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {
         .enumerate()
         .map(|(i, p)| {
             let user_id = p["id"].to_string().replace('"', "").parse::<u64>().unwrap();
+            let user_id = UserId::from(user_id);
             let xp = p["detailed_xp"][2].as_i64().unwrap();
             let level = p["level"].as_i64().unwrap();
             let rank = i as i64 + 1;

@@ -1,3 +1,4 @@
+use poise::serenity_prelude::UserId;
 use tracing::instrument;
 
 use super::user_level::UserLevel;
@@ -17,7 +18,7 @@ struct UserSql {
 impl From<UserSql> for UserLevel {
     fn from(value: UserSql) -> Self {
         Self {
-            user_id: from_i64(value.user_id),
+            user_id: UserId::from(from_i64(value.user_id)),
             xp: value.xp,
             level: value.level,
             rank: value.rank,
@@ -63,7 +64,7 @@ pub async fn get_user(db: &Db, user_id: u64, guild_id: u64) -> anyhow::Result<Us
 #[instrument]
 pub async fn update_user(db: &Db, user: &UserLevel, guild_id: u64) -> anyhow::Result<()> {
     // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
-    let user_id = to_i64(user.user_id);
+    let user_id = to_i64(user.user_id.0);
     let guild_id = to_i64(guild_id);
 
     sqlx::query!(
@@ -88,7 +89,7 @@ pub async fn update_ranks(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> anyh
     let guild_id = to_i64(guild_id);
 
     for user in users {
-        let user_id = to_i64(user.user_id);
+        let user_id = to_i64(user.user_id.0);
 
         sqlx::query!(
             "UPDATE levels
@@ -135,7 +136,7 @@ pub async fn import_from_mee6(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> 
         .await?;
 
     for user in users {
-        let user_id = to_i64(user.user_id);
+        let user_id = to_i64(user.user_id.0);
         sqlx::query!(
             "INSERT INTO levels (user_id, guild_id, xp, level, rank, last_message)
                 VALUES (?, ?, ?, ?, ?, ?)",

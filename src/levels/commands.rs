@@ -131,14 +131,14 @@ pub async fn top(
     for user in all_users.iter().take(number) {
         let name = ctx
             .http()
-            .get_member(guild_id, user.user_id)
+            .get_member(guild_id, *user.user_id.as_u64())
             .await?
             .display_name()
             .into_owned()
             .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
         let accent_colour = ctx
             .http()
-            .get_user(user.user_id)
+            .get_user(*user.user_id.as_u64())
             .await?
             .accent_colour
             .unwrap_or(serenity::Colour::LIGHTER_GREY)
