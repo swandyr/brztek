@@ -51,7 +51,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     debug!("Generated RFF Check: {}", rff_check);
 
     let mut entry = {
-        let read = ctx.data().roulette_map.read().unwrap();
+        let read = ctx.data().roulette_map.lock().unwrap();
         debug!("{read:#?}");
         read.get(&author_id).copied()
     };
@@ -100,7 +100,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
 
         // Reset the author's selfshot_perc
         {
-            let mut write = ctx.data().roulette_map.write().unwrap();
+            let mut write = ctx.data().roulette_map.lock().unwrap();
             write.entry(author_id).and_modify(|(perc, tstamp)| {
                 *perc = BASE_RFF_PERC;
                 *tstamp = now;
@@ -167,7 +167,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         // Increase author's rff_user_chance
         {
             let inc = thread_rng().gen_range(2..11);
-            let mut write = ctx.data().roulette_map.write().unwrap();
+            let mut write = ctx.data().roulette_map.lock().unwrap();
             write
                 .entry(author_id)
                 .and_modify(|(rff_perc, tstamp)| {
@@ -300,7 +300,7 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
         .filter(|score| score.target_id == member_id.0 && score.rff_triggered.is_some())
         .count();
     let member_rff_perc = {
-        let map = ctx.data().roulette_map.read().unwrap();
+        let map = ctx.data().roulette_map.lock().unwrap();
         map.get(&member_id).unwrap_or(&(BASE_RFF_PERC, 0)).0
     };
     let max_member_rff_perc = member_scores

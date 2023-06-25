@@ -10,7 +10,7 @@ use poise::serenity_prelude::{self as serenity, UserId};
 use std::{
     collections::HashMap,
     env,
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex, RwLock},
     time::Instant,
 };
 use tracing::{debug, error, info, instrument, trace, warn};
@@ -28,7 +28,7 @@ const PREFIX: &str = "$";
 pub struct Data {
     pub db: Arc<Db>,
     // Hashmap<UserId, (selfshot_perc, timestamp)
-    pub roulette_map: Arc<RwLock<HashMap<UserId, (u8, i64)>>>,
+    pub roulette_map: Arc<Mutex<HashMap<UserId, (u8, i64)>>>,
 }
 
 // ----------------------------------------- Main -----------------------------------------
@@ -113,7 +113,7 @@ async fn main() -> Result<(), Error> {
             Box::pin(async move {
                 Ok(Data {
                     db: Arc::new(db),
-                    roulette_map: Arc::new(RwLock::new(HashMap::new())),
+                    roulette_map: Arc::new(Mutex::new(HashMap::new())),
                 })
             })
         })
