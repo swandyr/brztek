@@ -2,7 +2,7 @@ use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{CacheHttp, RoleId};
 use tracing::{info, instrument};
 
-use super::{queries, BIGRIG_CURRENT_URL};
+use super::{queries, BIGRIG_CURRENT_URL, INVIDIOUS_INSTANCES_URL};
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -231,8 +231,7 @@ pub async fn yt(
     search: String,
 ) -> Result<(), Error> {
     // Request available invidious instance
-    let instances_url = "https://api.invidious.io/instances.json?sort_by=health";
-    let response = reqwest::get(instances_url).await?.text().await?;
+    let response = reqwest::get(INVIDIOUS_INSTANCES_URL).await?.text().await?;
     let instances: serde_json::Value = serde_json::from_str(&response)?;
 
     // Keep only instance that have available api calls
