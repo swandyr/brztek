@@ -10,7 +10,7 @@ use poise::serenity_prelude::{self as serenity, UserId};
 use std::{
     collections::HashMap,
     env,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex},
     time::Instant,
 };
 use tracing::{debug, error, info, instrument, trace, warn};
