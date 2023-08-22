@@ -1,6 +1,7 @@
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{CacheHttp, RoleId};
 use tracing::{info, instrument};
+use clearurl::clear_url;
 
 use super::{queries, BIGRIG_CURRENT_URL, INVIDIOUS_INSTANCES_URL};
 use crate::Data;
@@ -167,13 +168,47 @@ pub async fn setcolor(
     Ok(())
 }
 
+/// Explicitly call clean_url
+#[instrument(skip(ctx))]
+#[poise::command(slash_command, guild_only, category = "Misc")]
+pub async fn clean(
+    ctx: Context<'_>,
+    #[rest]
+    #[description = "Link"]
+    links: String,
+) -> Result<(), Error> {
+    let links = links
+        .split(&[' ', '\n'])
+        .filter(|f| f.starts_with("https://") || f.starts_with("http://"))
+        .collect::<Vec<&str>>();
+
+    if links.is_empty() {
+        ctx.send(|f| {
+            f.content("No valid link provided")
+            .ephemeral(true)
+        })
+        .await?;
+    } else {
+        for link in links {
+            info!("Cleaning link: {link}");
+            if let Some(cleaned) = clear_url(link).await? {
+                info!("Cleaned link -> {cleaned}");
+                // Send message with cleaned url
+                ctx.say(cleaned).await?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// Check if Jolene is playing on BigRig FM
 ///
-/// The bot will show what's now on BigRig, even if it isn't Dolly Parton.
+/// The bot will show what's now on BigRig.
 #[allow(dead_code)]
 #[instrument(skip(ctx))]
-#[poise::command(prefix_command, slash_command, category = "Misc", rename = "br")]
-pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
+#[poise::command(prefix_command, slash_command, category = "Misc")]
+pub async fn br(ctx: Context<'_>) -> Result<(), Error> {
     #[derive(Debug, serde::Deserialize)]
     struct SongData {
         id: i32,
