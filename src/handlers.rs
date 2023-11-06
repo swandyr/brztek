@@ -19,7 +19,7 @@ pub async fn message_handler(
 ) -> Result<(), Error> {
     trace!(
         "Handling new message in guild: {:?}",
-        new_message.guild_id.unwrap().name(ctx).unwrap()
+        new_message.guild_id.unwrap().name(ctx).unwrap()cr
     );
 
     let user_id = new_message.author.id;
@@ -90,7 +90,7 @@ pub async fn member_removal_handler(
     user: &User,
     ctx: &serenity::Context,
 ) -> Result<(), Error> {
-    let username = format!("{}{}", user.name, user.discriminator);
+    let username = format!("{}", user.name);
     //let mut content = format!("RIP **{username}**, you'll be missed");
     let mut content = format!("✝️ RIP en paix **{username}** , un 👼 parti trop tôt 🕯️");
 

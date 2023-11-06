@@ -42,7 +42,6 @@ pub async fn rank(
     let user_level = queries::get_user(db, user_id, guild_id).await?;
 
     // Get user info to display on the card
-    //let username = format!("{}#{}", ctx.author().name, ctx.author().discriminator);
     let username = member
         .display_name()
         .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
