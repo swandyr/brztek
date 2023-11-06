@@ -16,7 +16,3 @@ Create a `.env` file.
 
 ### Help
 - `/help`
-
-
-<!-- TODO: Reaction roles>
-<!-- TODO: Round corners of avatar in rank card>

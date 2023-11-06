@@ -57,7 +57,7 @@ pub async fn rank(
         image::load_from_memory(&bytes)?
     } else {
         let bytes = std::fs::read(DEFAULT_PP_TESSELATION_VIOLET)?;
-        info!("Loaded defaut avatar");
+        info!("Loaded default avatar");
         image::load_from_memory(&bytes)?
     };
     let (image_width, image_height) = (image.width() as usize, image.height() as usize);

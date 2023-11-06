@@ -106,7 +106,7 @@ pub async fn update_ranks(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> anyh
     Ok(())
 }
 
-/// Get all entries in the dabase and returns a `Vec<UserLevel>`
+/// Get all entries in the database and returns a `Vec<UserLevel>`
 #[instrument]
 pub async fn get_all_users(db: &Db, guild_id: u64) -> anyhow::Result<Vec<UserLevel>> {
     let guild_id = to_i64(guild_id);
@@ -126,7 +126,7 @@ pub async fn get_all_users(db: &Db, guild_id: u64) -> anyhow::Result<Vec<UserLev
 /// Import levels from Mee6.
 ///
 /// Clear all users entries corresponding to the guild_id first,
-/// and insert all new entries in hte `uers: Vec<UserLevel>
+/// and insert all new entries in hte `users: Vec<UserLevel>
 #[instrument]
 pub async fn import_from_mee6(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> anyhow::Result<()> {
     let guild_id = to_i64(guild_id);

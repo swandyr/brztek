@@ -19,7 +19,7 @@ pub async fn message_handler(
 ) -> Result<(), Error> {
     trace!(
         "Handling new message in guild: {:?}",
-        new_message.guild_id.unwrap().name(ctx).unwrap()cr
+        new_message.guild_id.unwrap().name(ctx).unwrap()
     );
 
     let user_id = new_message.author.id;

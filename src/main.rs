@@ -224,10 +224,10 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             framework,
             ..
         } => {
-            // On unknown command, it will firt queries the database to check for correspondant
+            // On unknown command, it will first queries the database to check for corresponding
             // entry in the learned table for a user's registered command
             trace!(
-                "Unkown command recerived: {}. Checking for learned commands",
+                "Unknown command received: {}. Checking for learned commands",
                 msg_content
             );
             let db = &framework.user_data.db;

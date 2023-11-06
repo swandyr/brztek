@@ -9,7 +9,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 
 /// Admin commands
 ///
-/// Prefix subcommands that need Administrator priviledges.
+/// Prefix subcommands that need Administrator privileges.
 ///
 /// Available subcommands are set_pub, set_user, spam_delay, min_xp_gain, max_xp_gain.
 #[poise::command(
