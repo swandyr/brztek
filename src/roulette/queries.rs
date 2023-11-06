@@ -64,5 +64,5 @@ pub async fn get_roulette_scores(db: &Db, guild_id: u64) -> anyhow::Result<Vec<R
     .fetch_all(&db.pool)
     .await?;
 
-    Ok(records.into_iter().map(|r| Roulette::from(r)).collect())
+    Ok(records.into_iter().map(Roulette::from).collect())
 }

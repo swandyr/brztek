@@ -1,5 +1,5 @@
 use poise::serenity_prelude as serenity;
-use poise::serenity_prelude::{CacheHttp, RoleId};
+use poise::serenity_prelude::RoleId;
 use tracing::{info, instrument};
 use clearurl::clear_url;
 

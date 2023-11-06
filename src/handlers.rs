@@ -90,7 +90,7 @@ pub async fn member_removal_handler(
     user: &User,
     ctx: &serenity::Context,
 ) -> Result<(), Error> {
-    let username = format!("{}", user.name);
+    let username = user.name.to_string();
     //let mut content = format!("RIP **{username}**, you'll be missed");
     let mut content = format!("✝️ RIP en paix **{username}** , un 👼 parti trop tôt 🕯️");
 

@@ -1,4 +1,4 @@
-use poise::serenity_prelude::{self as serenity, CacheHttp};
+use poise::serenity_prelude as serenity;
 use std::time::Instant;
 use tracing::{debug, info, instrument};
 
