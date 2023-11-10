@@ -7,7 +7,7 @@ use poise::serenity_prelude::{
 use rand::{thread_rng, Rng};
 use tracing::{info, instrument, log::warn, trace};
 
-use super::{db, levels, Data};
+use super::{db, commands::levels, Data};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 

@@ -1,10 +1,15 @@
-mod admin;
+#![allow(
+clippy::unused_async,
+clippy::cast_precision_loss,
+clippy::cast_sign_loss,
+clippy::cast_possible_truncation,
+clippy::cast_lossless)]
+
+
+mod commands;
 mod builtins;
 mod db;
 mod handlers;
-mod levels;
-mod misc;
-mod roulette;
 
 use poise::serenity_prelude::{self as serenity, UserId};
 use std::{
@@ -27,7 +32,6 @@ const PREFIX: &str = "$";
 #[derive(Debug)]
 pub struct Data {
     pub db: Arc<Db>,
-    // Hashmap<UserId, (selfshot_perc, timestamp)
     pub roulette_map: Arc<Mutex<HashMap<UserId, (u8, i64)>>>,
 }
 
@@ -68,23 +72,23 @@ async fn main() -> Result<(), Error> {
 
     let options = poise::FrameworkOptions {
         commands: vec![
-            admin::commands::admin(),
-            admin::commands::import_mee6_levels(),
             builtins::help(),
             builtins::register(),
-            levels::commands::rank(),
-            levels::commands::top(),
-            misc::commands::br(),
-            misc::commands::clean(),
-            misc::commands::learn(),
-            misc::commands::learned(),
-            misc::commands::ping(),
-            misc::commands::setcolor(),
-            misc::commands::yt(),
-            roulette::commands::rffstar(),
-            roulette::commands::roulette(),
-            roulette::commands::statroulette(),
-            roulette::commands::toproulette(),
+            commands::admin::admin(),
+            commands::admin::import_mee6_levels(),
+            commands::levels::rank(),
+            commands::levels::top(),
+            commands::misc::br(),
+            commands::misc::clean(),
+            commands::misc::learn(),
+            commands::misc::learned(),
+            commands::misc::ping(),
+            commands::misc::setcolor(),
+            commands::misc::yt(),
+            commands::roulette::rffstar(),
+            commands::roulette::roulette(),
+            commands::roulette::statroulette(),
+            commands::roulette::toproulette(),
         ],
         event_handler: |ctx, event, framework, user_data| {
             Box::pin(event_event_handler(ctx, event, framework, user_data))
@@ -233,7 +237,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             let db = &framework.user_data.db;
             let guild_id = msg.guild_id.unwrap().0;
 
-            let queried = misc::queries::get_learned(db, msg_content, guild_id)
+            let queried = commands::misc::queries::get_learned(db, msg_content, guild_id)
                 .await
                 .expect("Query learned_command returned with error");
             if let Some(link) = queried {

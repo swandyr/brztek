@@ -1,12 +1,27 @@
+mod draw;
+pub mod handle_message;
+pub mod queries;
+pub mod user_level;
+pub mod xp_func;
+
+// Xp parameters
+const MIN_XP_GAIN: i64 = 15;
+const MAX_XP_GAIN: i64 = 25;
+const DELAY_ANTI_SPAM: i64 = 60;
+
+// Rank card constants
+const CARD_FONT: &str = "Akira Expanded"; // Font needs to be installed on the system (https://www.dafont.com/akira-expanded.font)
+const DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tessellation-Violet.png";
+const TOP_TITLE_HEIGHT: usize = 60;
+const TOP_USER_HEIGHT: usize = 32;
+
 use poise::serenity_prelude as serenity;
 use std::time::Instant;
 use tracing::{debug, info, instrument};
 
-use super::{
-    draw::{self, UserInfoCard},
-    queries, DEFAULT_PP_TESSELATION_VIOLET,
-};
 
+use draw::UserInfoCard;
+use super::to_png_buffer;
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -87,7 +102,7 @@ pub async fn rank(
         let file = serenity::AttachmentType::from((image.as_slice(), "rank_card.png"));
         m.attachment(file)
     })
-    .await?;
+        .await?;
     info!("Rank card sent in {} µs", t_1.elapsed().as_micros());
 
     info!("Command processed in {} µs", t_0.elapsed().as_micros());
@@ -154,7 +169,7 @@ pub async fn top(
         let file = serenity::AttachmentType::from((image.as_slice(), "top_card.png"));
         b.attachment(file)
     })
-    .await?;
+        .await?;
 
     Ok(())
 }

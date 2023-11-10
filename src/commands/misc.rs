@@ -1,9 +1,14 @@
+pub mod queries;
+
+const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song/current";
+//const BIGRIG_RECENT_URL: &str = https://brfm.radiocloud.pro/api/public/v1/song/recent
+const INVIDIOUS_INSTANCES_URL: &str = "https://api.invidious.io/instances.json?sort_by=health";
+
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::RoleId;
 use tracing::{info, instrument};
 use clearurl::clear_url;
 
-use super::{queries, BIGRIG_CURRENT_URL, INVIDIOUS_INSTANCES_URL};
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -84,12 +89,12 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
 /// If no color is given, it will retrieve the profile's banner color
 #[instrument(skip(ctx))]
 #[poise::command(
-    prefix_command,
-    slash_command,
-    guild_only,
-    required_bot_permissions = "MANAGE_ROLES",
-    ephemeral,
-    category = "Misc"
+prefix_command,
+slash_command,
+guild_only,
+required_bot_permissions = "MANAGE_ROLES",
+ephemeral,
+category = "Misc"
 )]
 pub async fn setcolor(
     ctx: Context<'_>,
@@ -128,9 +133,9 @@ pub async fn setcolor(
     } else {
         // User banner colour will be the colour of the role
         let Some(colour) = ctx.http().get_user(user_id).await?.accent_colour else {
-                ctx.say("Cannot find banner color").await?;
-                return Ok(());
-            };
+            ctx.say("Cannot find banner color").await?;
+            return Ok(());
+        };
         colour
     };
 
@@ -185,9 +190,9 @@ pub async fn clean(
     if links.is_empty() {
         ctx.send(|f| {
             f.content("No valid link provided")
-            .ephemeral(true)
+                .ephemeral(true)
         })
-        .await?;
+            .await?;
     } else {
         for link in links {
             info!("Cleaning link: {link}");
@@ -246,7 +251,7 @@ pub async fn br(ctx: Context<'_>) -> Result<(), Error> {
                 .footer(|f| f.text(&format!("Play count: {}", song.data.playcount)))
         })
     })
-    .await?;
+        .await?;
 
     Ok(())
 }

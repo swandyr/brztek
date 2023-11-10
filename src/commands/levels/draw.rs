@@ -1,4 +1,3 @@
-use image::{ImageEncoder, ImageError, RgbaImage};
 use piet_common::{
     kurbo::{Line, Point, Rect, Size},
     CairoTextLayout, Color, Device, Image, ImageFormat, InterpolationMode, LineCap, LinearGradient,
@@ -8,6 +7,7 @@ use tracing::{info, instrument};
 
 use super::{
     xp_func::{total_xp_required_for_level, xp_needed_to_level_up},
+    to_png_buffer,
     CARD_FONT, TOP_TITLE_HEIGHT, TOP_USER_HEIGHT,
 };
 
@@ -36,16 +36,6 @@ impl Default for Colors {
             bronze: Color::rgba8(0xad, 0x8a, 0x56, 0xff),
         }
     }
-}
-
-#[instrument]
-fn to_png_buffer(card_buf: &[u8], width: u32, height: u32) -> Result<Vec<u8>, ImageError> {
-    let img = RgbaImage::from_vec(width, height, card_buf.to_vec()).unwrap();
-    let mut buf = Vec::new();
-    let encoder = image::codecs::png::PngEncoder::new(&mut buf);
-    encoder.write_image(&img, width, height, image::ColorType::Rgba8)?;
-
-    Ok(buf)
 }
 
 /// This struct contains information that are printed on the `top_card`

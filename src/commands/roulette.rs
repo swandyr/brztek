@@ -1,11 +1,16 @@
+mod draw;
+mod queries;
+
+const BASE_RFF_PERC: u8 = 5;
+
 use std::collections::HashMap;
 
 use poise::serenity_prelude::{self as serenity, Guild, Member, Mentionable, UserId};
 use rand::{prelude::thread_rng, Rng};
 use tracing::{debug, info, instrument, warn};
 
-use super::{draw, queries, BASE_RFF_PERC};
 use crate::{Data, Db};
+use super::to_png_buffer;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -31,11 +36,11 @@ pub struct Roulette {
 /// The more you use it, the more you can get caught
 #[instrument(skip(ctx))]
 #[poise::command(
-    slash_command,
-    prefix_command,
-    guild_only,
-    required_bot_permissions = "MODERATE_MEMBERS",
-    category = "Roulette"
+slash_command,
+prefix_command,
+guild_only,
+required_bot_permissions = "MODERATE_MEMBERS",
+category = "Roulette"
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     let mut author = ctx.author_member().await.unwrap().into_owned();
@@ -87,7 +92,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             let content = format!("**:man_police_officer: RFF activated at {rff_user_chance}%, you're out. :woman_police_officer:**");
             m.attachment(file).content(content)
         })
-        .await?;
+            .await?;
 
         // if timeout_member returned Err, it assumes it is because of administrator priviledges, then notify the member
         if let Err(e) = timeout_result {
@@ -95,7 +100,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             ctx.say(
                 "As you're an administrator, I have no power, but I know you won't abuse the rules",
             )
-            .await?;
+                .await?;
         }
 
         // Reset the author's selfshot_perc
@@ -139,7 +144,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
                 ShotKind::Normal
             },
         )
-        .await?;
+            .await?;
 
         // Send a message according to a self shot or not
         if is_self_shot {
@@ -150,18 +155,18 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
                         "Ouch, looks like it hurts. :sweat_smile:",
                     )
             })
-            .await?;
+                .await?;
         } else {
             ctx.send(|m| {
                 m.attachment(serenity::AttachmentType::from((image.as_slice(), "kf.png")))
             })
-            .await?;
+                .await?;
         }
 
         if let Err(e) = timeout_result {
             warn!("Timeout member returned: {}", e);
             ctx.say(format!("The roulette has chosen, {}, but I can't mute you, would you kindly shut up for the next 60 seconds ?", target.mention()))
-            .await?;
+                .await?;
         }
 
         // Increase author's rff_user_chance
@@ -269,7 +274,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
                 .field("max RFF%", &rff_fields, true)
         })
     })
-    .await?;
+        .await?;
 
     Ok(())
 }
@@ -364,7 +369,7 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
                 .field("Bullies", bullies_field, true)
         })
     })
-    .await?;
+        .await?;
 
     Ok(())
 }
@@ -390,7 +395,7 @@ pub async fn rffstar(ctx: Context<'_>) -> Result<(), Error> {
             ctx.say(format!(
                 ":muscle: :military_medal: {mention} is the RFF Star with {score}%."
             ))
-            .await?;
+                .await?;
 
             return Ok(());
         }
@@ -425,3 +430,4 @@ async fn process_users_map(ctx: &Context<'_>, map: HashMap<UserId, i32>) -> anyh
 
     Ok(field)
 }
+

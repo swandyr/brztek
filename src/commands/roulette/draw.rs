@@ -1,4 +1,3 @@
-use image::{ImageEncoder, ImageError, RgbaImage};
 use piet_common::{
     kurbo::{Point, Rect, Size},
     CairoText, CairoTextLayout, Color, Device, FontFamily, Image, ImageFormat, InterpolationMode,
@@ -6,7 +5,7 @@ use piet_common::{
 };
 use tracing::{debug, info, instrument};
 
-use super::commands::ShotKind;
+use super::{ShotKind, to_png_buffer};
 
 const KILLFEED_FONT: &str = "Coolvetica"; // Font needs to be installed on the system (https://www.dafont.com/akira-expanded.font)
 
@@ -27,15 +26,7 @@ impl Default for Colors {
     }
 }
 
-#[instrument]
-fn to_png_buffer(card_buf: &[u8], width: u32, height: u32) -> Result<Vec<u8>, ImageError> {
-    let img = RgbaImage::from_vec(width, height, card_buf.to_vec()).unwrap();
-    let mut buf = Vec::new();
-    let encoder = image::codecs::png::PngEncoder::new(&mut buf);
-    encoder.write_image(&img, width, height, image::ColorType::Rgba8)?;
 
-    Ok(buf)
-}
 
 ////////////////////////////////////////////////////////////////////////////
 

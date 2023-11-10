@@ -1,7 +1,7 @@
 use poise::serenity_prelude::{self as serenity, UserId};
 use tracing::{info, instrument};
 
-use crate::levels::{self, user_level::UserLevel};
+use super::levels::{self, user_level::UserLevel};
 use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -13,12 +13,12 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 ///
 /// Available subcommands are set_pub, set_user, spam_delay, min_xp_gain, max_xp_gain.
 #[poise::command(
-    prefix_command,
-    slash_command,
-    guild_only,
-    subcommands("set_user"),
-    required_permissions = "ADMINISTRATOR",
-    category = "Admin"
+prefix_command,
+slash_command,
+guild_only,
+subcommands("set_user"),
+required_permissions = "ADMINISTRATOR",
+category = "Admin"
 )]
 pub async fn admin(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
@@ -27,11 +27,11 @@ pub async fn admin(_ctx: Context<'_>) -> Result<(), Error> {
 /// Set the user's xp points
 #[instrument(skip(ctx))]
 #[poise::command(
-    prefix_command,
-    slash_command,
-    guild_only,
-    ephemeral,
-    category = "Admin"
+prefix_command,
+slash_command,
+guild_only,
+ephemeral,
+category = "Admin"
 )]
 async fn set_user(
     ctx: Context<'_>,
@@ -63,13 +63,14 @@ async fn set_user(
 }
 
 /// Import users levels from Mee6 leaderboard
+#[allow(clippy::cast_possible_wrap)]
 #[instrument(skip(ctx))]
 #[poise::command(
-    slash_command,
-    required_permissions = "ADMINISTRATOR",
-    guild_only,
-    ephemeral,
-    category = "Admin"
+slash_command,
+required_permissions = "ADMINISTRATOR",
+guild_only,
+ephemeral,
+category = "Admin"
 )]
 pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("This will overwrite current levels. Type \"yes\" to confirm.")

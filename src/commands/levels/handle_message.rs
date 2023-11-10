@@ -46,6 +46,7 @@ pub async fn add_xp(
     Ok(())
 }
 
+#[allow(clippy::cast_possible_wrap)]
 #[instrument(skip_all)]
 async fn update_users_ranks(db: &Db, guild_id: u64) -> anyhow::Result<()> {
     let t_0 = Instant::now();
