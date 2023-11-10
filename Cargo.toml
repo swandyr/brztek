@@ -20,8 +20,9 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
 time = "0.3"
 piet-common = { version = "0.6", features = ["png"] }
-clearurl = { path = "./clearurl" }
 tracing-appender = "0.2.2"
+regex = "1.10"
+url = "2.4"
 
 [dependencies.serenity]
 version = "0.11"

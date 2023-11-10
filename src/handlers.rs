@@ -1,4 +1,3 @@
-use clearurl::clear_url;
 use poise::serenity_prelude::{
     self as serenity,
     audit_log::{Action, MemberAction},
@@ -7,7 +6,7 @@ use poise::serenity_prelude::{
 use rand::{thread_rng, Rng};
 use tracing::{info, instrument, log::warn, trace};
 
-use super::{db, commands::levels, Data};
+use super::{db, commands::levels, Data, clearurl::clear_url};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 

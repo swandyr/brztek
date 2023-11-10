@@ -10,6 +10,7 @@ mod commands;
 mod builtins;
 mod db;
 mod handlers;
+mod clearurl;
 
 use poise::serenity_prelude::{self as serenity, UserId};
 use std::{

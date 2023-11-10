@@ -7,9 +7,8 @@ const INVIDIOUS_INSTANCES_URL: &str = "https://api.invidious.io/instances.json?s
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::RoleId;
 use tracing::{info, instrument};
-use clearurl::clear_url;
 
-use crate::Data;
+use crate::{Data, clearurl::clear_url};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
