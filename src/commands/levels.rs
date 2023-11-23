@@ -19,13 +19,9 @@ use poise::serenity_prelude as serenity;
 use std::time::Instant;
 use tracing::{debug, info, instrument};
 
-
-use draw::UserInfoCard;
 use super::to_png_buffer;
-use crate::Data;
-
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+use crate::{Context, Data, Error};
+use draw::UserInfoCard;
 
 // Change .webp extension to .png and remove parameters from URL
 #[instrument]
@@ -47,7 +43,12 @@ pub async fn rank(
     let t_0 = Instant::now();
 
     debug!("user: {user:?}");
-    let member = user.unwrap_or(ctx.author_member().await.unwrap().into_owned());
+    let member = user.unwrap_or(
+        ctx.author_member()
+            .await
+            .ok_or("No member found")?
+            .into_owned(),
+    );
 
     let user_id = member.user.id.0;
     let guild_id = member.guild_id.0;
@@ -97,15 +98,15 @@ pub async fn rank(
     let image = draw::gen_user_card(user_info, (image_width, image_height, &image_buf))?;
     info!("Rank card generated in {} µs", t_1.elapsed().as_micros());
 
-    let t_1 = Instant::now();
+    let t_2 = Instant::now();
     ctx.send(|m| {
         let file = serenity::AttachmentType::from((image.as_slice(), "rank_card.png"));
         m.attachment(file)
     })
-        .await?;
-    info!("Rank card sent in {} µs", t_1.elapsed().as_micros());
+    .await?;
+    info!("Rank card sent in {} µs", t_2.elapsed().as_micros());
 
-    info!("Command processed in {} µs", t_0.elapsed().as_micros());
+    info!("Command rank processed in {} µs", t_0.elapsed().as_micros());
 
     Ok(())
 }
@@ -124,20 +125,23 @@ pub async fn top(
 ) -> Result<(), Error> {
     ctx.defer().await?;
 
+    let t_0 = Instant::now();
+
     let number = number.unwrap_or(10);
 
     // Ensure the message was sent from a guild
-    let (guild_id, guild_name) = if let Some(guild) = ctx.guild() {
+    let (guild_id, guild_name) = {
+        let guild = ctx.guild().ok_or("Not in guild")?;
         (guild.id.0, guild.name)
-    } else {
-        ctx.say("This does not work outside a guild.").await?;
-        return Ok(());
     };
 
+    let t_1 = Instant::now();
     // Get a vec of all users in database
     let db = &ctx.data().db;
     let mut all_users = queries::get_all_users(db, guild_id).await?;
+    debug!("Got all_users in {} µs", t_1.elapsed().as_micros());
 
+    let t_2 = Instant::now();
     // Sort all users by rank
     all_users.sort_by(|a, b| a.rank.cmp(&b.rank));
 
@@ -160,16 +164,23 @@ pub async fn top(
         let user_info_card = UserInfoCard::new(name, user.rank, user.level, user.xp, accent_colour);
         top_users.push(user_info_card);
     }
+    debug!("Process users infos in {} µs", t_2.elapsed().as_micros());
 
+    let t_3 = Instant::now();
     // Generate card
     let image = draw::gen_top_card(&top_users, &guild_name).await?;
+    debug!("Generated top card in {} µs", t_3.elapsed().as_micros());
 
+    let t_4 = Instant::now();
     // Send generated file
     ctx.send(|b| {
         let file = serenity::AttachmentType::from((image.as_slice(), "top_card.png"));
         b.attachment(file)
     })
-        .await?;
+    .await?;
+    debug!("Send top card in {} µs", t_4.elapsed().as_micros());
+
+    debug!("Top card processed in {} µs", t_0.elapsed().as_micros());
 
     Ok(())
 }

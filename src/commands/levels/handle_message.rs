@@ -3,7 +3,7 @@ use std::time::Instant;
 use tracing::{debug, info, instrument};
 
 use super::queries;
-use crate::{Data, Db};
+use crate::{Data, Db, Error};
 
 #[instrument(skip_all)]
 pub async fn add_xp(
@@ -12,7 +12,7 @@ pub async fn add_xp(
     guild_id: &serenity::GuildId,
     channel_id: &serenity::ChannelId,
     user_id: &serenity::UserId,
-) -> anyhow::Result<()> {
+) -> Result<(), Error> {
     let db = &user_data.db;
     let mut user = queries::get_user(db, user_id.0, guild_id.0).await?;
 
@@ -35,12 +35,19 @@ pub async fn add_xp(
                 .await?;
         }
 
+        let t_0 = Instant::now();
         queries::update_user(db, &user, guild_id.0).await?;
         debug!("Updated user : {user:#?}");
+        debug!("update_user finished in {} µs", t_0.elapsed().as_micros());
 
+        let t_1 = Instant::now();
         // Recalculate ranking of the user in the guild
         update_users_ranks(db, guild_id.0).await?;
         debug!("Updated ranks");
+        debug!(
+            "update_users_ranks finished in {} µs",
+            t_1.elapsed().as_micros()
+        );
     }
 
     Ok(())
@@ -48,9 +55,7 @@ pub async fn add_xp(
 
 #[allow(clippy::cast_possible_wrap)]
 #[instrument(skip_all)]
-async fn update_users_ranks(db: &Db, guild_id: u64) -> anyhow::Result<()> {
-    let t_0 = Instant::now();
-
+async fn update_users_ranks(db: &Db, guild_id: u64) -> Result<(), Error> {
     // Get a Vec of all users in database
     let mut all_users = queries::get_all_users(db, guild_id).await?;
 
@@ -68,8 +73,6 @@ async fn update_users_ranks(db: &Db, guild_id: u64) -> anyhow::Result<()> {
     if !rank_has_changed.is_empty() {
         queries::update_ranks(db, rank_has_changed, guild_id).await?;
     }
-
-    info!("Updated all ranks in : {} µs", t_0.elapsed().as_micros());
 
     Ok(())
 }

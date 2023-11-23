@@ -5,7 +5,8 @@ use piet_common::{
 };
 use tracing::{debug, info, instrument};
 
-use super::{ShotKind, to_png_buffer};
+use super::{to_png_buffer, ShotKind};
+use crate::Error;
 
 const KILLFEED_FONT: &str = "Coolvetica"; // Font needs to be installed on the system (https://www.dafont.com/akira-expanded.font)
 
@@ -26,8 +27,6 @@ impl Default for Colors {
     }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////
 
 const TEMPLATE_NORMAL_PATH: &str = "assets/images/killfeed.png";
@@ -38,7 +37,7 @@ const WIDTH: usize = 395;
 const COLOR_RECT_WIDTH: usize = 156;
 
 #[instrument]
-pub fn gen_killfeed(user_1: &str, user_2: &str, kind: ShotKind) -> anyhow::Result<Vec<u8>> {
+pub fn gen_killfeed(user_1: &str, user_2: &str, kind: ShotKind) -> Result<Vec<u8>, Error> {
     info!("Draw killfeed {user_1} -> {user_2}");
 
     // Create context
@@ -151,7 +150,7 @@ fn test_gen_kf_short() {
     let user_1 = "Swich";
     let user_2 = "Night";
 
-    assert!(gen_killfeed(&user_1, &user_2, ShotKind::Normal).is_ok());
+    assert!(gen_killfeed(user_1, user_2, ShotKind::Normal).is_ok());
 }
 
 #[test]
@@ -160,5 +159,5 @@ fn test_gen_kf_with_long_name() {
     let _user_1 = "Swich";
     let user_2 = "@K_limero91 ou @ChaK_lim";
 
-    assert!(gen_killfeed(&user_1, &user_2, ShotKind::Normal).is_ok());
+    assert!(gen_killfeed(user_1, user_2, ShotKind::Normal).is_ok());
 }

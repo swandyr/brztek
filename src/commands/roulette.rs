@@ -9,11 +9,8 @@ use poise::serenity_prelude::{self as serenity, Guild, Member, Mentionable, User
 use rand::{prelude::thread_rng, Rng};
 use tracing::{debug, info, instrument, warn};
 
-use crate::{Data, Db};
 use super::to_png_buffer;
-
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+use crate::{Context, Data, Db, Error};
 
 #[derive(Debug)]
 pub enum ShotKind {
@@ -36,14 +33,18 @@ pub struct Roulette {
 /// The more you use it, the more you can get caught
 #[instrument(skip(ctx))]
 #[poise::command(
-slash_command,
-prefix_command,
-guild_only,
-required_bot_permissions = "MODERATE_MEMBERS",
-category = "Roulette"
+    slash_command,
+    prefix_command,
+    guild_only,
+    required_bot_permissions = "MODERATE_MEMBERS",
+    category = "Roulette"
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
-    let mut author = ctx.author_member().await.unwrap().into_owned();
+    let mut author = ctx
+        .author_member()
+        .await
+        .ok_or("No author_member found")?
+        .into_owned();
     let author_id = author.user.id;
 
     let now = serenity::Timestamp::now().unix_timestamp();
@@ -100,7 +101,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             ctx.say(
                 "As you're an administrator, I have no power, but I know you won't abuse the rules",
             )
-                .await?;
+            .await?;
         }
 
         // Reset the author's selfshot_perc
@@ -113,7 +114,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
         }
     } else {
         // Get a random member
-        let guild = ctx.guild().unwrap();
+        let guild = ctx.guild().ok_or("Not in guild")?;
         let members = guild
             .members(ctx, None, None)
             .await?
@@ -121,7 +122,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             .filter(|m| !m.user.bot)
             .collect::<Vec<_>>();
         let index = thread_rng().gen_range(0..members.len());
-        let mut target = members.get(index).unwrap().clone();
+        let mut target = members.get(index).ok_or("No member found")?.clone();
         info!("Randomly selected member: {:?}", target.display_name());
 
         let timeout_result = timeout_member(ctx, &mut target, time).await;
@@ -144,7 +145,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
                 ShotKind::Normal
             },
         )
-            .await?;
+        .await?;
 
         // Send a message according to a self shot or not
         if is_self_shot {
@@ -155,12 +156,12 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
                         "Ouch, looks like it hurts. :sweat_smile:",
                     )
             })
-                .await?;
+            .await?;
         } else {
             ctx.send(|m| {
                 m.attachment(serenity::AttachmentType::from((image.as_slice(), "kf.png")))
             })
-                .await?;
+            .await?;
         }
 
         if let Err(e) = timeout_result {
@@ -200,7 +201,7 @@ async fn gen_roulette_image(
     author: &Member,
     target: &Member,
     kind: ShotKind,
-) -> Result<Vec<u8>, anyhow::Error> {
+) -> Result<Vec<u8>, Error> {
     let author_name = author
         .display_name()
         .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
@@ -230,7 +231,7 @@ async fn timeout_member(
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap().0;
+    let guild_id = ctx.guild_id().ok_or("Not in guild")?.0;
 
     let db = &ctx.data().db;
     let scores = queries::get_roulette_scores(db, guild_id).await?;
@@ -274,7 +275,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
                 .field("max RFF%", &rff_fields, true)
         })
     })
-        .await?;
+    .await?;
 
     Ok(())
 }
@@ -283,8 +284,13 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
 #[instrument(skip(ctx, member))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap().0;
-    let member = member.unwrap_or(ctx.author_member().await.unwrap().into_owned());
+    let guild_id = ctx.guild_id().ok_or("Not in guild")?.0;
+    let member = member.unwrap_or(
+        ctx.author_member()
+            .await
+            .ok_or("No member found")?
+            .into_owned(),
+    );
     let member_id = member.user.id;
 
     let db = &ctx.data().db;
@@ -369,7 +375,7 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
                 .field("Bullies", bullies_field, true)
         })
     })
-        .await?;
+    .await?;
 
     Ok(())
 }
@@ -378,7 +384,7 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
 pub async fn rffstar(ctx: Context<'_>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap().0;
+    let guild_id = ctx.guild_id().ok_or("Not in guild")?.0;
 
     let db = &ctx.data().db;
     let scores = queries::get_roulette_scores(db, guild_id).await?;
@@ -388,14 +394,14 @@ pub async fn rffstar(ctx: Context<'_>) -> Result<(), Error> {
         if let Some(score) = record.rff_triggered {
             let mention = ctx
                 .guild()
-                .unwrap()
+                .ok_or("Not in guild")?
                 .member(ctx, record.caller_id)
                 .await?
                 .mention();
             ctx.say(format!(
                 ":muscle: :military_medal: {mention} is the RFF Star with {score}%."
             ))
-                .await?;
+            .await?;
 
             return Ok(());
         }
@@ -407,7 +413,7 @@ pub async fn rffstar(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 #[instrument(skip(ctx, map))]
-async fn process_users_map(ctx: &Context<'_>, map: HashMap<UserId, i32>) -> anyhow::Result<String> {
+async fn process_users_map(ctx: &Context<'_>, map: HashMap<UserId, i32>) -> Result<String, Error> {
     let mut sorted = map
         .iter()
         .map(|(k, v)| (*k, *v))
@@ -416,12 +422,12 @@ async fn process_users_map(ctx: &Context<'_>, map: HashMap<UserId, i32>) -> anyh
 
     let now = std::time::Instant::now();
 
-    let guild_members = ctx.guild().unwrap().members;
+    let guild_members = ctx.guild().ok_or("Not in guild")?.members;
     let nb_users = 5usize;
     let mut field = String::new();
     for user in sorted.iter().take(nb_users) {
         //let member = ctx.http().get_member(guild_id, user.0).await?;
-        let member = guild_members.get(&user.0).unwrap();
+        let member = guild_members.get(&user.0).ok_or("No member found")?;
         let line = format!("{} - {}\n", member.display_name(), user.1);
         field.push_str(&line);
     }
@@ -430,4 +436,3 @@ async fn process_users_map(ctx: &Context<'_>, map: HashMap<UserId, i32>) -> anyh
 
     Ok(field)
 }
-

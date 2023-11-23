@@ -1,14 +1,15 @@
+use std::time::Instant;
+
 use poise::serenity_prelude::{
     self as serenity,
     audit_log::{Action, MemberAction},
     GuildId, Member, Mentionable, Message, User,
 };
 use rand::{thread_rng, Rng};
-use tracing::{info, instrument, log::warn, trace};
+use tracing::{debug, info, instrument, log::warn, trace};
 
-use super::{db, commands::levels, Data, clearurl::clear_url};
-
-type Error = Box<dyn std::error::Error + Send + Sync>;
+use crate::{clearurl::clear_url, commands::levels, db};
+use crate::{Context, Data, Error};
 
 #[instrument(skip_all, fields(guild=new_message.guild_id.unwrap().name(ctx), author=new_message.author.name))]
 pub async fn message_handler(
@@ -33,6 +34,7 @@ pub async fn message_handler(
         .collect::<Vec<&str>>();
     for link in links {
         info!("Cleaning link {}", link);
+        let t_0 = Instant::now();
         if let Some(cleaned) = clear_url(link).await? {
             info!("Cleaned link -> {}", cleaned);
             // Send message with cleaned url
@@ -47,12 +49,15 @@ pub async fn message_handler(
                 .suppress_embeds(&ctx.http)
                 .await?;
         }
+        debug!("clear_url finished in {} µs", t_0.elapsed().as_micros());
     }
 
     // User gains xp on message
+    let t_0 = Instant::now();
     let db = &user_data.db;
     db::add_user(db, user_id.0).await?;
     levels::handle_message::add_xp(ctx, user_data, &guild_id, &channel_id, &user_id).await?;
+    debug!("add_xp finished in {} µs", t_0.elapsed().as_micros());
 
     Ok(())
 }
@@ -132,3 +137,5 @@ pub async fn member_removal_handler(
 
     Ok(())
 }
+
+///////////////////////////////////////////////////////////////

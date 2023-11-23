@@ -3,6 +3,7 @@ use tracing::instrument;
 
 use super::user_level::UserLevel;
 use crate::db::{from_i64, to_i64, Db};
+use crate::Error;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
@@ -32,7 +33,7 @@ impl From<UserSql> for UserLevel {
 /// If no user is found, create a new entry with `user_id` and returns
 /// new `UserLevel`.
 #[instrument]
-pub async fn get_user(db: &Db, user_id: u64, guild_id: u64) -> anyhow::Result<UserLevel> {
+pub async fn get_user(db: &Db, user_id: u64, guild_id: u64) -> Result<UserLevel, Error> {
     // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
     let user_id = to_i64(user_id);
     let guild_id = to_i64(guild_id);
@@ -62,7 +63,7 @@ pub async fn get_user(db: &Db, user_id: u64, guild_id: u64) -> anyhow::Result<Us
 
 /// Update user's entry in the database with new values.
 #[instrument]
-pub async fn update_user(db: &Db, user: &UserLevel, guild_id: u64) -> anyhow::Result<()> {
+pub async fn update_user(db: &Db, user: &UserLevel, guild_id: u64) -> Result<(), Error> {
     // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
     let user_id = to_i64(user.user_id.0);
     let guild_id = to_i64(guild_id);
@@ -85,7 +86,7 @@ pub async fn update_user(db: &Db, user: &UserLevel, guild_id: u64) -> anyhow::Re
 
 /// Update user rank in the database
 #[instrument]
-pub async fn update_ranks(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> anyhow::Result<()> {
+pub async fn update_ranks(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> Result<(), Error> {
     let guild_id = to_i64(guild_id);
 
     for user in users {
@@ -108,7 +109,7 @@ pub async fn update_ranks(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> anyh
 
 /// Get all entries in the database and returns a `Vec<UserLevel>`
 #[instrument]
-pub async fn get_all_users(db: &Db, guild_id: u64) -> anyhow::Result<Vec<UserLevel>> {
+pub async fn get_all_users(db: &Db, guild_id: u64) -> Result<Vec<UserLevel>, Error> {
     let guild_id = to_i64(guild_id);
 
     let response = sqlx::query_as!(UserSql, "SELECT * FROM levels WHERE guild_id = ?", guild_id)
@@ -128,7 +129,7 @@ pub async fn get_all_users(db: &Db, guild_id: u64) -> anyhow::Result<Vec<UserLev
 /// Clear all users entries corresponding to the guild_id first,
 /// and insert all new entries in hte `users: Vec<UserLevel>
 #[instrument]
-pub async fn import_from_mee6(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> anyhow::Result<()> {
+pub async fn import_from_mee6(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> Result<(), Error> {
     let guild_id = to_i64(guild_id);
 
     sqlx::query!("DELETE FROM levels WHERE guild_id = ?", guild_id)

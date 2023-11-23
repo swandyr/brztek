@@ -1,3 +1,4 @@
+use crate::Error;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use tracing::instrument;
 
@@ -17,7 +18,7 @@ impl Db {
     }
 
     #[instrument]
-    pub async fn run_migrations(&self) -> anyhow::Result<()> {
+    pub async fn run_migrations(&self) -> Result<(), Error> {
         sqlx::migrate!("./migrations").run(&self.pool).await?;
         Ok(())
     }
@@ -36,7 +37,7 @@ pub const fn from_i64(signed: i64) -> u64 {
 }
 
 #[instrument]
-pub async fn add_guild(db: &Db, guild_id: u64) -> anyhow::Result<()> {
+pub async fn add_guild(db: &Db, guild_id: u64) -> Result<(), Error> {
     let guild_id = to_i64(guild_id);
 
     sqlx::query!("INSERT OR IGNORE INTO guilds (id) VALUES (?)", guild_id)
@@ -47,12 +48,30 @@ pub async fn add_guild(db: &Db, guild_id: u64) -> anyhow::Result<()> {
 }
 
 #[instrument]
-pub async fn add_user(db: &Db, user_id: u64) -> anyhow::Result<()> {
+pub async fn add_user(db: &Db, user_id: u64) -> Result<(), Error> {
     let user_id = to_i64(user_id);
 
     sqlx::query!("INSERT OR IGNORE INTO users (id) VALUES (?)", user_id)
         .execute(&db.pool)
         .await?;
+
+    Ok(())
+}
+
+#[instrument]
+pub async fn increment_cmd(db: &Db, cmd: &str, guild_id: u64) -> Result<(), Error> {
+    let guild_id = to_i64(guild_id);
+
+    sqlx::query!(
+        "INSERT OR IGNORE INTO cmd_count (guild_id, command) VALUES (?, ?);
+    UPDATE cmd_count SET count = count + 1 WHERE guild_id = ? AND command = ?",
+        guild_id,
+        cmd,
+        guild_id,
+        cmd
+    )
+    .execute(&db.pool)
+    .await?;
 
     Ok(())
 }

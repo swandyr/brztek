@@ -3,6 +3,7 @@ use tracing::instrument;
 
 use super::Roulette;
 use crate::db::{from_i64, to_i64, Db};
+use crate::Error;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
@@ -25,7 +26,7 @@ impl From<RouletteSql> for Roulette {
 }
 
 #[instrument]
-pub async fn add_roulette_result(db: &Db, guild_id: u64, roulette: Roulette) -> anyhow::Result<()> {
+pub async fn add_roulette_result(db: &Db, guild_id: u64, roulette: Roulette) -> Result<(), Error> {
     let guild_id = to_i64(guild_id);
     let timestamp = roulette.timestamp;
     let caller_id = to_i64(roulette.caller_id.0);
@@ -48,7 +49,7 @@ pub async fn add_roulette_result(db: &Db, guild_id: u64, roulette: Roulette) -> 
 }
 
 #[instrument]
-pub async fn get_roulette_scores(db: &Db, guild_id: u64) -> anyhow::Result<Vec<Roulette>> {
+pub async fn get_roulette_scores(db: &Db, guild_id: u64) -> Result<Vec<Roulette>, Error> {
     let guild_id = to_i64(guild_id);
 
     let records = sqlx::query_as!(

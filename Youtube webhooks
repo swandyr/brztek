@@ -12,5 +12,7 @@ https://developers.google.com/youtube/v3/guides/push_notifications
 - callback URL is the webhook URL
 - Topic URL is the youtube channel URL
 
+# Maybe some help here
+https://github.com/BryanCuneo/yt-to-discord
 
 Execute webhook

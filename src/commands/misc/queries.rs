@@ -1,8 +1,7 @@
 use tracing::{debug, instrument};
 
 use crate::db::{from_i64, to_i64, Db};
-
-////////////////////////////////////////////////////////////////////////////////////////
+use crate::Error;
 
 #[instrument]
 pub async fn set_role_color(
@@ -10,7 +9,7 @@ pub async fn set_role_color(
     guild_id: u64,
     user_id: u64,
     role_id: u64,
-) -> anyhow::Result<()> {
+) -> Result<(), Error> {
     let guild_id = to_i64(guild_id);
     let user_id = to_i64(user_id);
     let role_id = to_i64(role_id);
@@ -30,7 +29,7 @@ pub async fn set_role_color(
 }
 
 #[instrument]
-pub async fn get_role_color(db: &Db, guild_id: u64, user_id: u64) -> anyhow::Result<Option<u64>> {
+pub async fn get_role_color(db: &Db, guild_id: u64, user_id: u64) -> Result<Option<u64>, Error> {
     let guild_id = to_i64(guild_id);
     let user_id = to_i64(user_id);
 
@@ -54,7 +53,7 @@ pub async fn get_learned(
     db: &Db,
     command_name: &str,
     guild_id: u64,
-) -> anyhow::Result<Option<String>> {
+) -> Result<Option<String>, Error> {
     let guild_id = to_i64(guild_id);
 
     let response = sqlx::query!(
@@ -75,7 +74,7 @@ pub async fn get_learned(
 }
 
 #[instrument]
-pub async fn get_learned_list(db: &Db, guild_id: u64) -> anyhow::Result<Vec<String>> {
+pub async fn get_learned_list(db: &Db, guild_id: u64) -> Result<Vec<String>, Error> {
     let guild_id = to_i64(guild_id);
 
     let records = sqlx::query!("SELECT name FROM learned_cmds WHERE guild_id = ?", guild_id)
@@ -92,7 +91,7 @@ pub async fn set_learned(
     command_name: &str,
     content: &str,
     guild_id: u64,
-) -> anyhow::Result<()> {
+) -> Result<(), Error> {
     let guild_id = to_i64(guild_id);
 
     sqlx::query!(

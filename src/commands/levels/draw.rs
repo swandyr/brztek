@@ -6,10 +6,11 @@ use piet_common::{
 use tracing::{info, instrument};
 
 use super::{
-    xp_func::{total_xp_required_for_level, xp_needed_to_level_up},
     to_png_buffer,
+    xp_func::{total_xp_required_for_level, xp_needed_to_level_up},
     CARD_FONT, TOP_TITLE_HEIGHT, TOP_USER_HEIGHT,
 };
+use crate::Error;
 
 #[derive(Debug, Clone, Copy)]
 struct Colors {
@@ -82,7 +83,7 @@ const MARGIN: f64 = 16.0;
 pub fn gen_user_card(
     user_info: UserInfoCard,
     profile_picture: (usize, usize, &[u8]),
-) -> anyhow::Result<Vec<u8>> {
+) -> Result<Vec<u8>, Error> {
     info!("Start drawing user card.");
 
     let (username, rank, level, user_xp, banner_colour) = user_info.tuple();
@@ -276,7 +277,7 @@ struct UserLayout {
 }
 
 #[instrument(skip_all)]
-pub async fn gen_top_card(users: &[UserInfoCard], _guild_name: &str) -> anyhow::Result<Vec<u8>> {
+pub async fn gen_top_card(users: &[UserInfoCard], _guild_name: &str) -> Result<Vec<u8>, Error> {
     info!("get top_card for users:\n{users:#?}");
 
     // Some colors

@@ -1,42 +1,49 @@
 #![allow(
-clippy::unused_async,
-clippy::cast_precision_loss,
-clippy::cast_sign_loss,
-clippy::cast_possible_truncation,
-clippy::cast_lossless)]
+    clippy::unused_async,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless,
+    unused
+)]
 
-
-mod commands;
 mod builtins;
+mod clearurl;
+mod commands;
+mod config;
 mod db;
 mod handlers;
-mod clearurl;
 
+use commands::youtube;
 use poise::serenity_prelude::{self as serenity, UserId};
 use std::{
     collections::HashMap,
     env,
-    sync::{Arc, Mutex},
+    sync::{mpsc, Arc, Mutex},
     time::Instant,
 };
 use tracing::{debug, error, info, instrument, trace, warn};
 use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 
+use brzthook::prelude::*;
+
+use config::Config;
 use db::Db;
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
-// type Context<'a> = poise::Context<'a, Data, Error>;
+pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
+pub(crate) type Context<'a> = poise::Context<'a, Data, Error>;
 
 const PREFIX: &str = "$";
 
 /// Store shared data
-#[derive(Debug)]
 pub struct Data {
+    pub config: Arc<Config>,
     pub db: Arc<Db>,
     pub roulette_map: Arc<Mutex<HashMap<UserId, (u8, i64)>>>,
+    pub hook_listener: Arc<HookListener>,
 }
 
-// ----------------------------------------- Main -----------------------------------------
+// ---------------------------------------- Main -----------------------------------------
 
 #[instrument]
 #[tokio::main]
@@ -54,6 +61,7 @@ async fn main() -> Result<(), Error> {
             fmt::Layer::new()
                 .compact()
                 .with_ansi(false)
+                .with_line_number(true)
                 .with_writer(non_blocking),
         );
     tracing::subscriber::set_global_default(subscriber)?;
@@ -65,11 +73,22 @@ async fn main() -> Result<(), Error> {
         | serenity::GatewayIntents::GUILD_MEMBERS
         | serenity::GatewayIntents::GUILD_PRESENCES;
 
-    let db_url = env::var("DATABASE_URL")?;
+    let cfg_file = std::fs::read_to_string("config.toml")?;
+    let config: Config = toml::from_str(&cfg_file)?;
+
+    //let db_url = env::var("DATABASE_URL")?;
+    let db_url = &config.database;
     info!("Connecting to database: {}", &db_url);
-    let db = Db::new(&db_url).await;
+    let db = Db::new(db_url).await;
     info!("Connected to database. Running migrations");
     db.run_migrations().await?;
+
+    // Create webhook listener and get receiver
+    let hook_listener = HookListener::builder()
+        .listener(&config.brzthook.ip_addr, config.brzthook.port)?
+        .callback(&config.brzthook.callback)
+        .new_only(config.brzthook.new_only)
+        .build()?;
 
     let options = poise::FrameworkOptions {
         commands: vec![
@@ -85,14 +104,14 @@ async fn main() -> Result<(), Error> {
             commands::misc::learned(),
             commands::misc::ping(),
             commands::misc::setcolor(),
-            commands::misc::yt(),
             commands::roulette::rffstar(),
             commands::roulette::roulette(),
             commands::roulette::statroulette(),
             commands::roulette::toproulette(),
+            commands::youtube::yt(),
         ],
         event_handler: |ctx, event, framework, user_data| {
-            Box::pin(event_event_handler(ctx, event, framework, user_data))
+            Box::pin(event_handler(ctx, event, framework, user_data))
         },
         prefix_options: poise::PrefixFrameworkOptions {
             prefix: Some(PREFIX.into()),
@@ -101,7 +120,19 @@ async fn main() -> Result<(), Error> {
         },
         pre_command: |ctx| {
             Box::pin(async move {
-                info!("Executing command {}", ctx.command().qualified_name);
+                let guild = ctx.guild();
+                db::increment_cmd(
+                    &ctx.data().db,
+                    &ctx.command().qualified_name,
+                    guild.as_ref().map_or_else(|| 0, |g| g.id.0),
+                )
+                .await
+                .unwrap();
+                info!(
+                    "Executing command {} in guild {:?}",
+                    ctx.command().qualified_name,
+                    guild.map(|g| g.name)
+                );
             })
         },
         on_error: |error| Box::pin(on_error(error)),
@@ -118,8 +149,10 @@ async fn main() -> Result<(), Error> {
         .setup(|_ctx, _data_about, _framework| {
             Box::pin(async move {
                 Ok(Data {
+                    config: Arc::new(config),
                     db: Arc::new(db),
                     roulette_map: Arc::new(Mutex::new(HashMap::new())),
+                    hook_listener: Arc::new(hook_listener),
                 })
             })
         })
@@ -132,7 +165,7 @@ async fn main() -> Result<(), Error> {
 // ------------------------------------- Event handler -----------------------------------------
 
 #[instrument(skip_all, fields(event_type=event.name()))]
-async fn event_event_handler(
+async fn event_handler(
     ctx: &serenity::Context,
     event: &poise::Event<'_>,
     framework: poise::FrameworkContext<'_, Data, Error>,
@@ -156,6 +189,25 @@ async fn event_event_handler(
                 info!("Connected to guild: {:?} (id {})", guild.name(ctx), guild);
                 info!("Permissions: {:#?}", permissions);
             }
+
+            // Starts the listener in a separate thread
+            let db_c = Arc::clone(db);
+            let serenity_ctx = ctx.clone();
+            let listener = Arc::clone(&user_data.hook_listener);
+            tokio::spawn(async move {
+                youtube::listen_loop(serenity_ctx, db_c, listener)
+                    .await
+                    .unwrap();
+            })
+            .await?;
+
+            // Starts the expiration checker
+            let db_c = Arc::clone(db);
+            let listener = Arc::clone(&user_data.hook_listener);
+            tokio::spawn(async move {
+                youtube::expiration_check_timer(listener, db_c).await;
+            })
+            .await?;
         }
 
         poise::Event::Message { new_message } => {
@@ -201,7 +253,7 @@ async fn event_event_handler(
 
 // -------------------------------------- Error handling ----------------------------------
 
-#[instrument]
+#[instrument(skip(error))]
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     match error {
         poise::FrameworkError::Setup {

@@ -13,6 +13,16 @@ Create a `.env` file.
     DATABASE_URL="sqlite:database.sqlite"
     RUST_LOG=warn
 
+config.toml
+```toml
+database = "sqlite:database.sqlite"
+
+[brzthook]
+port = # The port used by the listener
+ip_addr = # The address to bind the TCP listener
+callback = # The address passed to the hub
+new_only = # true/false; notify only new videos
+```
 
 ### Help
 - `/help`

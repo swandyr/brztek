@@ -2,10 +2,7 @@ use poise::serenity_prelude::{self as serenity, UserId};
 use tracing::{info, instrument};
 
 use super::levels::{self, user_level::UserLevel};
-use crate::Data;
-
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+use crate::{Context, Data, Error};
 
 /// Admin commands
 ///
@@ -13,12 +10,12 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 ///
 /// Available subcommands are set_pub, set_user, spam_delay, min_xp_gain, max_xp_gain.
 #[poise::command(
-prefix_command,
-slash_command,
-guild_only,
-subcommands("set_user"),
-required_permissions = "ADMINISTRATOR",
-category = "Admin"
+    prefix_command,
+    slash_command,
+    guild_only,
+    subcommands("set_user"),
+    required_permissions = "ADMINISTRATOR",
+    category = "Admin"
 )]
 pub async fn admin(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
@@ -27,11 +24,11 @@ pub async fn admin(_ctx: Context<'_>) -> Result<(), Error> {
 /// Set the user's xp points
 #[instrument(skip(ctx))]
 #[poise::command(
-prefix_command,
-slash_command,
-guild_only,
-ephemeral,
-category = "Admin"
+    prefix_command,
+    slash_command,
+    guild_only,
+    ephemeral,
+    category = "Admin"
 )]
 async fn set_user(
     ctx: Context<'_>,
@@ -40,10 +37,7 @@ async fn set_user(
     #[min = 0]
     xp: u32,
 ) -> Result<(), Error> {
-    let Some(guild_id) = ctx.guild_id() else {
-        ctx.say("Must be in guild").await?;
-        return Ok(());
-    };
+    let guild_id = ctx.guild_id().ok_or("Not in guild")?;
     let user_id = user.id;
 
     let level = levels::xp_func::calculate_level_from_xp(xp as i64);
@@ -66,11 +60,11 @@ async fn set_user(
 #[allow(clippy::cast_possible_wrap)]
 #[instrument(skip(ctx))]
 #[poise::command(
-slash_command,
-required_permissions = "ADMINISTRATOR",
-guild_only,
-ephemeral,
-category = "Admin"
+    slash_command,
+    required_permissions = "ADMINISTRATOR",
+    guild_only,
+    ephemeral,
+    category = "Admin"
 )]
 pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("This will overwrite current levels. Type \"yes\" to confirm.")
@@ -94,7 +88,7 @@ pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {
         return Ok(());
     }
 
-    let guild_id = ctx.guild_id().unwrap().0;
+    let guild_id = ctx.guild_id().ok_or("Not in guild")?.0;
     let url = format!("https://mee6.xyz/api/plugins/levels/leaderboard/{guild_id}");
 
     let text = reqwest::get(url).await?.text().await?;

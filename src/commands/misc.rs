@@ -2,16 +2,13 @@ pub mod queries;
 
 const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song/current";
 //const BIGRIG_RECENT_URL: &str = https://brfm.radiocloud.pro/api/public/v1/song/recent
-const INVIDIOUS_INSTANCES_URL: &str = "https://api.invidious.io/instances.json?sort_by=health";
 
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::RoleId;
 use tracing::{info, instrument};
 
-use crate::{Data, clearurl::clear_url};
-
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+use crate::{clearurl::clear_url, Data};
+use crate::{Context, Error};
 
 //TODO: see commands options, for aliases and stuff
 
@@ -36,7 +33,7 @@ pub async fn learn(
     #[description = "Name"] name: String,
     #[description = "Link"] link: String,
 ) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap().0;
+    let guild_id = ctx.guild_id().ok_or("Not in guild")?.0;
     let db = &ctx.data().db;
 
     queries::set_learned(db, &name, &link, guild_id).await?;
@@ -52,7 +49,7 @@ pub async fn learn(
 #[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Misc")]
 pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap().0;
+    let guild_id = ctx.guild_id().ok_or("Not in guild")?.0;
     let db = &ctx.data().db;
 
     let commands = queries::get_learned_list(db, guild_id).await?;
@@ -88,12 +85,12 @@ pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
 /// If no color is given, it will retrieve the profile's banner color
 #[instrument(skip(ctx))]
 #[poise::command(
-prefix_command,
-slash_command,
-guild_only,
-required_bot_permissions = "MANAGE_ROLES",
-ephemeral,
-category = "Misc"
+    prefix_command,
+    slash_command,
+    guild_only,
+    required_bot_permissions = "MANAGE_ROLES",
+    ephemeral,
+    category = "Misc"
 )]
 pub async fn setcolor(
     ctx: Context<'_>,
@@ -101,9 +98,9 @@ pub async fn setcolor(
 ) -> Result<(), Error> {
     // Request db for an `Option<u64>` if a role is already attributed to the user
     let db = &ctx.data().db;
-    let guild = ctx.guild().unwrap();
+    let guild = ctx.guild().ok_or("Not in guild")?;
     let guild_id = guild.id.0;
-    let mut member = ctx.author_member().await.unwrap();
+    let mut member = ctx.author_member().await.ok_or("author_member not found")?;
     let user_id = member.user.id.0;
     let role_id = queries::get_role_color(db, guild_id, user_id).await?;
 
@@ -174,7 +171,7 @@ pub async fn setcolor(
 
 /// Explicitly call clean_url
 #[instrument(skip(ctx))]
-#[poise::command(slash_command, guild_only, category = "Misc")]
+#[poise::command(slash_command, category = "Misc")]
 pub async fn clean(
     ctx: Context<'_>,
     #[rest]
@@ -187,10 +184,7 @@ pub async fn clean(
         .collect::<Vec<&str>>();
 
     if links.is_empty() {
-        ctx.send(|f| {
-            f.content("No valid link provided")
-                .ephemeral(true)
-        })
+        ctx.send(|f| f.content("No valid link provided").ephemeral(true))
             .await?;
     } else {
         for link in links {
@@ -250,63 +244,7 @@ pub async fn br(ctx: Context<'_>) -> Result<(), Error> {
                 .footer(|f| f.text(&format!("Play count: {}", song.data.playcount)))
         })
     })
-        .await?;
+    .await?;
 
-    Ok(())
-}
-
-/// Search a Youtube video.
-///
-/// The bot will post the first video returned by the search phrase you entered.
-///
-/// It requests the Invidious API to get the video Id to avoid the need of a Google API Key.
-/// The link posted is Youtube though.
-#[instrument(skip(ctx))]
-#[poise::command(prefix_command, slash_command, category = "Misc")]
-pub async fn yt(
-    ctx: Context<'_>,
-    #[rest]
-    #[description = "search input"]
-    search: String,
-) -> Result<(), Error> {
-    // Request available invidious instance
-    let response = reqwest::get(INVIDIOUS_INSTANCES_URL).await?.text().await?;
-    let instances: serde_json::Value = serde_json::from_str(&response)?;
-
-    // Keep only instance that have available api calls
-    let instances = instances
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter(|inst| inst[1]["api"] == true);
-
-    for instance in instances {
-        let instance_uri = &instance[1]["uri"].to_string();
-        let instance_uri = instance_uri.trim_matches('"');
-        let query_url = format!("{instance_uri}/api/v1/search?q={search}&type=video");
-
-        // Send GET request to the invidious instance
-        info!("GET {query_url}");
-        let response = reqwest::get(query_url).await?;
-        info!("Status: {}", response.status());
-
-        // Process the response if response status code is Ok then exit loop
-        // If status code is not Ok, try with next instance
-        if response.status() == reqwest::StatusCode::OK {
-            let text = response.text().await?;
-            let json: serde_json::Value = serde_json::from_str(&text)?;
-            let video_id = &json[0]["videoId"].to_string();
-            let video_id = video_id.trim_matches('"');
-            info!("Found video id: {video_id}");
-
-            let youtube_url = format!("https://www.youtube.com/watch?v={video_id}");
-            ctx.say(youtube_url).await?;
-
-            return Ok(());
-        }
-    }
-
-    // If no request to any invidious instance returned with Ok
-    ctx.say("Nothing to see here.").await?;
     Ok(())
 }

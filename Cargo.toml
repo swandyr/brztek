@@ -6,15 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
 dotenvy = "0.15"
-image = "0.24"
 poise = "0.5"
 rand = "0.8"
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite"] }
 tokio = { version = "1.27", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
@@ -23,8 +20,15 @@ piet-common = { version = "0.6", features = ["png"] }
 tracing-appender = "0.2.2"
 regex = "1.10"
 url = "2.4"
+brzthook = { git = "https://github.com/swandyr/brzthook" }
+toml = "0.8.8"
 
-[dependencies.serenity]
-version = "0.11"
+[dependencies.image]
+version = "0.24"
 default-features = false
-features = ["builder", "client", "gateway", "model", "utils", "collector"]
+features = ["png", "webp"]
+
+[dependencies.sqlx]
+version = "0.7"
+default-features = false
+features = ["macros", "migrate", "json", "sqlite", "runtime-tokio", "time"]

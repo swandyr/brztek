@@ -1,15 +1,14 @@
-use std::path::PathBuf;
-
 use regex::Regex;
+use std::path::PathBuf;
 use tracing::{debug, info, instrument};
 use url::Url;
 
-const PROVIDERS_URL: &str = "https://rules2.clearurls.xyz/data.minify.json";
-const PROVIDERS_FILE: &str = "./clearurl/data.minify.json";
-const _HASH_URL: &str = "https://rules2.clearurls.xyz/rules.minify.hash";
-const _HASH_PATH: &str = "./clearurl/rules.minify.hash";
+use crate::Error;
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
+const PROVIDERS_URL: &str = "https://rules2.clearurls.xyz/data.minify.json";
+const PROVIDERS_FILE: &str = "./data.minify.json";
+const _HASH_URL: &str = "https://rules2.clearurls.xyz/rules.minify.hash";
+const _HASH_PATH: &str = "./rules.minify.hash";
 
 /// Remove tracking elements from url using the ClearURLs rules, which can be found
 /// on the [github repo](https://github.com/ClearURLs/Addon)
@@ -113,7 +112,7 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<Option<String>, Er
                             .iter()
                             .map(|value| {
                                 let rule_str = value.as_str().unwrap()/* .replace("(?:%3F)?", "") */;
-                                Regex::new(&rule_str).unwrap()
+                                Regex::new(rule_str).unwrap()
                             })
                             .collect::<Vec<Regex>>(),
                     );
@@ -200,7 +199,7 @@ mod tests {
         std::env::set_current_dir("../").unwrap();
 
         match clear_url(url).await {
-            Ok(val) => assert_eq!(val, cleared),
+            Ok(val) => assert_eq!(val, Some(cleared.to_owned())),
             Err(e) => println!("Error: {e}"),
         }
     }
@@ -213,7 +212,7 @@ mod tests {
         std::env::set_current_dir("../").unwrap();
 
         match clear_url(url).await {
-            Ok(val) => assert_eq!(val, cleared),
+            Ok(val) => assert_eq!(val, Some(cleared.to_owned())),
             Err(e) => println!("Error: {e}"),
         }
     }
@@ -226,7 +225,7 @@ mod tests {
         std::env::set_current_dir("../").unwrap();
 
         match clear_url(url).await {
-            Ok(val) => assert_eq!(val, cleared),
+            Ok(val) => assert_eq!(val, Some(cleared.to_owned())),
             Err(e) => println!("Error: {e}"),
         }
     }
@@ -243,7 +242,7 @@ mod tests {
         std::env::set_current_dir("../").unwrap();
 
         match clear_url(url).await {
-            Ok(val) => assert_eq!(val, url),
+            Ok(val) => assert_eq!(val, None),
             Err(e) => println!("Error: {e}"),
         }
     }
