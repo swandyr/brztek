@@ -214,6 +214,7 @@ dependencies = [
 [[package]]
 name = "brzthook"
 version = "0.1.0"
+source = "git+https://github.com/swandyr/brzthook#a501dd3100108e1920feab1fe91d43a977eefe91"
 dependencies = [
  "serde",
  "thiserror",

@@ -98,7 +98,7 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<Option<String>, Er
 
             // Explode query parameters to be checked against rules
             let mut parsed_url = Url::parse(&url)?;
-            debug!("params:\n{:#?}", parsed_url);
+            //debug!("params:\n{:#?}", parsed_url);
 
             let mut params = vec![];
             let mut rules = vec![];
@@ -119,7 +119,7 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<Option<String>, Er
                 }
             }
             let rules = rules.into_iter().flatten().collect::<Vec<Regex>>();
-            debug!("RULES:\n{rules:#?}");
+            //debug!("RULES:\n{rules:#?}");
 
             // Check regular rules and referral marketing rules
             let pairs = parsed_url.query_pairs();
@@ -129,7 +129,7 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<Option<String>, Er
             // If the checked parameter does not match any rule, it is pushed into `params`,
             // else, the loop proceed to the next pair without further processing.
             'pair: for (key, value) in pairs {
-                debug!("KEY: {}", &key);
+                //debug!("KEY: {}", &key);
                 for re in &rules {
                     if re.is_match(&key.to_ascii_lowercase()) {
                         info!("match rule '{}' on '{}'", re.as_str(), &*key);
@@ -160,7 +160,7 @@ fn process_url(url: &str, json: &serde_json::Value) -> Result<Option<String>, Er
                         Regex::new(&rule_str).unwrap()
                     })
                     .collect::<Vec<Regex>>();
-                debug!("RAW RULES: {:#?}", rules);
+                //debug!("RAW RULES: {:#?}", rules);
 
                 for rule in rules {
                     if rule.is_match(&url) {
