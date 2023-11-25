@@ -90,6 +90,8 @@ pub async fn search(
             let channel_id = ctx.channel_id();
             post_video(ctx.serenity_context().clone(), channel_id, video_id, None).await?;
 
+            //TODO: Should answer something, as for now it returns error
+
             return Ok(());
         }
     }
