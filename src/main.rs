@@ -198,16 +198,14 @@ async fn event_handler(
                 youtube::listen_loop(serenity_ctx, db_c, listener)
                     .await
                     .unwrap();
-            })
-            .await?;
+            });
 
             // Starts the expiration checker
             let db_c = Arc::clone(db);
             let listener = Arc::clone(&user_data.hook_listener);
             tokio::spawn(async move {
                 youtube::expiration_check_timer(listener, db_c).await;
-            })
-            .await?;
+            });
         }
 
         poise::Event::Message { new_message } => {
