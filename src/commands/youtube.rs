@@ -7,8 +7,8 @@ use time::Duration;
 use tracing::{error, info, instrument, warn};
 
 use crate::{Context, Data, Error};
+use helpers::get_invidious_instances;
 pub use helpers::{expiration_check_timer, get_name_id, listen_loop};
-use helpers::{get_invidious_instances, post_video};
 
 const INVIDIOUS_INSTANCES_URL: &str = "https://api.invidious.io/instances.json?sort_by=health";
 const YOUTUBE_VIDEO_PREFIX: &str = "https://www.youtube.com/watch?v=";
@@ -60,6 +60,8 @@ pub async fn search(
     #[description = "search input"]
     search: String,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
+
     // Request available invidious instance
     let Some(instances) = get_invidious_instances().await? else {
         warn!("No invidious instance found");
@@ -87,10 +89,8 @@ pub async fn search(
             };
             info!("Found video id: {video_id}");
 
-            let channel_id = ctx.channel_id();
-            post_video(ctx.serenity_context().clone(), channel_id, video_id, None).await?;
-
-            //TODO: Should answer something, as for now it returns error
+            let url = format!("{YOUTUBE_VIDEO_PREFIX}{video_id}");
+            ctx.say(url).await?;
 
             return Ok(());
         }
