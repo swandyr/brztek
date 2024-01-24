@@ -3,8 +3,7 @@ pub mod queries;
 const BIGRIG_CURRENT_URL: &str = "https://brfm.radiocloud.pro/api/public/v1/song/current";
 //const BIGRIG_RECENT_URL: &str = https://brfm.radiocloud.pro/api/public/v1/song/recent
 
-use poise::serenity_prelude as serenity;
-use poise::serenity_prelude::RoleId;
+use poise::{serenity_prelude as serenity, CreateReply};
 use tracing::{info, instrument};
 
 use crate::{clearurl::clear_url, Data};
@@ -33,7 +32,7 @@ pub async fn learn(
     #[description = "Name"] name: String,
     #[description = "Link"] link: String,
 ) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().ok_or("Not in guild")?.0;
+    let guild_id = ctx.guild_id().ok_or("Not in guild")?.get();
     let db = &ctx.data().db;
 
     queries::set_learned(db, &name, &link, guild_id).await?;
@@ -49,7 +48,7 @@ pub async fn learn(
 #[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, guild_only, category = "Misc")]
 pub async fn learned(ctx: Context<'_>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().ok_or("Not in guild")?.0;
+    let guild_id = ctx.guild_id().ok_or("Not in guild")?.get();
     let db = &ctx.data().db;
 
     let commands = queries::get_learned_list(db, guild_id).await?;
@@ -98,10 +97,10 @@ pub async fn setcolor(
 ) -> Result<(), Error> {
     // Request db for an `Option<u64>` if a role is already attributed to the user
     let db = &ctx.data().db;
-    let guild = ctx.guild().ok_or("Not in guild")?;
-    let guild_id = guild.id.0;
+    let guild = ctx.guild().as_deref().cloned().ok_or("Not in guild")?;
+    let guild_id = guild.id.get();
     let mut member = ctx.author_member().await.ok_or("author_member not found")?;
-    let user_id = member.user.id.0;
+    let user_id = member.user.id.get();
     let role_id = queries::get_role_color(db, guild_id, user_id).await?;
 
     // Member display name will be the name of the role
@@ -128,7 +127,7 @@ pub async fn setcolor(
         serenity::Colour::from_rgb(r, g, b)
     } else {
         // User banner colour will be the colour of the role
-        let Some(colour) = ctx.http().get_user(user_id).await?.accent_colour else {
+        let Some(colour) = ctx.http().get_user(user_id.into()).await?.accent_colour else {
             ctx.say("Cannot find banner color").await?;
             return Ok(());
         };
@@ -138,33 +137,40 @@ pub async fn setcolor(
     info!("role_id: {:?}", role_id);
     if let Some(id) = role_id {
         guild
-            .edit_role(ctx, RoleId(id), |r| {
-                r.colour(colour.0 as u64).name(role_name)
-            })
+            .edit_role(
+                ctx,
+                id,
+                serenity::EditRole::new()
+                    .colour(colour.0 as u64)
+                    .name(role_name),
+            )
             .await?;
         info!("role_color {} updated", id);
     } else {
         let bot_role_position = guild.role_by_name("brztek").unwrap().position;
         info!("bot role position: {}", bot_role_position);
         let role = guild
-            .create_role(ctx, |role| {
-                role.name(role_name)
+            .create_role(
+                ctx,
+                serenity::EditRole::new()
+                    .name(role_name)
                     .colour(colour.0 as u64)
                     .permissions(serenity::Permissions::empty())
-                    .position(u8::try_from(bot_role_position).unwrap() - 1)
-            })
+                    .position(bot_role_position - 1),
+            )
             .await?;
-        info!("role_color created: {}", role.id.0);
+        info!("role_color created: {}", role.id.get());
 
         // Add the role to the user
         member.to_mut().add_role(ctx, role.id).await?;
         info!("role added to user");
 
-        let role_id = role.id.0;
+        let role_id = role.id.get();
         queries::set_role_color(db, guild_id, user_id, role_id).await?;
     }
 
-    ctx.send(|b| b.reply(true).content("Done!")).await?;
+    ctx.send(CreateReply::default().reply(true).content("Done!"))
+        .await?;
 
     Ok(())
 }
@@ -184,8 +190,12 @@ pub async fn clean(
         .collect::<Vec<&str>>();
 
     if links.is_empty() {
-        ctx.send(|f| f.content("No valid link provided").ephemeral(true))
-            .await?;
+        ctx.send(
+            CreateReply::default()
+                .content("No valid link provided")
+                .ephemeral(true),
+        )
+        .await?;
     } else {
         for link in links {
             info!("Cleaning link: {link}");
@@ -234,16 +244,20 @@ pub async fn br(ctx: Context<'_>) -> Result<(), Error> {
         BIGRIG_CURRENT_URL, song.status
     );
 
-    ctx.send(|b| {
-        b.embed(|f| {
-            f.title("Now on BigRig FM")
+    ctx.send(
+        CreateReply::default().embed(
+            serenity::CreateEmbed::new()
+                .title("Now on BigRig FM")
                 .url(&song.data.link)
                 .thumbnail(&song.data.album_art)
                 .field("Artist", &song.data.artist, false)
                 .field("Title", &song.data.title, false)
-                .footer(|f| f.text(&format!("Play count: {}", song.data.playcount)))
-        })
-    })
+                .footer(serenity::CreateEmbedFooter::new(&format!(
+                    "Play count: {}",
+                    song.data.playcount
+                ))),
+        ),
+    )
     .await?;
 
     Ok(())

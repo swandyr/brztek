@@ -3,7 +3,7 @@ use std::time::Instant;
 use poise::serenity_prelude::{
     self as serenity,
     audit_log::{Action, MemberAction},
-    GuildId, Member, Mentionable, Message, User,
+    CreateMessage, EditMessage, GuildId, Member, Mentionable, Message, User,
 };
 use rand::{thread_rng, Rng};
 use tracing::{debug, info, instrument, log::warn, trace};
@@ -46,7 +46,7 @@ pub async fn message_handler(
                 .message(ctx, new_message.id)
                 .await?
                 // ctx cache return NotAuthor error, but ctx.http works fine
-                .suppress_embeds(&ctx.http)
+                .edit(&ctx.http, EditMessage::new().suppress_embeds(true))
                 .await?;
         }
         debug!("clear_url finished in {} µs", t_0.elapsed().as_micros());
@@ -55,7 +55,7 @@ pub async fn message_handler(
     // User gains xp on message
     let t_0 = Instant::now();
     let db = &user_data.db;
-    db::add_user(db, user_id.0).await?;
+    db::add_user(db, user_id.get()).await?;
     levels::handle_message::add_xp(ctx, user_data, &guild_id, &channel_id, &user_id).await?;
     debug!("add_xp finished in {} µs", t_0.elapsed().as_micros());
 
@@ -67,13 +67,8 @@ pub async fn member_addition_handler(
     new_member: &Member,
     ctx: &serenity::Context,
 ) -> Result<(), Error> {
-    let join_messages = serenity::constants::JOIN_MESSAGES;
-    let index = thread_rng().gen_range(0..join_messages.len());
     let mention = new_member.mention();
-    let content = join_messages
-        .get(index)
-        .unwrap_or(&"Welcome $user")
-        .replace("$user", &format!("{mention}"));
+    let content = format!("A wild **{mention}** appeared !");
 
     let system_channel_id = new_member
         .guild_id
@@ -82,7 +77,7 @@ pub async fn member_addition_handler(
         .system_channel_id
         .unwrap();
     system_channel_id
-        .send_message(&ctx.http, |m| m.content(content))
+        .send_message(&ctx.http, CreateMessage::new().content(content))
         .await?;
 
     Ok(())
@@ -122,7 +117,7 @@ pub async fn member_removal_handler(
         // if last action is the kick of the user, change message content accordingly
         if matches!(last_log.action, Action::Member(MemberAction::Kick)) {
             if let Some(target_id) = last_log.target_id {
-                if target_id == user.id.0 {
+                if target_id == user.id.get() {
                     content = format!("**{username}** has got his ass out of here!");
                 }
             }
@@ -132,7 +127,7 @@ pub async fn member_removal_handler(
     }
 
     system_channel_id
-        .send_message(&ctx.http, |m| m.content(content))
+        .send_message(&ctx.http, CreateMessage::new().content(content))
         .await?;
 
     Ok(())

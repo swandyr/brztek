@@ -22,6 +22,7 @@ pub async fn help(
 Type $help command for more info on a command.",
             show_context_menu_commands: true,
             ephemeral: true,
+            ..Default::default()
         },
     )
     .await?;

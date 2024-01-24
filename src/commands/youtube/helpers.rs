@@ -66,7 +66,7 @@ pub fn listen_loop(
                     );
                     // Bot disconnect after ChannelId.say(); why ?
                     rt.block_on(async {
-                        ChannelId(id).say(&ctx.http, &content).await.unwrap();
+                        ChannelId::new(id).say(&ctx.http, &content).await.unwrap();
                     });
                 }
             }

@@ -43,10 +43,10 @@ async fn set_user(
     let level = levels::xp_func::calculate_level_from_xp(xp as i64);
 
     let db = ctx.data().db.as_ref();
-    let mut user_level = levels::queries::get_user(db, user_id.0, guild_id.0).await?;
+    let mut user_level = levels::queries::get_user(db, user_id.get(), guild_id.get()).await?;
     user_level.xp = xp as i64;
     user_level.level = level;
-    levels::queries::update_user(db, &user_level, guild_id.0).await?;
+    levels::queries::update_user(db, &user_level, guild_id.get()).await?;
 
     info!("Admin updated user {user_id} in guild {guild_id}: {xp} - {level}");
 
@@ -88,7 +88,7 @@ pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {
         return Ok(());
     }
 
-    let guild_id = ctx.guild_id().ok_or("Not in guild")?.0;
+    let guild_id = ctx.guild_id().ok_or("Not in guild")?.get();
     let url = format!("https://mee6.xyz/api/plugins/levels/leaderboard/{guild_id}");
 
     let text = reqwest::get(url).await?.text().await?;

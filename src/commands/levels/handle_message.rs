@@ -14,7 +14,7 @@ pub async fn add_xp(
     user_id: &serenity::UserId,
 ) -> Result<(), Error> {
     let db = &user_data.db;
-    let mut user = queries::get_user(db, user_id.0, guild_id.0).await?;
+    let mut user = queries::get_user(db, user_id.get(), guild_id.get()).await?;
 
     // User gain xp if the time defined by spam_delay parameter in xp_settings
     // has passed since his last message
@@ -26,23 +26,21 @@ pub async fn add_xp(
         // Increment level of the user if enough xp, then send a chat message
         if user.has_level_up() {
             info!("User has levelled up");
+            let mention = serenity::Mention::from(*user_id);
+            let message = format!("Level Up, {mention}!");
             channel_id
-                .send_message(&ctx.http, |m| {
-                    let mention = serenity::Mention::from(*user_id);
-                    let message = format!("Level Up, {mention}!");
-                    m.content(&message)
-                })
+                .send_message(&ctx.http, serenity::CreateMessage::new().content(&message))
                 .await?;
         }
 
         let t_0 = Instant::now();
-        queries::update_user(db, &user, guild_id.0).await?;
+        queries::update_user(db, &user, guild_id.get()).await?;
         debug!("Updated user : {user:#?}");
         debug!("update_user finished in {} µs", t_0.elapsed().as_micros());
 
         let t_1 = Instant::now();
         // Recalculate ranking of the user in the guild
-        update_users_ranks(db, guild_id.0).await?;
+        update_users_ranks(db, guild_id.get()).await?;
         debug!("Updated ranks");
         debug!(
             "update_users_ranks finished in {} µs",

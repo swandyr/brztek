@@ -29,8 +29,8 @@ impl From<RouletteSql> for Roulette {
 pub async fn add_roulette_result(db: &Db, guild_id: u64, roulette: Roulette) -> Result<(), Error> {
     let guild_id = to_i64(guild_id);
     let timestamp = roulette.timestamp;
-    let caller_id = to_i64(roulette.caller_id.0);
-    let target_id = to_i64(roulette.target_id.0);
+    let caller_id = to_i64(roulette.caller_id.get());
+    let target_id = to_i64(roulette.target_id.get());
     let rff_triggered = roulette.rff_triggered;
 
     sqlx::query!(

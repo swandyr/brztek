@@ -15,7 +15,10 @@ mod db;
 mod handlers;
 
 use commands::youtube;
-use poise::serenity_prelude::{self as serenity, UserId};
+use poise::{
+    serenity_prelude::{self as serenity, UserId},
+    CreateReply,
+};
 use std::{
     collections::HashMap,
     env,
@@ -119,19 +122,16 @@ async fn main() -> Result<(), Error> {
             ..Default::default()
         },
         pre_command: |ctx| {
+            let guild_id = ctx.guild().map_or_else(|| 0, |g| g.id.get());
+            let guild_name = ctx.guild().map(|g| g.name.clone());
             Box::pin(async move {
-                let guild = ctx.guild();
-                db::increment_cmd(
-                    &ctx.data().db,
-                    &ctx.command().qualified_name,
-                    guild.as_ref().map_or_else(|| 0, |g| g.id.0),
-                )
-                .await
-                .unwrap();
+                db::increment_cmd(&ctx.data().db, &ctx.command().qualified_name, guild_id)
+                    .await
+                    .unwrap();
                 info!(
                     "Executing command {} in guild {:?}",
                     ctx.command().qualified_name,
-                    guild.map(|g| g.name)
+                    guild_name
                 );
             })
         },
@@ -142,9 +142,7 @@ async fn main() -> Result<(), Error> {
     // The Framework builder will automatically retrieve the bot owner and application ID via the
     // passed token, so that information need not be passed here
     info!("Starting brztek with intents: {:?}", intents);
-    poise::Framework::builder()
-        .token(token)
-        .intents(intents)
+    let framework = poise::Framework::builder()
         .options(options)
         .setup(|_ctx, _data_about, _framework| {
             Box::pin(async move {
@@ -156,7 +154,12 @@ async fn main() -> Result<(), Error> {
                 })
             })
         })
-        .run()
+        .build();
+
+    serenity::ClientBuilder::new(token, intents)
+        .framework(framework)
+        .await?
+        .start()
         .await?;
 
     Ok(())
@@ -164,23 +167,23 @@ async fn main() -> Result<(), Error> {
 
 // ------------------------------------- Event handler -----------------------------------------
 
-#[instrument(skip_all, fields(event_type=event.name()))]
+#[instrument(skip_all)]
 async fn event_handler(
     ctx: &serenity::Context,
-    event: &poise::Event<'_>,
+    event: &serenity::FullEvent,
     framework: poise::FrameworkContext<'_, Data, Error>,
     user_data: &Data,
 ) -> Result<(), Error> {
     match event {
-        poise::Event::Ready { data_about_bot } => {
+        serenity::FullEvent::Ready { data_about_bot } => {
             info!("{} is connected.", data_about_bot.user.name);
         }
 
-        poise::Event::CacheReady { guilds } => {
+        serenity::FullEvent::CacheReady { guilds } => {
             let db = &user_data.db;
 
             for guild in guilds {
-                let guild_id = guild.0;
+                let guild_id = guild.get();
                 db::add_guild(db, guild_id).await?;
                 let permissions = guild
                     .member(ctx, framework.bot_id)
@@ -210,7 +213,7 @@ async fn event_handler(
             });
         }
 
-        poise::Event::Message { new_message } => {
+        serenity::FullEvent::Message { new_message } => {
             trace!("New message received: author: {}", new_message.author.name);
             let t_0 = Instant::now();
 
@@ -232,12 +235,12 @@ async fn event_handler(
         }
 
         //? Discord already do this
-        poise::Event::GuildMemberAddition { new_member } => {
+        serenity::FullEvent::GuildMemberAddition { new_member } => {
             info!("New member added: {}", new_member.user.name);
             handlers::member_addition_handler(new_member, ctx).await?;
         }
 
-        poise::Event::GuildMemberRemoval {
+        serenity::FullEvent::GuildMemberRemoval {
             guild_id,
             user,
             member_data_if_available: _,
@@ -261,6 +264,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             framework: _,
             data_about_bot,
             ctx: _,
+            ..
         } => {
             error!("Error during setup: {error:?}\ndata_about_bot: {data_about_bot:#?}");
         }
@@ -270,6 +274,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             ctx: _,
             event,
             framework: _,
+            ..
         } => {
             error!("Error while handling event {event:?}: {error:?}");
         }
@@ -288,7 +293,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 msg_content
             );
             let db = &framework.user_data.db;
-            let guild_id = msg.guild_id.unwrap().0;
+            let guild_id = msg.guild_id.unwrap().get();
 
             let queried = commands::misc::queries::get_learned(db, msg_content, guild_id)
                 .await
@@ -296,13 +301,13 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             if let Some(link) = queried {
                 trace!("Learned command found: {}", msg_content);
                 msg.channel_id
-                    .send_message(&ctx, |m| m.content(link))
+                    .send_message(&ctx, serenity::CreateMessage::new().content(link))
                     .await
                     .expect("Error sending learned command link");
             } else {
                 warn!("Unknown command: {}", msg_content);
                 msg.channel_id
-                    .send_message(&ctx, |m| m.content("https://tenor.com/view/kaamelott-perceval-cest-pas-faux-not-false-gif-17161490"))
+                    .send_message(&ctx, serenity::CreateMessage::new().content("https://tenor.com/view/kaamelott-perceval-cest-pas-faux-not-false-gif-17161490"))
                     .await
                     .unwrap();
             }
@@ -311,6 +316,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
         poise::FrameworkError::MissingUserPermissions {
             missing_permissions,
             ctx,
+            ..
         } => {
             warn!(
                 "{} used command {} but misses permissions: {}",
@@ -318,9 +324,8 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 ctx.command().name,
                 missing_permissions.unwrap()
             );
-            ctx.send(|f| {
-                f.content("https://tenor.com/view/jurrasic-park-samuel-l-jackson-magic-word-you-didnt-say-the-magic-work-gif-3556977")
-            })
+            ctx.send(CreateReply::default().content("https://tenor.com/view/jurrasic-park-samuel-l-jackson-magic-word-you-didnt-say-the-magic-work-gif-3556977")
+            )
             .await
             .unwrap();
         }
@@ -328,6 +333,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
         poise::FrameworkError::MissingBotPermissions {
             missing_permissions,
             ctx,
+            ..
         } => {
             error!(
                 "Bot misses permissions: {} for command {}",
@@ -335,24 +341,25 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 ctx.command().name
             );
 
-            ctx.send(|f| {
-                f.content(format!(
-                    "Bot needs the {missing_permissions} permission to perform this command."
-                ))
-                .ephemeral(true)
-            })
+            ctx.send(
+                CreateReply::default()
+                    .content(format!(
+                        "Bot needs the {missing_permissions} permission to perform this command."
+                    ))
+                    .ephemeral(true),
+            )
             .await
             .unwrap();
         }
 
-        poise::FrameworkError::GuildOnly { ctx } => {
+        poise::FrameworkError::GuildOnly { ctx, .. } => {
             warn!("Guild only command received from outside a guild");
             ctx.say("This does not work outside a guild.")
                 .await
                 .unwrap();
         }
 
-        poise::FrameworkError::Command { error, ctx: _ } => {
+        poise::FrameworkError::Command { error, ctx: _, .. } => {
             error!("Error in command: {}", error);
         }
 

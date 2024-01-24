@@ -65,7 +65,7 @@ pub async fn get_user(db: &Db, user_id: u64, guild_id: u64) -> Result<UserLevel,
 #[instrument]
 pub async fn update_user(db: &Db, user: &UserLevel, guild_id: u64) -> Result<(), Error> {
     // Bit-cast `user_id` from u64 to i64, as SQLite does not support u64 integer
-    let user_id = to_i64(user.user_id.0);
+    let user_id = to_i64(user.user_id.get());
     let guild_id = to_i64(guild_id);
 
     sqlx::query!(
@@ -90,7 +90,7 @@ pub async fn update_ranks(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> Resu
     let guild_id = to_i64(guild_id);
 
     for user in users {
-        let user_id = to_i64(user.user_id.0);
+        let user_id = to_i64(user.user_id.get());
 
         sqlx::query!(
             "UPDATE levels
@@ -137,7 +137,7 @@ pub async fn import_from_mee6(db: &Db, users: Vec<UserLevel>, guild_id: u64) -> 
         .await?;
 
     for user in users {
-        let user_id = to_i64(user.user_id.0);
+        let user_id = to_i64(user.user_id.get());
         sqlx::query!(
             "INSERT INTO levels (user_id, guild_id, xp, level, rank, last_message)
                 VALUES (?, ?, ?, ?, ?, ?)",

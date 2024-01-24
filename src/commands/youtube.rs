@@ -139,8 +139,8 @@ async fn sub(
     let sub = SubYtChannel {
         yt_channel_id: author_id,
         yt_channel_name: author_name,
-        guild_id: ctx.guild_id().unwrap().0,
-        post_channel_id: ctx.channel_id().0,
+        guild_id: ctx.guild_id().unwrap().get(),
+        post_channel_id: ctx.channel_id().get(),
         expire_on,
     };
     let db = &ctx.data().db;
@@ -189,7 +189,7 @@ async fn unsub(
 
     let db = &ctx.data().db;
     let guild_id = ctx.guild_id().ok_or("Not in guild")?;
-    let Some(sub) = queries::get_sub(db, &name, guild_id.0).await? else {
+    let Some(sub) = queries::get_sub(db, &name, guild_id.get()).await? else {
         ctx.say("No channel found with this name.").await?;
         return Ok(());
     };
@@ -200,7 +200,7 @@ async fn unsub(
         .hook_listener
         .subscribe(&author_id, Mode::Unsubscribe)?;
 
-    queries::delete_sub(db, &author_id, ctx.guild_id().unwrap().0).await?;
+    queries::delete_sub(db, &author_id, ctx.guild_id().unwrap().get()).await?;
 
     let content = format!("Unsubbed to {name}");
     ctx.say(&content).await?;
@@ -214,7 +214,7 @@ async fn list(ctx: Context<'_>) -> Result<(), Error> {
     let subs: Vec<String> = queries::get_subs_list(&ctx.data().db)
         .await?
         .into_iter()
-        .filter(|s| s.guild_id == guild_id.0)
+        .filter(|s| s.guild_id == guild_id.get())
         .map(|s| s.yt_channel_name)
         .collect();
 

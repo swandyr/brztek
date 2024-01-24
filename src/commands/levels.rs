@@ -15,7 +15,7 @@ const DEFAULT_PP_TESSELATION_VIOLET: &str = "assets/images/default-pp/Tessellati
 const TOP_TITLE_HEIGHT: usize = 60;
 const TOP_USER_HEIGHT: usize = 32;
 
-use poise::serenity_prelude as serenity;
+use poise::{serenity_prelude as serenity, CreateReply};
 use std::time::Instant;
 use tracing::{debug, info, instrument};
 
@@ -29,6 +29,7 @@ fn clean_url(mut url: String) -> String {
     if let Some(index) = url.find("webp") {
         let _: String = url.split_off(index);
         url.push_str("png?size=96"); // Ensure the size of the image to be at max 96x96
+                                     //url.push_str("png");
     }
     url
 }
@@ -50,8 +51,8 @@ pub async fn rank(
             .into_owned(),
     );
 
-    let user_id = member.user.id.0;
-    let guild_id = member.guild_id.0;
+    let user_id = member.user.id.get();
+    let guild_id = member.guild_id.get();
 
     // Get user from database
     let db = &ctx.data().db;
@@ -64,6 +65,7 @@ pub async fn rank(
 
     // Request profile picture through HTTP if `avatar_url` is Some().
     // Fallback to a default picture if None.
+    // TODO: use member.face() ?
     let avatar_url = member.user.avatar_url();
     let image = if let Some(url) = avatar_url {
         let url = clean_url(url);
@@ -74,12 +76,12 @@ pub async fn rank(
     } else {
         let bytes = std::fs::read(DEFAULT_PP_TESSELATION_VIOLET)?;
         info!("Loaded default avatar");
-        image::load_from_memory(&bytes)?
+        image::load_from_memory_with_format(&bytes, image::ImageFormat::Png)?
     };
     let (image_width, image_height) = (image.width() as usize, image.height() as usize);
     let image_buf = image.into_bytes();
 
-    let user_http = ctx.http().get_user(user_id).await?;
+    let user_http = ctx.http().get_user(user_id.into()).await?;
     let accent_colour = user_http
         .accent_colour
         .unwrap_or(serenity::Colour::LIGHTER_GREY)
@@ -99,11 +101,8 @@ pub async fn rank(
     info!("Rank card generated in {} µs", t_1.elapsed().as_micros());
 
     let t_2 = Instant::now();
-    ctx.send(|m| {
-        let file = serenity::AttachmentType::from((image.as_slice(), "rank_card.png"));
-        m.attachment(file)
-    })
-    .await?;
+    let file = serenity::CreateAttachment::bytes(image.as_slice(), "rank_card.png");
+    ctx.send(CreateReply::default().attachment(file)).await?;
     info!("Rank card sent in {} µs", t_2.elapsed().as_micros());
 
     info!("Command rank processed in {} µs", t_0.elapsed().as_micros());
@@ -130,10 +129,8 @@ pub async fn top(
     let number = number.unwrap_or(10);
 
     // Ensure the message was sent from a guild
-    let (guild_id, guild_name) = {
-        let guild = ctx.guild().ok_or("Not in guild")?;
-        (guild.id.0, guild.name)
-    };
+    let guild = ctx.guild().as_deref().cloned().ok_or("Not in guild")?;
+    let (guild_id, guild_name) = (guild.id.get(), guild.name.as_str());
 
     let t_1 = Instant::now();
     // Get a vec of all users in database
@@ -149,14 +146,13 @@ pub async fn top(
     for user in all_users.iter().take(number) {
         let name = ctx
             .http()
-            .get_member(guild_id, *user.user_id.as_u64())
+            .get_member(guild_id.into(), user.user_id)
             .await?
             .display_name()
-            .into_owned()
             .replace(|c: char| !(c.is_alphanumeric() || c.is_whitespace()), "");
         let accent_colour = ctx
             .http()
-            .get_user(*user.user_id.as_u64())
+            .get_user(user.user_id)
             .await?
             .accent_colour
             .unwrap_or(serenity::Colour::LIGHTER_GREY)
@@ -168,16 +164,13 @@ pub async fn top(
 
     let t_3 = Instant::now();
     // Generate card
-    let image = draw::gen_top_card(&top_users, &guild_name).await?;
+    let image = draw::gen_top_card(&top_users, guild_name).await?;
     debug!("Generated top card in {} µs", t_3.elapsed().as_micros());
 
     let t_4 = Instant::now();
     // Send generated file
-    ctx.send(|b| {
-        let file = serenity::AttachmentType::from((image.as_slice(), "top_card.png"));
-        b.attachment(file)
-    })
-    .await?;
+    let file = serenity::CreateAttachment::bytes(image.as_slice(), "top_card.png");
+    ctx.send(CreateReply::default().attachment(file)).await?;
     debug!("Send top card in {} µs", t_4.elapsed().as_micros());
 
     debug!("Top card processed in {} µs", t_0.elapsed().as_micros());

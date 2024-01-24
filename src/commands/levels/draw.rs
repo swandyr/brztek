@@ -246,7 +246,7 @@ pub fn gen_user_card(
     let buf = to_png_buffer(card_buf.raw_pixels(), CARD_WIDTH as u32, CARD_HEIGHT as u32)?;
     info!("Card image encoded in PNG and saved in Vec<u8>");
 
-    // bitmap.save_to_file("rank.png").unwrap();
+    bitmap.save_to_file("rank.png").unwrap();
 
     Ok(buf)
 }
@@ -468,7 +468,7 @@ pub async fn gen_top_card(users: &[UserInfoCard], _guild_name: &str) -> Result<V
         target_height.try_into()?,
     )?;
 
-    // bitmap.save_to_file("card.png").unwrap();
+    bitmap.save_to_file("card.png").unwrap();
 
     Ok(buf)
 }
