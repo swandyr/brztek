@@ -99,6 +99,7 @@ async fn main() -> Result<(), Error> {
             builtins::register(),
             commands::admin::admin(),
             commands::admin::import_mee6_levels(),
+            commands::admin::selectmenu(),
             commands::levels::rank(),
             commands::levels::top(),
             commands::misc::br(),

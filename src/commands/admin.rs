@@ -1,5 +1,7 @@
+use std::time::Duration;
+
 use poise::serenity_prelude::{self as serenity, UserId};
-use tracing::{info, instrument};
+use tracing::{debug, error, info, instrument};
 
 use super::levels::{self, user_level::UserLevel};
 use crate::{Context, Data, Error};
@@ -119,6 +121,72 @@ pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {
 
     let db = &ctx.data().db;
     levels::queries::import_from_mee6(db, user_levels, guild_id).await?;
+
+    Ok(())
+}
+
+#[instrument(skip(ctx))]
+#[poise::command(slash_command, category = "Admin")]
+pub async fn selectmenu(ctx: Context<'_>) -> Result<(), Error> {
+    let guild_roles = ctx
+        .guild()
+        .unwrap()
+        .roles
+        .keys()
+        .copied()
+        .collect::<Vec<serenity::RoleId>>();
+    let max_values = guild_roles.len() as u8;
+    let member_roles = ctx.author_member().await.unwrap().roles.clone();
+
+    let create_select_menu = serenity::CreateSelectMenu::new(
+        "roles_menu",
+        serenity::CreateSelectMenuKind::Role {
+            default_roles: Some(member_roles),
+        },
+    )
+    .min_values(0)
+    .max_values(max_values)
+    .placeholder("Role");
+
+    let m = ctx
+        .channel_id()
+        .send_message(
+            ctx.http(),
+            serenity::CreateMessage::new()
+                .content("A select menu with roles")
+                .select_menu(create_select_menu),
+        )
+        .await?;
+
+    let interaction = match m
+        .await_component_interaction(&ctx.serenity_context().shard)
+        .timeout(Duration::from_secs(60 * 3))
+        .await
+    {
+        Some(x) => x,
+        None => {
+            m.reply(&ctx, "Timed out").await?;
+            m.delete(&ctx).await?;
+            return Ok(());
+        }
+    };
+
+    let serenity::ComponentInteractionDataKind::RoleSelect { values } = interaction.data.kind
+    else {
+        error!("Invalid ComponentInteractionDataKind");
+        m.delete(&ctx).await?;
+        return Ok(());
+    };
+
+    let roles = values
+        .into_iter()
+        .map(|id| id.to_role_cached(ctx).unwrap().name)
+        .collect::<Vec<String>>();
+    let content = format!("You selected {}", roles.join(", "));
+    debug!("{content}");
+    ctx.reply(content).await?;
+
+    m.delete(&ctx).await?;
 
     Ok(())
 }
