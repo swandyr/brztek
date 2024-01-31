@@ -2,7 +2,7 @@ use poise::serenity_prelude::UserId;
 use tracing::instrument;
 
 use super::Roulette;
-use crate::db::{from_i64, to_i64, Db};
+use crate::database::{from_i64, to_i64, Db};
 use crate::Error;
 
 #[allow(dead_code)]

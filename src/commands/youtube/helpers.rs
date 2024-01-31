@@ -13,7 +13,7 @@ use tracing::{debug, error, info, instrument, warn};
 use super::{queries, SubYtChannel, INVIDIOUS_INSTANCES_URL, YOUTUBE_VIDEO_PREFIX};
 use crate::{
     commands::youtube::{YtVideo, EXPIRATION_DAYS},
-    db::Db,
+    database::Db,
     Context, Data, Error,
 };
 

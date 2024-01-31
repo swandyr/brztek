@@ -1,6 +1,6 @@
 use tracing::{debug, instrument};
 
-use crate::db::{from_i64, to_i64, Db};
+use crate::database::{from_i64, to_i64, Db};
 use crate::Error;
 
 #[instrument]

@@ -11,7 +11,7 @@ mod builtins;
 mod clearurl;
 mod commands;
 mod config;
-mod db;
+mod database;
 mod handlers;
 
 use commands::youtube;
@@ -31,7 +31,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 use brzthook::prelude::*;
 
 use config::Config;
-use db::Db;
+use database::Db;
 
 pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
 pub(crate) type Context<'a> = poise::Context<'a, Data, Error>;
@@ -126,7 +126,7 @@ async fn main() -> Result<(), Error> {
             let guild_id = ctx.guild().map_or_else(|| 0, |g| g.id.get());
             let guild_name = ctx.guild().map(|g| g.name.clone());
             Box::pin(async move {
-                db::increment_cmd(&ctx.data().db, &ctx.command().qualified_name, guild_id)
+                database::increment_cmd(&ctx.data().db, &ctx.command().qualified_name, guild_id)
                     .await
                     .unwrap();
                 info!(
@@ -185,7 +185,7 @@ async fn event_handler(
 
             for guild in guilds {
                 let guild_id = guild.get();
-                db::add_guild(db, guild_id).await?;
+                database::add_guild(db, guild_id).await?;
                 let permissions = guild
                     .member(ctx, framework.bot_id)
                     .await?
