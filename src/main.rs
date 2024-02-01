@@ -15,6 +15,7 @@ mod database;
 mod handlers;
 mod roulette;
 mod util;
+mod misc;
 
 use poise::{
     serenity_prelude::{self as serenity, UserId},
@@ -104,12 +105,12 @@ async fn main() -> Result<(), Error> {
             commands::admin::selectmenu(),
             commands::levels::rank(),
             commands::levels::top(),
-            commands::misc::br(),
-            commands::misc::clean(),
-            commands::misc::learn(),
-            commands::misc::learned(),
-            commands::misc::ping(),
-            commands::misc::setcolor(),
+            misc::commands::br(),
+            misc::commands::clean(),
+            misc::commands::learn(),
+            misc::commands::learned(),
+            misc::commands::ping(),
+            misc::commands::setcolor(),
             roulette::commands::rffstar(),
             roulette::commands::roulette(),
             roulette::commands::statroulette(),
@@ -298,7 +299,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             let db = &framework.user_data.db;
             let guild_id = msg.guild_id.unwrap().get();
 
-            let queried = commands::misc::queries::get_learned(db, msg_content, guild_id)
+            let queried = misc::queries::get_learned(db, msg_content, guild_id)
                 .await
                 .expect("Query learned_command returned with error");
             if let Some(link) = queried {
