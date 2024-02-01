@@ -1,3 +1,5 @@
+pub mod message_xp;
 pub mod resize_avatar;
 pub mod xp_func;
-pub mod message_xp;
+
+use super::queries;

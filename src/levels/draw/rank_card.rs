@@ -4,16 +4,14 @@ use piet_common::{
     PietText, RenderContext, StrokeStyle, Text, TextLayout, TextLayoutBuilder, UnitPoint,
 };
 use tracing::{info, instrument};
-use crate::{
-    Error,
-    util::to_png_buffer,
-    levels::{
-        models::UserInfoCard,
-        func::xp_func::{total_xp_required_for_level, xp_needed_to_level_up},
-        constants::{CARD_FONT, DEFAULT_PP_TESSELATION_VIOLET, TOP_USER_HEIGHT, TOP_TITLE_HEIGHT},
-    }
+
+use super::{
+    constants::{CARD_FONT, DEFAULT_PP_TESSELATION_VIOLET, TOP_TITLE_HEIGHT, TOP_USER_HEIGHT},
+    func::xp_func::{total_xp_required_for_level, xp_needed_to_level_up},
+    models::UserInfoCard,
+    Colors,
 };
-use super::Colors;
+use crate::{util::to_png_buffer, Error};
 
 const CARD_HEIGHT: usize = 128;
 const CARD_WIDTH: usize = 440;
@@ -207,5 +205,3 @@ fn test_gen_card_with_default_pp() {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
-
-

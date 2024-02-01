@@ -1,6 +1,7 @@
-use crate::Error;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use tracing::instrument;
+
+use crate::Error;
 
 #[derive(Debug)]
 pub struct Db {

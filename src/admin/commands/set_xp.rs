@@ -1,16 +1,17 @@
-use tracing::{instrument, info};
 use poise::serenity_prelude as serenity;
-use crate::{Context, Error, levels};
+use tracing::{info, instrument};
+
+use crate::{levels, Context, Error};
 
 /// Set the user's xp points
 #[instrument(skip(ctx))]
 #[poise::command(
-prefix_command,
-slash_command,
-guild_only,
-ephemeral,
-required_permissions = "ADMINISTRATOR",
-category = "Admin"
+    prefix_command,
+    slash_command,
+    guild_only,
+    ephemeral,
+    required_permissions = "ADMINISTRATOR",
+    category = "Admin"
 )]
 pub async fn set_xp(
     ctx: Context<'_>,

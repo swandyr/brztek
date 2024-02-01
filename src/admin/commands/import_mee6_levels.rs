@@ -1,16 +1,20 @@
 use poise::serenity_prelude::UserId;
 use tracing::instrument;
-use crate::{Context, Error, levels::{self, models::UserLevel}};
+
+use crate::{
+    levels::{self, models::UserLevel},
+    Context, Error,
+};
 
 /// Import users levels from Mee6 leaderboard
 #[allow(clippy::cast_possible_wrap)]
 #[instrument(skip(ctx))]
 #[poise::command(
-slash_command,
-required_permissions = "ADMINISTRATOR",
-guild_only,
-ephemeral,
-category = "Admin"
+    slash_command,
+    required_permissions = "ADMINISTRATOR",
+    guild_only,
+    ephemeral,
+    category = "Admin"
 )]
 pub async fn import_mee6_levels(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("This will overwrite current levels. Type \"yes\" to confirm.")

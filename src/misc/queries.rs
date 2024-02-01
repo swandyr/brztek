@@ -1,7 +1,9 @@
 use tracing::{debug, instrument};
 
-use crate::database::{from_i64, to_i64, Db};
-use crate::Error;
+use crate::{
+    database::{from_i64, to_i64, Db},
+    Error,
+};
 
 #[instrument]
 pub async fn set_role_color(

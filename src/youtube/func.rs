@@ -1,6 +1,8 @@
 use serde_json::Value;
 use tracing::warn;
-use crate::{Context, Error, youtube::constants::INVIDIOUS_INSTANCES_URL};
+
+use super::constants::INVIDIOUS_INSTANCES_URL;
+use crate::{Context, Error};
 
 pub(super) async fn get_invidious_instances() -> Result<Option<Vec<Value>>, Error> {
     let response = reqwest::get(INVIDIOUS_INSTANCES_URL).await?.text().await?;

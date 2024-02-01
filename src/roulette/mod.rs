@@ -1,6 +1,6 @@
 pub mod commands;
+mod consts;
+mod draw;
+mod func;
 mod models;
 mod queries;
-mod consts;
-mod func;
-mod draw;

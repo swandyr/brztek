@@ -1,6 +1,7 @@
-use std::time::Duration;
 use poise::{serenity_prelude as serenity, CreateReply};
+use std::time::Duration;
 use tracing::{debug, error, instrument};
+
 use crate::{Context, Error};
 
 #[instrument(skip(ctx))]
@@ -25,9 +26,9 @@ pub async fn selectmenu(ctx: Context<'_>) -> Result<(), Error> {
             default_roles: Some(member_roles),
         },
     )
-        .min_values(0)
-        .max_values(max_values)
-        .placeholder("Role");
+    .min_values(0)
+    .max_values(max_values)
+    .placeholder("Role");
 
     // Send message with SelectMenu; get a message handler to handle interaction
     let m = ctx
@@ -57,11 +58,11 @@ pub async fn selectmenu(ctx: Context<'_>) -> Result<(), Error> {
     };
 
     let serenity::ComponentInteractionDataKind::RoleSelect { values } = &interaction.data.kind
-        else {
-            error!("Invalid ComponentInteractionDataKind");
-            m.delete(&ctx).await?;
-            return Ok(());
-        };
+    else {
+        error!("Invalid ComponentInteractionDataKind");
+        m.delete(&ctx).await?;
+        return Ok(());
+    };
 
     let roles = values
         .iter()

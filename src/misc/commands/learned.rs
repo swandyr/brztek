@@ -1,6 +1,8 @@
-use tracing::instrument;
-use crate::{Context, Error, misc::queries};
 use poise::serenity_prelude as serenity;
+use tracing::instrument;
+
+use super::queries;
+use crate::{Context, Error};
 
 /// What the bot learned.
 ///

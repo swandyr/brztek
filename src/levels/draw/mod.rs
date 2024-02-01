@@ -3,6 +3,8 @@ use piet_common::Color;
 pub mod rank_card;
 pub mod top_card;
 
+use super::{constants, func, models};
+
 #[derive(Debug, Clone, Copy)]
 struct Colors {
     white: Color,

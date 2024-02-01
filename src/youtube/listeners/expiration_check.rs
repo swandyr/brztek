@@ -1,23 +1,16 @@
+use brzthook::{HookListener, Mode};
+use poise::serenity_prelude::{self as serenity, ChannelId};
+use serde_json::Value;
 use std::{
     sync::{mpsc, Arc},
     time::Duration,
 };
-
-use brzthook::{HookListener, Mode};
-use poise::serenity_prelude::{self as serenity, ChannelId};
-use serde_json::Value;
 use time::OffsetDateTime;
 use tokio::join;
 use tracing::{debug, error, info, instrument, warn};
 
-use crate::{
-    youtube::{
-        queries,
-        constants::EXPIRATION_DAYS,
-    },
-    database::Db,
-    Context, Data, Error,
-};
+use super::{constants::EXPIRATION_DAYS, queries};
+use crate::{database::Db, Context, Data, Error};
 
 pub fn expiration_check_timer(listener: Arc<HookListener>, db: Arc<Db>) -> Result<(), Error> {
     let rt = tokio::runtime::Runtime::new()?;

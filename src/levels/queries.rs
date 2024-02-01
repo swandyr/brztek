@@ -1,11 +1,11 @@
 use poise::serenity_prelude::UserId;
 use tracing::instrument;
 
-use crate::database::{from_i64, to_i64, Db};
-use crate::levels::models::{UserLevel, UserSql};
-use crate::Error;
-
-
+use super::models::{UserLevel, UserSql};
+use crate::{
+    database::{from_i64, to_i64, Db},
+    Error,
+};
 
 /// Return `UserLevel` corresponding to `user_id` in the database.
 ///

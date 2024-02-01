@@ -2,7 +2,8 @@ use poise::serenity_prelude as serenity;
 use std::time::Instant;
 use tracing::{debug, info, instrument};
 
-use crate::{Data, Db, Error, levels::queries};
+use super::queries;
+use crate::{Data, Db, Error};
 
 #[instrument(skip_all)]
 pub async fn add_xp(

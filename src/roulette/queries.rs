@@ -2,10 +2,10 @@ use poise::serenity_prelude::UserId;
 use tracing::instrument;
 
 use super::models::{Roulette, RouletteSql};
-use crate::database::{from_i64, to_i64, Db};
-use crate::Error;
-
-
+use crate::{
+    database::{from_i64, to_i64, Db},
+    Error,
+};
 
 #[instrument]
 pub async fn add_roulette_result(db: &Db, guild_id: u64, roulette: Roulette) -> Result<(), Error> {

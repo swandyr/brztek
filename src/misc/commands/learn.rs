@@ -1,5 +1,7 @@
 use tracing::instrument;
-use crate::{Context, Error, misc::queries};
+
+use super::queries;
+use crate::{Context, Error};
 
 /// Make the bot remember.
 ///

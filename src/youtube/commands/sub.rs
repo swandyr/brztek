@@ -1,14 +1,10 @@
 use brzthook::Mode;
 use time::Duration;
 use tracing::instrument;
+
 use crate::{
+    youtube::{constants::EXPIRATION_DAYS, func::get_name_id, models::SubYtChannel, queries},
     Context, Error,
-    youtube::{
-        queries,
-        func::get_name_id,
-        constants::EXPIRATION_DAYS,
-        models::SubYtChannel
-    }
 };
 
 /// Create a new Youtube webhook
@@ -18,11 +14,11 @@ use crate::{
 /// name argument takes the address https://www.youtube.com/{id} or https://www.youtube.com/@{name}
 #[instrument(skip(ctx))]
 #[poise::command(
-slash_command,
-guild_only,
-required_permissions = "MANAGE_WEBHOOKS",
-ephemeral,
-category = "Youtube"
+    slash_command,
+    guild_only,
+    required_permissions = "MANAGE_WEBHOOKS",
+    ephemeral,
+    category = "Youtube"
 )]
 pub(super) async fn sub(
     ctx: Context<'_>,

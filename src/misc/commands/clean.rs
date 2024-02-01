@@ -1,7 +1,7 @@
 use poise::CreateReply;
 use tracing::{info, instrument};
-use crate::{Context, Error};
-use crate::clearurl::clear_url;
+
+use crate::{clearurl::clear_url, Context, Error};
 
 /// Explicitly call clean_url
 #[instrument(skip(ctx))]
@@ -23,7 +23,7 @@ pub async fn clean(
                 .content("No valid link provided")
                 .ephemeral(true),
         )
-            .await?;
+        .await?;
     } else {
         for link in links {
             info!("Cleaning link: {link}");

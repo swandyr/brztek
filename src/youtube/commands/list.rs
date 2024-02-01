@@ -1,4 +1,5 @@
-use crate::{Context, Error, youtube::queries};
+use super::queries;
+use crate::{Context, Error};
 
 /// List all subs in the guild
 #[poise::command(slash_command, guild_only, category = "Youtube")]

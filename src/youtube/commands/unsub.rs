@@ -1,16 +1,17 @@
 use brzthook::Mode;
-use crate::{Context, Error, youtube::queries};
+
+use crate::{youtube::queries, Context, Error};
 
 /// Unsub and delete a webhook
 ///
 /// Input the exact name of the channel (use "/yt list" if needed)
 #[allow(unused)]
 #[poise::command(
-slash_command,
-guild_only,
-required_permissions = "MANAGE_WEBHOOKS",
-ephemeral,
-category = "Youtube"
+    slash_command,
+    guild_only,
+    required_permissions = "MANAGE_WEBHOOKS",
+    ephemeral,
+    category = "Youtube"
 )]
 pub(super) async fn unsub(
     ctx: Context<'_>,

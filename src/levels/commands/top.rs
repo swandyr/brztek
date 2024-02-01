@@ -1,7 +1,9 @@
-use std::time::Instant;
 use poise::{serenity_prelude as serenity, CreateReply};
+use std::time::Instant;
 use tracing::{debug, instrument};
-use crate::{Context, Error, levels::{draw::top_card, queries, models::UserInfoCard}};
+
+use super::{draw::top_card, models::UserInfoCard, queries};
+use crate::{Context, Error};
 
 /// Show the top users of the server
 ///

@@ -1,14 +1,14 @@
+use poise::{serenity_prelude as serenity, CreateReply};
 use std::collections::HashMap;
-use poise::CreateReply;
-use poise::serenity_prelude::{self as serenity, Member};
 use tracing::instrument;
+
+use super::{consts::BASE_RFF_PERC, func, models::Roulette, queries};
 use crate::{Context, Error};
-use crate::roulette::{queries, models::Roulette, consts::BASE_RFF_PERC, func};
 
 /// Shows some statistics about the use of roulettes
 #[instrument(skip(ctx, member))]
 #[poise::command(slash_command, prefix_command, guild_only, category = "Roulette")]
-pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<(), Error> {
+pub async fn statroulette(ctx: Context<'_>, member: Option<serenity::Member>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().ok_or("Not in guild")?.get();
     let member = member.unwrap_or(
         ctx.author_member()
@@ -101,7 +101,7 @@ pub async fn statroulette(ctx: Context<'_>, member: Option<Member>) -> Result<()
                 .field("Bullies", bullies_field, true),
         ),
     )
-        .await?;
+    .await?;
 
     Ok(())
 }

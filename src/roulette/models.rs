@@ -1,4 +1,5 @@
 use poise::serenity_prelude::UserId;
+
 use crate::database::from_i64;
 
 #[derive(Debug)]
@@ -21,7 +22,7 @@ pub struct Roulette {
 #[derive(Debug, Clone, Copy)]
 pub(super) struct RouletteSql {
     pub(super) timestamp: i64,
-    pub(super)  caller_id: i64,
+    pub(super) caller_id: i64,
     pub(super) target_id: i64,
     pub(super) rff_triggered: Option<u8>,
 }

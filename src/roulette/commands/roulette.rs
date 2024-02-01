@@ -1,18 +1,27 @@
-use poise::{CreateReply, serenity_prelude::{self as serenity, Mentionable}};
-use rand::{Rng, thread_rng};
+use poise::{
+    serenity_prelude::{self as serenity, Mentionable},
+    CreateReply,
+};
+use rand::{thread_rng, Rng};
 use tracing::{debug, info, instrument, warn};
-use crate::{Context, Error, roulette::{models::{Roulette, ShotKind}, consts::BASE_RFF_PERC, func}};
+
+use super::{
+    consts::BASE_RFF_PERC,
+    func,
+    models::{Roulette, ShotKind},
+};
+use crate::{Context, Error};
 
 /// Put random member in timeout for 60s
 ///
 /// The more you use it, the more you can get caught
 #[instrument(skip(ctx))]
 #[poise::command(
-slash_command,
-prefix_command,
-guild_only,
-required_bot_permissions = "MODERATE_MEMBERS",
-category = "Roulette"
+    slash_command,
+    prefix_command,
+    guild_only,
+    required_bot_permissions = "MODERATE_MEMBERS",
+    category = "Roulette"
 )]
 pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
     let mut author = ctx
@@ -75,7 +84,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
             ctx.say(
                 "As you're an administrator, I have no power, but I know you won't abuse the rules",
             )
-                .await?;
+            .await?;
         }
 
         // Reset the author's selfshot_perc
@@ -119,7 +128,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
                 ShotKind::Normal
             },
         )
-            .await?;
+        .await?;
 
         // Send a message according to a self shot or not
         if is_self_shot {
@@ -134,7 +143,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
                         "Ouch, looks like it hurts. :sweat_smile:",
                     ),
             )
-                .await?;
+            .await?;
         } else {
             ctx.send(
                 CreateReply::default().attachment(serenity::CreateAttachment::bytes(
@@ -142,7 +151,7 @@ pub async fn roulette(ctx: Context<'_>) -> Result<(), Error> {
                     "kf.png",
                 )),
             )
-                .await?;
+            .await?;
         }
 
         if let Err(e) = timeout_result {

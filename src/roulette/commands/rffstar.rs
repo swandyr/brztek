@@ -1,7 +1,8 @@
 use poise::serenity_prelude::Mentionable;
 use tracing::instrument;
+
+use super::queries;
 use crate::{Context, Error};
-use crate::roulette::queries;
 
 /// Who goes the highest before trigerring RFF ?
 #[instrument(skip(ctx))]
@@ -20,7 +21,7 @@ pub async fn rffstar(ctx: Context<'_>) -> Result<(), Error> {
             ctx.say(format!(
                 ":muscle: :military_medal: {mention} is the RFF Star with {score}%."
             ))
-                .await?;
+            .await?;
 
             return Ok(());
         }

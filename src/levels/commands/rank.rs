@@ -1,16 +1,12 @@
+use poise::{serenity_prelude as serenity, CreateReply};
 use std::time::Instant;
-use poise::{CreateReply, serenity_prelude as serenity};
 use tracing::{debug, info, instrument};
-use crate::{
-    Context,
-    Error,
-    levels::{
-        models::UserInfoCard,
-        func::{resize_avatar::resize_avatar},
-        draw::rank_card,
-        queries,
-        constants::DEFAULT_PP_TESSELATION_VIOLET}
+
+use super::{
+    constants::DEFAULT_PP_TESSELATION_VIOLET, draw::rank_card, func::resize_avatar::resize_avatar,
+    models::UserInfoCard, queries,
 };
+use crate::{Context, Error};
 
 /// Show your rank
 #[instrument(skip(ctx, user), fields(guild=ctx.guild().unwrap().name, author=ctx.author().name))]

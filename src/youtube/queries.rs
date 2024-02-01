@@ -1,8 +1,10 @@
 use time::OffsetDateTime;
 
-use crate::youtube::models::{SubYtChannelSQL, SubYtChannel};
-use crate::database::{from_i64, to_i64, Db};
-use crate::Error;
+use super::models::{SubYtChannel, SubYtChannelSQL};
+use crate::{
+    database::{from_i64, to_i64, Db},
+    Error,
+};
 
 pub(crate) async fn get_sub(
     db: &Db,

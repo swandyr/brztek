@@ -1,9 +1,13 @@
-use std::collections::HashMap;
 use poise::serenity_prelude::{self as serenity, Guild, Member, UserId};
+use std::collections::HashMap;
 use tracing::{info, instrument};
-use crate::database::Db;
-use crate::{Context, Error};
-use crate::roulette::{draw, queries, models::{Roulette, ShotKind}};
+
+use super::{
+    draw,
+    models::{Roulette, ShotKind},
+    queries,
+};
+use crate::{database::Db, Context, Error};
 
 #[instrument(skip_all)]
 pub async fn record_roulette(db: &Db, guild: &Guild, roulette: Roulette) -> Result<(), Error> {
@@ -44,7 +48,10 @@ pub async fn timeout_member(
 }
 
 #[instrument(skip(ctx, map))]
-pub async fn process_users_map(ctx: &Context<'_>, map: HashMap<UserId, i32>) -> Result<String, Error> {
+pub async fn process_users_map(
+    ctx: &Context<'_>,
+    map: HashMap<UserId, i32>,
+) -> Result<String, Error> {
     let mut sorted = map
         .iter()
         .map(|(k, v)| (*k, *v))

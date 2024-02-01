@@ -1,8 +1,9 @@
+use poise::{serenity_prelude as serenity, CreateReply};
 use std::collections::HashMap;
-use poise::{CreateReply, serenity_prelude as serenity};
 use tracing::instrument;
+
+use super::{func, queries};
 use crate::{Context, Error};
-use crate::roulette::{queries, func};
 
 /// Roulette Leaderboard
 ///
@@ -55,7 +56,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
                 .field("max RFF%", &rff_fields, true),
         ),
     )
-        .await?;
+    .await?;
 
     Ok(())
 }

@@ -1,8 +1,8 @@
 pub mod commands;
 pub mod constants;
-pub mod models;
 pub mod func;
-pub mod queries;
 pub mod listeners;
+pub mod models;
+pub mod queries;
 
-pub use listeners::{hook_listener::listen_loop, expiration_check::expiration_check_timer};
+pub use listeners::{expiration_check::expiration_check_timer, hook_listener::listen_loop};

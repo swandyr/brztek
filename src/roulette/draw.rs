@@ -5,9 +5,8 @@ use piet_common::{
 };
 use tracing::{debug, info, instrument};
 
-use crate::util::to_png_buffer;
-use crate::Error;
-use crate::roulette::models::ShotKind;
+use super::models::ShotKind;
+use crate::{util::to_png_buffer, Error};
 
 const KILLFEED_FONT: &str = "Coolvetica"; // Font needs to be installed on the system (https://www.dafont.com/akira-expanded.font)
 const TEMPLATE_NORMAL_PATH: &str = "assets/images/killfeed.png";

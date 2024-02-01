@@ -7,16 +7,16 @@
     unused
 )]
 
+mod admin;
 mod builtins;
 mod clearurl;
 mod config;
 mod database;
 mod handlers;
+mod levels;
+mod misc;
 mod roulette;
 mod util;
-mod misc;
-mod admin;
-mod levels;
 mod youtube;
 
 use poise::{

@@ -1,6 +1,8 @@
 use serde_json::Value;
 use tracing::{info, instrument, warn};
-use crate::{Context, Error, youtube::{constants::YOUTUBE_VIDEO_PREFIX, func::get_invidious_instances}};
+
+use super::{constants::YOUTUBE_VIDEO_PREFIX, func::get_invidious_instances};
+use crate::{Context, Error};
 
 /// Search a Youtube video.
 ///

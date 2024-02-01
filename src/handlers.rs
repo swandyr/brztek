@@ -1,15 +1,13 @@
-use std::time::Instant;
-
 use poise::serenity_prelude::{
     self as serenity,
     audit_log::{Action, MemberAction},
     CreateMessage, EditMessage, GuildId, Member, Mentionable, Message, User,
 };
 use rand::{thread_rng, Rng};
+use std::time::Instant;
 use tracing::{debug, info, instrument, log::warn, trace};
 
-use crate::{clearurl::clear_url, levels::func::message_xp, database};
-use crate::{Context, Data, Error};
+use crate::{clearurl::clear_url, database, levels::func::message_xp, Context, Data, Error};
 
 #[instrument(skip_all, fields(guild=new_message.guild_id.unwrap().name(ctx), author=new_message.author.name))]
 pub async fn message_handler(

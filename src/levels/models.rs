@@ -1,7 +1,12 @@
 use piet_common::Color;
 use poise::serenity_prelude::UserId;
 use time::OffsetDateTime;
-use crate::{levels::{constants::{DELAY_ANTI_SPAM, MAX_XP_GAIN, MIN_XP_GAIN}, func::xp_func}, database::from_i64};
+
+use super::{
+    constants::{DELAY_ANTI_SPAM, MAX_XP_GAIN, MIN_XP_GAIN},
+    func::xp_func,
+};
+use crate::database::from_i64;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct UserLevel {

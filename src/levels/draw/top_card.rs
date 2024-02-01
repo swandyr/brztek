@@ -4,16 +4,14 @@ use piet_common::{
     PietText, RenderContext, StrokeStyle, Text, TextLayout, TextLayoutBuilder, UnitPoint,
 };
 use tracing::{info, instrument};
-use crate::{
-    Error,
-    util::to_png_buffer,
-    levels::{
-        constants::{CARD_FONT, TOP_TITLE_HEIGHT, TOP_USER_HEIGHT},
-        func::xp_func::{total_xp_required_for_level, xp_needed_to_level_up},
-        models::UserInfoCard,
-    }
+
+use super::{
+    constants::{CARD_FONT, TOP_TITLE_HEIGHT, TOP_USER_HEIGHT},
+    func::xp_func::{total_xp_required_for_level, xp_needed_to_level_up},
+    models::UserInfoCard,
+    Colors,
 };
-use super::Colors;
+use crate::{util::to_png_buffer, Error};
 
 struct UserLayout {
     rank: CairoTextLayout,

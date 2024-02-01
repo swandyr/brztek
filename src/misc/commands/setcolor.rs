@@ -1,6 +1,8 @@
 use poise::{serenity_prelude as serenity, CreateReply};
 use tracing::{info, instrument};
-use crate::{Context, Error, misc::queries};
+
+use super::queries;
+use crate::{Context, Error};
 
 /// Get your own role
 ///
@@ -12,12 +14,12 @@ use crate::{Context, Error, misc::queries};
 /// If no color is given, it will retrieve the profile's banner color
 #[instrument(skip(ctx))]
 #[poise::command(
-prefix_command,
-slash_command,
-guild_only,
-required_bot_permissions = "MANAGE_ROLES",
-ephemeral,
-category = "Misc"
+    prefix_command,
+    slash_command,
+    guild_only,
+    required_bot_permissions = "MANAGE_ROLES",
+    ephemeral,
+    category = "Misc"
 )]
 pub async fn setcolor(
     ctx: Context<'_>,

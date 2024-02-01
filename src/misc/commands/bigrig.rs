@@ -1,6 +1,8 @@
 use poise::{serenity_prelude as serenity, CreateReply};
 use tracing::{info, instrument};
-use crate::{Context, Error, misc::consts::BIGRIG_CURRENT_URL};
+
+use super::consts::BIGRIG_CURRENT_URL;
+use crate::{Context, Error};
 
 #[derive(Debug, serde::Deserialize)]
 struct SongData {
@@ -26,7 +28,7 @@ struct Song {
 #[instrument(skip(ctx))]
 #[poise::command(prefix_command, slash_command, category = "Misc")]
 pub async fn br(ctx: Context<'_>) -> Result<(), Error> {
-        let song = reqwest::get(BIGRIG_CURRENT_URL)
+    let song = reqwest::get(BIGRIG_CURRENT_URL)
         .await?
         .json::<Song>()
         .await?;
@@ -50,7 +52,7 @@ pub async fn br(ctx: Context<'_>) -> Result<(), Error> {
                 ))),
         ),
     )
-        .await?;
+    .await?;
 
     Ok(())
 }
