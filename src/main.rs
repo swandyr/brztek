@@ -9,7 +9,6 @@
 
 mod builtins;
 mod clearurl;
-mod commands;
 mod config;
 mod database;
 mod handlers;
@@ -18,6 +17,7 @@ mod util;
 mod misc;
 mod admin;
 mod levels;
+mod youtube;
 
 use poise::{
     serenity_prelude::{self as serenity, UserId},
@@ -36,7 +36,6 @@ use brzthook::prelude::*;
 
 use config::Config;
 use database::Db;
-use commands::youtube;
 
 pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
 pub(crate) type Context<'a> = poise::Context<'a, Data, Error>;
@@ -117,7 +116,7 @@ async fn main() -> Result<(), Error> {
             roulette::commands::roulette(),
             roulette::commands::statroulette(),
             roulette::commands::toproulette(),
-            commands::youtube::yt(),
+            youtube::commands::yt(),
         ],
         event_handler: |ctx, event, framework, user_data| {
             Box::pin(event_handler(ctx, event, framework, user_data))
