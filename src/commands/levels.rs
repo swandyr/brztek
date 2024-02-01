@@ -19,7 +19,7 @@ use poise::{serenity_prelude as serenity, CreateReply};
 use std::time::Instant;
 use tracing::{debug, info, instrument};
 
-use super::to_png_buffer;
+use crate::util::to_png_buffer;
 use crate::{Context, Data, Error};
 use draw::UserInfoCard;
 

@@ -1,29 +1,11 @@
 use poise::serenity_prelude::UserId;
 use tracing::instrument;
 
-use super::Roulette;
+use super::models::{Roulette, RouletteSql};
 use crate::database::{from_i64, to_i64, Db};
 use crate::Error;
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
-struct RouletteSql {
-    timestamp: i64,
-    caller_id: i64,
-    target_id: i64,
-    rff_triggered: Option<u8>,
-}
 
-impl From<RouletteSql> for Roulette {
-    fn from(value: RouletteSql) -> Self {
-        Self {
-            timestamp: value.timestamp,
-            caller_id: UserId::from(from_i64(value.caller_id)),
-            target_id: UserId::from(from_i64(value.target_id)),
-            rff_triggered: value.rff_triggered,
-        }
-    }
-}
 
 #[instrument]
 pub async fn add_roulette_result(db: &Db, guild_id: u64, roulette: Roulette) -> Result<(), Error> {

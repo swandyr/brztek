@@ -1,0 +1,1 @@
+pub const BASE_RFF_PERC: u8 = 5;

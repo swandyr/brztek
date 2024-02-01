@@ -13,8 +13,9 @@ mod commands;
 mod config;
 mod database;
 mod handlers;
+mod roulette;
+mod util;
 
-use commands::youtube;
 use poise::{
     serenity_prelude::{self as serenity, UserId},
     CreateReply,
@@ -32,6 +33,7 @@ use brzthook::prelude::*;
 
 use config::Config;
 use database::Db;
+use commands::youtube;
 
 pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
 pub(crate) type Context<'a> = poise::Context<'a, Data, Error>;
@@ -108,10 +110,10 @@ async fn main() -> Result<(), Error> {
             commands::misc::learned(),
             commands::misc::ping(),
             commands::misc::setcolor(),
-            commands::roulette::rffstar(),
-            commands::roulette::roulette(),
-            commands::roulette::statroulette(),
-            commands::roulette::toproulette(),
+            roulette::commands::rffstar(),
+            roulette::commands::roulette(),
+            roulette::commands::statroulette(),
+            roulette::commands::toproulette(),
             commands::youtube::yt(),
         ],
         event_handler: |ctx, event, framework, user_data| {

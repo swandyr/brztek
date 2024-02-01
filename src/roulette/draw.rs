@@ -5,10 +5,17 @@ use piet_common::{
 };
 use tracing::{debug, info, instrument};
 
-use super::{to_png_buffer, ShotKind};
+use crate::util::to_png_buffer;
 use crate::Error;
+use crate::roulette::models::ShotKind;
 
 const KILLFEED_FONT: &str = "Coolvetica"; // Font needs to be installed on the system (https://www.dafont.com/akira-expanded.font)
+const TEMPLATE_NORMAL_PATH: &str = "assets/images/killfeed.png";
+const TEMPLATE_REVERSE_PATH: &str = "assets/images/killfeed_reverse.png";
+const TEMPLATE_SELF_PATH: &str = "assets/images/killfeed_self.png";
+const HEIGHT: usize = 32;
+const WIDTH: usize = 395;
+const COLOR_RECT_WIDTH: usize = 156;
 
 #[derive(Debug, Clone, Copy)]
 struct Colors {
@@ -26,15 +33,6 @@ impl Default for Colors {
         }
     }
 }
-
-////////////////////////////////////////////////////////////////////////////
-
-const TEMPLATE_NORMAL_PATH: &str = "assets/images/killfeed.png";
-const TEMPLATE_REVERSE_PATH: &str = "assets/images/killfeed_reverse.png";
-const TEMPLATE_SELF_PATH: &str = "assets/images/killfeed_self.png";
-const HEIGHT: usize = 32;
-const WIDTH: usize = 395;
-const COLOR_RECT_WIDTH: usize = 156;
 
 #[instrument]
 pub fn gen_killfeed(user_1: &str, user_2: &str, kind: ShotKind) -> Result<Vec<u8>, Error> {
