@@ -16,6 +16,7 @@ mod handlers;
 mod roulette;
 mod util;
 mod misc;
+mod admin;
 
 use poise::{
     serenity_prelude::{self as serenity, UserId},
@@ -100,9 +101,9 @@ async fn main() -> Result<(), Error> {
         commands: vec![
             builtins::help(),
             builtins::register(),
-            commands::admin::admin(),
-            commands::admin::import_mee6_levels(),
-            commands::admin::selectmenu(),
+            admin::commands::set_xp(),
+            admin::commands::import_mee6_levels(),
+            admin::commands::selectmenu(),
             commands::levels::rank(),
             commands::levels::top(),
             misc::commands::br(),
