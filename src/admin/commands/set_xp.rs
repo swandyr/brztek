@@ -1,6 +1,6 @@
 use tracing::{instrument, info};
 use poise::serenity_prelude as serenity;
-use crate::{Context, Error, commands::levels};
+use crate::{Context, Error, levels};
 
 /// Set the user's xp points
 #[instrument(skip(ctx))]
@@ -22,7 +22,7 @@ pub async fn set_xp(
     let guild_id = ctx.guild_id().ok_or("Not in guild")?;
     let user_id = user.id;
 
-    let level = levels::xp_func::calculate_level_from_xp(xp as i64);
+    let level = levels::func::xp_func::calculate_level_from_xp(xp as i64);
 
     let db = ctx.data().db.as_ref();
     let mut user_level = levels::queries::get_user(db, user_id.get(), guild_id.get()).await?;

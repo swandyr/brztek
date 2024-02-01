@@ -8,7 +8,7 @@ use poise::serenity_prelude::{
 use rand::{thread_rng, Rng};
 use tracing::{debug, info, instrument, log::warn, trace};
 
-use crate::{clearurl::clear_url, commands::levels, database};
+use crate::{clearurl::clear_url, levels::func::message_xp, database};
 use crate::{Context, Data, Error};
 
 #[instrument(skip_all, fields(guild=new_message.guild_id.unwrap().name(ctx), author=new_message.author.name))]
@@ -56,7 +56,7 @@ pub async fn message_handler(
     let t_0 = Instant::now();
     let db = &user_data.db;
     database::add_user(db, user_id.get()).await?;
-    levels::handle_message::add_xp(ctx, user_data, &guild_id, &channel_id, &user_id).await?;
+    message_xp::add_xp(ctx, user_data, &guild_id, &channel_id, &user_id).await?;
     debug!("add_xp finished in {} µs", t_0.elapsed().as_micros());
 
     Ok(())

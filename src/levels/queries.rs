@@ -1,32 +1,11 @@
 use poise::serenity_prelude::UserId;
 use tracing::instrument;
 
-use super::user_level::UserLevel;
 use crate::database::{from_i64, to_i64, Db};
+use crate::levels::models::{UserLevel, UserSql};
 use crate::Error;
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
-struct UserSql {
-    user_id: i64,
-    guild_id: i64,
-    xp: i64,
-    level: i64,
-    rank: i64,
-    last_message: i64,
-}
 
-impl From<UserSql> for UserLevel {
-    fn from(value: UserSql) -> Self {
-        Self {
-            user_id: UserId::from(from_i64(value.user_id)),
-            xp: value.xp,
-            level: value.level,
-            rank: value.rank,
-            last_message: value.last_message,
-        }
-    }
-}
 
 /// Return `UserLevel` corresponding to `user_id` in the database.
 ///

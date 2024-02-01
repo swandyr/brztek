@@ -1,6 +1,6 @@
 use poise::serenity_prelude::UserId;
 use tracing::instrument;
-use crate::{Context, Error, commands::levels::{self, user_level::UserLevel}};
+use crate::{Context, Error, levels::{self, models::UserLevel}};
 
 /// Import users levels from Mee6 leaderboard
 #[allow(clippy::cast_possible_wrap)]

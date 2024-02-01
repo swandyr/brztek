@@ -17,6 +17,7 @@ mod roulette;
 mod util;
 mod misc;
 mod admin;
+mod levels;
 
 use poise::{
     serenity_prelude::{self as serenity, UserId},
@@ -104,8 +105,8 @@ async fn main() -> Result<(), Error> {
             admin::commands::set_xp(),
             admin::commands::import_mee6_levels(),
             admin::commands::selectmenu(),
-            commands::levels::rank(),
-            commands::levels::top(),
+            levels::commands::rank(),
+            levels::commands::top(),
             misc::commands::br(),
             misc::commands::clean(),
             misc::commands::learn(),
