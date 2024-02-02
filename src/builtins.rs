@@ -28,3 +28,7 @@ Type $help command for more info on a command.",
     .await?;
     Ok(())
 }
+
+pub fn all() -> Vec<poise::Command<Data, Error>> {
+    vec![register(), help()]
+}

@@ -5,7 +5,7 @@ mod sub_details;
 mod unsub;
 
 use super::{constants, func, queries};
-use crate::{Context, Error};
+use crate::{youtube, Context, Data, Error};
 
 use list::list;
 use search::search;
@@ -25,4 +25,8 @@ use unsub::unsub;
 )]
 pub async fn yt(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
+}
+
+pub fn all() -> Vec<poise::Command<Data, Error>> {
+    vec![yt()]
 }
