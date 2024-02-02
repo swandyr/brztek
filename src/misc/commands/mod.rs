@@ -7,7 +7,7 @@ mod setcolor;
 
 use super::{consts, queries};
 
-pub use bigrig::br;
+pub use bigrig::bigrig;
 pub use clean::clean;
 pub use learn::learn;
 pub use learned::learned;

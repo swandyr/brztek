@@ -106,7 +106,7 @@ async fn main() -> Result<(), Error> {
             admin::commands::selectmenu(),
             levels::commands::rank(),
             levels::commands::top(),
-            misc::commands::br(),
+            misc::commands::bigrig(),
             misc::commands::clean(),
             misc::commands::learn(),
             misc::commands::learned(),

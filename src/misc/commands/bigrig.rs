@@ -26,8 +26,8 @@ struct Song {
 /// The bot will show what's now on BigRig.
 #[allow(dead_code)]
 #[instrument(skip(ctx))]
-#[poise::command(prefix_command, slash_command, category = "Misc")]
-pub async fn br(ctx: Context<'_>) -> Result<(), Error> {
+#[poise::command(prefix_command, slash_command, rename = "br", category = "Misc")]
+pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
     let song = reqwest::get(BIGRIG_CURRENT_URL)
         .await?
         .json::<Song>()
