@@ -44,17 +44,14 @@ pub async fn selectmenu(ctx: Context<'_>) -> Result<(), Error> {
         .await?;
 
     // Get interaction content (selected roles)
-    let interaction = match m
+    let Some(interaction) = m
         .await_component_interaction(&ctx.serenity_context().shard)
         .timeout(Duration::from_secs(60 * 3))
         .await
-    {
-        Some(x) => x,
-        None => {
-            m.reply(&ctx, "Timed out").await?;
-            m.delete(&ctx).await?;
-            return Ok(());
-        }
+    else {
+        m.reply(&ctx, "Timed out").await?;
+        m.delete(&ctx).await?;
+        return Ok(());
     };
 
     let serenity::ComponentInteractionDataKind::RoleSelect { values } = &interaction.data.kind
