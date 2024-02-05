@@ -1,3 +1,4 @@
+pub mod add;
 pub mod create;
 pub mod delete;
 pub mod gimmeroles;
@@ -7,6 +8,7 @@ use tracing::instrument;
 use super::queries;
 use crate::{Context, Error};
 
+pub use add::add;
 pub use create::create;
 pub use delete::delete;
 pub use gimmeroles::gimmeroles;

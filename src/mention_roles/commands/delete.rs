@@ -10,13 +10,13 @@ use crate::{Context, Error};
 
 //TODO: Make autocomplete works
 
-async fn autocomplete<'a>(ctx: Context<'_>, partial: &'a str) -> impl Stream<Item = Role> + 'a {
+async fn autocomplete<'a>(ctx: Context<'_>, partial: &'a str) -> impl Stream<Item = String> + 'a {
     let db = &ctx.data().db;
     let guild_id = ctx.guild_id().ok_or("Not in guild").unwrap();
     let mention_role_ids = queries::get_role_ids(db, guild_id.get()).await.unwrap();
-    let mention_roles: Vec<Role> = mention_role_ids
+    let mention_roles: Vec<String> = mention_role_ids
         .into_iter()
-        .map(|id| serenity::RoleId::from(id).to_role_cached(ctx).unwrap())
+        .map(|id| serenity::RoleId::from(id).to_role_cached(ctx).unwrap().name)
         .collect();
     dbg!(&mention_roles);
     futures::stream::iter(mention_roles)
@@ -42,7 +42,7 @@ async fn autocomplete_dbg<'a>(
 pub async fn delete(
     ctx: Context<'_>,
     #[description = "Role name"]
-    #[autocomplete = "autocomplete_dbg"]
+    #[autocomplete = "autocomplete"]
     name: String,
 ) -> Result<(), Error> {
     let content = format!("Deleting role {}", name);
