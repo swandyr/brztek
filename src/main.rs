@@ -14,6 +14,7 @@ mod config;
 mod database;
 mod handlers;
 mod levels;
+mod mention_roles;
 mod misc;
 mod roulette;
 mod util;
@@ -103,7 +104,7 @@ async fn main() -> Result<(), Error> {
             builtins::register(),
             admin::commands::set_xp(),
             admin::commands::import_mee6_levels(),
-            admin::commands::selectmenu(),
+            mention_roles::commands::selectmenu(),
             levels::commands::rank(),
             levels::commands::top(),
             misc::commands::bigrig(),

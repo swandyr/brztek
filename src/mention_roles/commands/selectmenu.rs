@@ -5,7 +5,7 @@ use tracing::{debug, error, instrument};
 use crate::{Context, Error};
 
 #[instrument(skip(ctx))]
-#[poise::command(slash_command, guild_only, category = "Admin")]
+#[poise::command(slash_command, guild_only, category = "Mention Roles")]
 pub async fn selectmenu(ctx: Context<'_>) -> Result<(), Error> {
     // Get list of guild's roles
     let guild_roles = ctx
