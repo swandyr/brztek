@@ -4,6 +4,7 @@ use tracing::instrument;
 use super::queries;
 use crate::{Context, Error};
 
+/// Create a new role as a mention role managed by the bot
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, guild_only, category = "Mention Roles")]
 pub async fn create(

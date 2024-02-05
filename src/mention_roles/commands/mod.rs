@@ -5,7 +5,7 @@ pub mod gimmeroles;
 
 use tracing::instrument;
 
-use super::queries;
+use super::{queries, util};
 use crate::{Context, Error};
 
 pub use add::add;
@@ -18,7 +18,7 @@ pub use gimmeroles::gimmeroles;
     slash_command,
     required_permissions = "MANAGE_ROLES",
     category = "Mention Roles",
-    subcommands("create", "delete")
+    subcommands("create", "delete", "add")
 )]
 pub async fn mention_roles(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())

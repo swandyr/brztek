@@ -20,6 +20,7 @@ async fn autocomplete<'a>(ctx: Context<'_>, partial: &'a str) -> impl Stream<Ite
     .map(|r| r.name)
 }
 
+/// Add an existing role to the mention roles managed by the bot
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, guild_only, category = "Mention Roles")]
 pub async fn add(

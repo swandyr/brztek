@@ -5,13 +5,12 @@ use poise::{
 use std::time::Duration;
 use tracing::{debug, error, instrument};
 
-use super::queries;
+use super::{queries, util};
 use crate::{Context, Error};
 
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, guild_only, category = "Mention Roles")]
 pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
-    //TODO: Assign roles to user
     let db = &ctx.data().db;
     let guild_id = ctx.guild_id().ok_or("Not in guild")?;
     let mention_roleids: Vec<RoleId> = queries::get_role_ids(db, guild_id.get())
@@ -20,14 +19,15 @@ pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
         .map(serenity::RoleId::from)
         .collect();
     let max_values = mention_roleids.len() as u8;
-    // Get list of member's roles
     let member_roleids = &ctx.author_member().await.unwrap().roles;
+
+    // Create select menu entries; roles already assigned to user is selected by default
     let options: Vec<serenity::CreateSelectMenuOption> = mention_roleids
         .iter()
-        .map(|r| {
-            let label = r.to_role_cached(ctx).unwrap().name;
-            let value = r.get().to_string();
-            let default = member_roleids.contains(r);
+        .map(|id| {
+            let label = id.to_role_cached(ctx).unwrap().name;
+            let value = id.get().to_string();
+            let default = member_roleids.contains(id);
             serenity::CreateSelectMenuOption::new(label, value).default_selection(default)
         })
         .collect();
@@ -71,7 +71,6 @@ pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
         m.delete(&ctx).await?;
         return Ok(());
     };
-
     let serenity::ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind
     else {
         error!("Invalid ComponentInteractionDataKind");
@@ -79,17 +78,35 @@ pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
         return Ok(());
     };
 
-    let roles = values
+    // Assign selected roles to user
+    let member = ctx.author_member().await.ok_or("author_member not found")?;
+    let selected = values
         .iter()
-        .map(|value| {
-            let id = RoleId::from(value.parse::<u64>().unwrap());
-            id.to_role_cached(ctx).unwrap().name
-        })
+        .map(|value| RoleId::from(value.parse::<u64>().unwrap()))
+        .collect::<Vec<RoleId>>();
+    member.add_roles(ctx, &selected).await?;
+    let unselected = mention_roleids
+        .into_iter()
+        .filter(|r| !selected.contains(r) && member_roleids.contains(r))
+        .collect::<Vec<RoleId>>();
+    member.remove_roles(ctx, &unselected).await?;
+
+    // Send response
+    let selected_names = selected
+        .iter()
+        .map(|r| r.to_role_cached(ctx).unwrap().name)
         .collect::<Vec<String>>();
-    let content = format!("You selected {}", roles.join(", "));
+    let unselected_names = unselected
+        .iter()
+        .map(|r| r.to_role_cached(ctx).unwrap().name)
+        .collect::<Vec<String>>();
+    let content = format!(
+        "Roles assigned: {}\nRoles removed: {}",
+        selected_names.join(", "),
+        unselected_names.join(", ")
+    );
     debug!("{content}");
 
-    // Respond to interaction
     interaction
         .create_response(
             &ctx,
