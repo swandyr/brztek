@@ -213,7 +213,7 @@ pub async fn gen_top_card(users: &[UserInfoCard], _guild_name: &str) -> Result<V
         target_height.try_into()?,
     )?;
 
-    bitmap.save_to_file("card.png").unwrap();
+    //bitmap.save_to_file("card.png").unwrap();
 
     Ok(buf)
 }
