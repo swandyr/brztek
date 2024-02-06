@@ -8,6 +8,7 @@ use tracing::{debug, error, instrument};
 use super::{queries, util};
 use crate::{Context, Error};
 
+/// Get roles to be mentionned
 #[instrument(skip(ctx))]
 #[poise::command(slash_command, guild_only, category = "Mention Roles")]
 pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {

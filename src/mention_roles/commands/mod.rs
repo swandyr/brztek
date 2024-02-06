@@ -13,6 +13,7 @@ pub use create::create;
 pub use delete::delete;
 pub use gimmeroles::gimmeroles;
 
+/// Manage mention roles (require MANAGE_ROLES permission)
 #[instrument(skip(ctx))]
 #[poise::command(
     slash_command,
