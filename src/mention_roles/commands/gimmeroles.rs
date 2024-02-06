@@ -1,5 +1,5 @@
 use poise::{
-    serenity_prelude::{self as serenity, Role, RoleId},
+    serenity_prelude::{self as serenity, ActionRowComponent, Role, RoleId, SelectMenu},
     CreateReply,
 };
 use std::time::Duration;
@@ -10,7 +10,7 @@ use crate::{Context, Error};
 
 /// Get roles to be mentionned
 #[instrument(skip(ctx))]
-#[poise::command(slash_command, guild_only, category = "Mention Roles")]
+#[poise::command(slash_command, guild_only, ephemeral, category = "Mention Roles")]
 pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
     let db = &ctx.data().db;
     let guild_id = ctx.guild_id().ok_or("Not in guild")?;
@@ -52,15 +52,13 @@ pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
     .placeholder("Role");
 
     // Send message with SelectMenu; get a message handler to handle interaction
-    let m = ctx
+    let handle = ctx
         .send(
             CreateReply::default()
-                .content("A select menu with roles")
                 .components(vec![serenity::CreateActionRow::SelectMenu(select_menu)]),
         )
-        .await?
-        .into_message()
         .await?;
+    let m = handle.message().await?;
 
     // Get interaction content (selected roles)
     let Some(interaction) = m
@@ -96,28 +94,37 @@ pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
     let selected_names = selected
         .iter()
         .map(|r| r.to_role_cached(ctx).unwrap().name)
-        .collect::<Vec<String>>();
+        .collect::<Vec<String>>()
+        .join("\n");
     let unselected_names = unselected
         .iter()
         .map(|r| r.to_role_cached(ctx).unwrap().name)
-        .collect::<Vec<String>>();
-    let content = format!(
-        "Roles assigned: {}\nRoles removed: {}",
-        selected_names.join(", "),
-        unselected_names.join(", ")
-    );
-    debug!("{content}");
+        .collect::<Vec<String>>()
+        .join("\n");
+    let embed = serenity::CreateEmbed::new()
+        .field("Roles assigned", selected_names, false)
+        .field("Roles removed", unselected_names, false);
 
     interaction
         .create_response(
             &ctx,
             serenity::CreateInteractionResponse::Message(
-                serenity::CreateInteractionResponseMessage::new().content(content),
+                serenity::CreateInteractionResponseMessage::new()
+                    .embed(embed)
+                    .ephemeral(true),
             ),
         )
         .await?;
 
-    m.delete(&ctx).await?;
+    //handle.delete(ctx).await?;
+    handle
+        .edit(
+            ctx,
+            CreateReply::default()
+                .content(":saluting_face:")
+                .components(vec![]),
+        )
+        .await?;
 
     Ok(())
 }
