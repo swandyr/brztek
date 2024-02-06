@@ -1,5 +1,6 @@
 use brzthook::Mode;
 
+use super::func::autocomplete_sublist;
 use crate::{youtube::queries, Context, Error};
 
 /// Unsub and delete a webhook
@@ -15,7 +16,9 @@ use crate::{youtube::queries, Context, Error};
 )]
 pub(super) async fn unsub(
     ctx: Context<'_>,
-    #[description = "Name of the channel"] name: String,
+    #[description = "Name of the channel"]
+    #[autocomplete = "autocomplete_sublist"]
+    name: String,
 ) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
 

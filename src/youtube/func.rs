@@ -1,8 +1,18 @@
+use poise::serenity_prelude::futures::{self, Stream, StreamExt};
 use serde_json::Value;
 use tracing::warn;
 
-use super::constants::INVIDIOUS_INSTANCES_URL;
+use super::{constants::INVIDIOUS_INSTANCES_URL, queries};
 use crate::{Context, Error};
+
+pub async fn autocomplete_sublist<'a>(
+    ctx: Context<'_>,
+    partial: &'a str,
+) -> impl Stream<Item = String> + 'a {
+    let db = &ctx.data().db;
+    let subs_list = queries::get_subs_list(db).await.unwrap();
+    futures::stream::iter(subs_list).map(|sub| sub.yt_channel_name)
+}
 
 pub(super) async fn get_invidious_instances() -> Result<Option<Vec<Value>>, Error> {
     let response = reqwest::get(INVIDIOUS_INSTANCES_URL).await?.text().await?;

@@ -1,13 +1,5 @@
-use poise::serenity_prelude::futures::{self, Stream, StreamExt};
-
-use super::queries;
+use super::{func::autocomplete_sublist, queries};
 use crate::{Context, Error};
-
-async fn autocomplete<'a>(ctx: Context<'_>, partial: &'a str) -> impl Stream<Item = String> + 'a {
-    let db = &ctx.data().db;
-    let subs_list = queries::get_subs_list(db).await.unwrap();
-    futures::stream::iter(subs_list).map(|sub| sub.yt_channel_name)
-}
 
 #[poise::command(
     slash_command,
@@ -18,7 +10,7 @@ async fn autocomplete<'a>(ctx: Context<'_>, partial: &'a str) -> impl Stream<Ite
 )]
 pub(super) async fn sub_details(
     ctx: Context<'_>,
-    #[autocomplete = "autocomplete"] name: String,
+    #[autocomplete = "autocomplete_sublist"] name: String,
 ) -> Result<(), Error> {
     let db = &ctx.data().db;
     let guild_id = ctx.guild_id().ok_or("Not in guild")?;
