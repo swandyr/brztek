@@ -1,5 +1,5 @@
 use poise::{
-    serenity_prelude::{self as serenity, ActionRowComponent, Role, RoleId, SelectMenu},
+    serenity_prelude::{self as serenity, Colour, Role, RoleId, SelectMenu},
     CreateReply,
 };
 use std::time::Duration;
@@ -66,8 +66,14 @@ pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
         .timeout(Duration::from_secs(60 * 3))
         .await
     else {
-        m.reply(&ctx, "Timed out").await?;
-        m.delete(&ctx).await?;
+        handle
+            .edit(
+                ctx,
+                CreateReply::default()
+                    .content("Timed out")
+                    .components(vec![]),
+            )
+            .await?;
         return Ok(());
     };
     let serenity::ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind
@@ -101,7 +107,14 @@ pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
         .map(|r| r.to_role_cached(ctx).unwrap().name)
         .collect::<Vec<String>>()
         .join("\n");
+    let colour = ctx
+        .http()
+        .get_user(ctx.author().id)
+        .await?
+        .accent_colour
+        .unwrap_or(Colour::BLURPLE);
     let embed = serenity::CreateEmbed::new()
+        .colour(colour)
         .field("Roles assigned", selected_names, false)
         .field("Roles removed", unselected_names, false);
 
@@ -116,7 +129,7 @@ pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
         )
         .await?;
 
-    //handle.delete(ctx).await?;
+    // Edit first message to remove dangling component
     handle
         .edit(
             ctx,

@@ -1,4 +1,7 @@
-use poise::{serenity_prelude as serenity, CreateReply};
+use poise::{
+    serenity_prelude::{self as serenity, Colour},
+    CreateReply,
+};
 use tracing::{info, instrument};
 
 use super::consts::BIGRIG_CURRENT_URL;
@@ -42,6 +45,7 @@ pub async fn bigrig(ctx: Context<'_>) -> Result<(), Error> {
         CreateReply::default().embed(
             serenity::CreateEmbed::new()
                 .title("Now on BigRig FM")
+                .colour(Colour::from_rgb(207, 92, 20))
                 .url(&song.data.link)
                 .thumbnail(&song.data.album_art)
                 .field("Artist", &song.data.artist, false)
