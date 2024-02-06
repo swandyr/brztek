@@ -102,8 +102,9 @@ async fn main() -> Result<(), Error> {
         commands: vec![
             builtins::help(),
             builtins::register(),
-            admin::commands::set_xp(),
             admin::commands::import_mee6_levels(),
+            admin::commands::set_xp(),
+            admin::commands::shutdown(),
             levels::commands::rank(),
             levels::commands::top(),
             mention_roles::commands::gimmeroles(),

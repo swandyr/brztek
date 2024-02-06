@@ -23,6 +23,11 @@ impl Db {
         sqlx::migrate!("./migrations").run(&self.pool).await?;
         Ok(())
     }
+
+    #[instrument]
+    pub async fn close(&self) {
+        self.pool.close().await;
+    }
 }
 
 /// Bit-cast u64 (user.id in Discord API) to i64 (stored in the `SQLite` database).
