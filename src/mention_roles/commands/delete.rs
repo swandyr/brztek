@@ -31,7 +31,7 @@ async fn autocomplete<'a>(ctx: Context<'_>, partial: &'a str) -> impl Stream<Ite
 
 /// Delete a mention role from the bot and discord
 #[instrument(skip(ctx))]
-#[poise::command(slash_command, guild_only, category = "Mention Roles")]
+#[poise::command(slash_command, guild_only, ephemeral, category = "Mention Roles")]
 pub async fn delete(
     ctx: Context<'_>,
     #[description = "Role name"]
