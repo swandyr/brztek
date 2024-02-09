@@ -8,6 +8,8 @@ use tracing::{debug, error, instrument};
 use super::{queries, util};
 use crate::{Context, Error};
 
+const INTERACTION_TIMEOUT: Duration = Duration::from_secs(60 * 3);
+
 /// Get roles to be mentionned
 #[instrument(skip(ctx))]
 #[poise::command(
@@ -69,7 +71,7 @@ pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
     // Get interaction content (selected roles)
     let Some(interaction) = m
         .await_component_interaction(&ctx.serenity_context().shard)
-        .timeout(Duration::from_secs(60 * 3))
+        .timeout(INTERACTION_TIMEOUT)
         .await
     else {
         handle
