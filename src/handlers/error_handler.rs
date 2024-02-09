@@ -106,8 +106,12 @@ pub async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 .unwrap();
         }
 
-        poise::FrameworkError::Command { error, ctx: _, .. } => {
-            error!("Error in command: {}", error);
+        poise::FrameworkError::Command { error, ctx, .. } => {
+            let content = format!("Error in command: {error}");
+            error!(content);
+            ctx.send(CreateReply::default().content(content).ephemeral(true))
+                .await
+                .unwrap();
         }
 
         error => {
