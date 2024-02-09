@@ -137,7 +137,8 @@ async fn main() -> Result<(), Error> {
                     .await
                     .unwrap();
                 info!(
-                    "Executing command {} in guild {:?}",
+                    "{} executed command {} in guild {:?}",
+                    ctx.author().name,
                     ctx.command().qualified_name,
                     guild_name
                 );
