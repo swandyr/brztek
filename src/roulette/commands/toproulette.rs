@@ -37,7 +37,7 @@ pub async fn toproulette(ctx: Context<'_>) -> Result<(), Error> {
                         *x = rff.into();
                     }
                 })
-                .or_insert(rff.into());
+                .or_insert_with(|| rff.into());
         }
     }
 

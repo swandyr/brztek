@@ -6,7 +6,7 @@ use crate::{
     Error,
 };
 
-pub(crate) async fn get_sub(
+pub async fn get_sub(
     db: &Db,
     yt_channel_name: &str,
     guild_id: u64,
@@ -32,7 +32,7 @@ pub(crate) async fn get_sub(
     Ok(yt_sub)
 }
 
-pub(crate) async fn get_post_channel_ids(db: &Db, yt_channel_id: &str) -> Result<Vec<u64>, Error> {
+pub async fn get_post_channel_ids(db: &Db, yt_channel_id: &str) -> Result<Vec<u64>, Error> {
     let response = sqlx::query!(
         "SELECT post_channel_id FROM yt_sub WHERE yt_channel_id = ?",
         yt_channel_id
@@ -47,7 +47,7 @@ pub(crate) async fn get_post_channel_ids(db: &Db, yt_channel_id: &str) -> Result
     Ok(ids)
 }
 
-pub(crate) async fn get_subs_list(db: &Db) -> Result<Vec<SubYtChannel>, Error> {
+pub async fn get_subs_list(db: &Db) -> Result<Vec<SubYtChannel>, Error> {
     let response = sqlx::query_as!(
         SubYtChannelSQL,
         r#"SELECT
@@ -66,7 +66,7 @@ pub(crate) async fn get_subs_list(db: &Db) -> Result<Vec<SubYtChannel>, Error> {
     Ok(yt_subs)
 }
 
-pub(crate) async fn insert_sub(db: &Db, sub: SubYtChannel) -> Result<(), Error> {
+pub async fn insert_sub(db: &Db, sub: SubYtChannel) -> Result<(), Error> {
     let sub = SubYtChannelSQL::from(sub);
 
     sqlx::query!(
@@ -86,7 +86,7 @@ pub(crate) async fn insert_sub(db: &Db, sub: SubYtChannel) -> Result<(), Error> 
     Ok(())
 }
 
-pub(crate) async fn update_expire_on(
+pub async fn update_expire_on(
     db: &Db,
     expire_on: OffsetDateTime,
     yt_channel_id: &str,
@@ -102,7 +102,7 @@ pub(crate) async fn update_expire_on(
     Ok(())
 }
 
-pub(crate) async fn delete_sub(db: &Db, yt_channel_id: &str, guild_id: u64) -> Result<(), Error> {
+pub async fn delete_sub(db: &Db, yt_channel_id: &str, guild_id: u64) -> Result<(), Error> {
     let guild_id = to_i64(guild_id);
 
     sqlx::query!(

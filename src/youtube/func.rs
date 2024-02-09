@@ -36,10 +36,7 @@ pub async fn get_name_id(ctx: &Context<'_>, url: &str) -> Result<Option<(String,
         return Ok(None);
     };
     // If the input is the full address https://www.youtube.com/{suffix}
-    let suffix = match url.rsplit_once('/') {
-        Some(tup) => tup.1,
-        None => url,
-    };
+    let suffix = url.rsplit_once('/').map_or(url, |tuple| tuple.1);
 
     // The Youtube channel id starts with "UC", we can call directly the channel endpoint
     // If suffix starts with "@", we use the search endpoint to find the channel with that name

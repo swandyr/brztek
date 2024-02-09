@@ -15,5 +15,5 @@ pub async fn roleid_from_name(ctx: Context<'_>, name: &str) -> Result<RoleId, Er
     role_id
         .first()
         .copied()
-        .ok_or(Error::from("RoleId not found"))
+        .ok_or_else(|| Error::from("RoleId not found"))
 }
