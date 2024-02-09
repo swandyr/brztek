@@ -67,7 +67,6 @@ async fn main() -> Result<(), Error> {
         .with(fmt::Layer::new().pretty().with_writer(std::io::stdout))
         .with(
             fmt::Layer::new()
-                .compact()
                 .with_ansi(false)
                 .with_line_number(true)
                 .with_writer(non_blocking),
