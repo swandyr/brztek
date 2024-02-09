@@ -72,23 +72,3 @@ pub async fn get_name_id(ctx: &Context<'_>, url: &str) -> Result<Option<(String,
 
     Ok(Some((author_name.to_owned(), author_id.to_owned())))
 }
-
-//* This shit doesn't work */
-//TODO: Find a way to make this shit work
-// async fn sub_autocomplete<'a>(
-//     ctx: Context<'a>,
-//     partial: &'a str,
-// ) -> impl Stream<Item = String> + 'a {
-//     futures::stream::iter(
-//         ctx.data()
-//             .autocomplete
-//             .lock()
-//             .unwrap()
-//             .clone()
-//             .iter()
-//             .filter(|&name| name.1 == ctx.guild_id().unwrap().0)
-//             .map(|name| name.0.clone()),
-//     )
-//     .filter(move |name| futures::future::ready(name.starts_with(partial)))
-//     .map(|name| name.clone())
-// }
