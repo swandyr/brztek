@@ -10,7 +10,13 @@ use crate::{Context, Error};
 
 /// Get roles to be mentionned
 #[instrument(skip(ctx))]
-#[poise::command(slash_command, guild_only, ephemeral, category = "Mention Roles")]
+#[poise::command(
+    slash_command,
+    guild_only,
+    ephemeral,
+    rename = "roles",
+    category = "Mention Roles"
+)]
 pub async fn gimmeroles(ctx: Context<'_>) -> Result<(), Error> {
     let db = &ctx.data().db;
     let guild_id = ctx.guild_id().ok_or("Not in guild")?;
