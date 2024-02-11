@@ -75,10 +75,12 @@ async fn main() -> Result<(), Error> {
 
     let token = env::var("DISCORD_TOKEN")?;
 
-    let intents = serenity::GatewayIntents::non_privileged()
-        | serenity::GatewayIntents::MESSAGE_CONTENT
+    let intents = serenity::GatewayIntents::GUILDS
         | serenity::GatewayIntents::GUILD_MEMBERS
-        | serenity::GatewayIntents::GUILD_PRESENCES;
+        | serenity::GatewayIntents::GUILD_PRESENCES
+        | serenity::GatewayIntents::GUILD_MESSAGES
+        | serenity::GatewayIntents::DIRECT_MESSAGES
+        | serenity::GatewayIntents::MESSAGE_CONTENT;
 
     let cfg_file = std::fs::read_to_string("config.toml")?;
     let config: Config = toml::from_str(&cfg_file)?;
