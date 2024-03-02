@@ -22,7 +22,7 @@ piet-common = { version = "0.6", features = ["png"] }
 tracing-appender = "0.2.2"
 regex = "1.10"
 url = "2.5"
-brzthook = { git = "https://github.com/swandyr/brzthook" }
+brzthook = { path = "./brzthook" }
 toml = "0.8.8"
 
 [dependencies.image]
