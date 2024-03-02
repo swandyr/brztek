@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
 
 [dependencies]
 dotenvy = "0.15"
@@ -20,7 +21,8 @@ piet-common = { version = "0.6", features = ["png"] }
 tracing-appender = "0.2.2"
 regex = "1.10"
 url = "2.5"
-brzthook = { git = "https://github.com/swandyr/brzthook" }
+#brzthook = { git = "https://github.com/swandyr/brzthook" }
+brzthook = { path = "./brzthook/" }
 toml = "0.8.8"
 
 [dependencies.image]
